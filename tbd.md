@@ -1,4 +1,4 @@
-Problem statement:-
+# Problem statement:-
 
 An application deployed as a Pod in Kubernetes might need the capability to launch a dependant application. For e.g. A capital market application
 might need to start a dependant application at the end of a trading session. the dependant application will perform post processing of
@@ -9,19 +9,20 @@ dependant application on a node that has the necessary resources.
 
 There are many use cases for having such a capability within applications in Kubernetes.
 
-Security considerations:-
+# Security considerations:-
 
 In principle, a Kubernetes cluster can be setup to provide RBAC access to applications to access the Kubernetes API. Once setup the application
 can perform the API calls and operations that are allowed in the Role specification. However this approach has some security weaknesses. So
 we would need a more robust solution to solve this problem.
 
-High level design:-
+# High level design:-
 
 We need to have a custom controller developed which will act on behalf of the master application. The controller will have all necessary
 business logic and checks implemented in it to manage and control the creation of dependent application. Kubernetes Custom Resource Definition
 (CRD) can be used to implement the custom controller.
 
-The role of the Custom Controller:-
+## The role of the Custom Controller:-
+
 1. If an application needs this capability, when the deployment of the master is created a corresponding crd resource is also created.
 2. The crd resource should have ownerReference pointing to the master deployment.
 3. The crd resource's template section should have the list of resource manifests.
@@ -29,7 +30,8 @@ The role of the Custom Controller:-
 5. So this way the master application is prevented from creating arbitrary objects by itself. Also this way it becomes transparent to the
 developer/administrator what objects would get created for the dependant application.
 
-TBD:-
+## TBD:-
+
 1. Instead of CRD can we use API aggregation or the Operator pattern?
 2. What is the mechanism by which the master Pod signals the controller when it wants the dependant application to be created?
 3. How will the controller return back the result of resource creation and the Endpoint/Credentials of the dependant application to 
