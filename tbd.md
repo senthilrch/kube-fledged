@@ -1,3 +1,5 @@
+![](https://bitbucket.org/senthilrch/kube-fledged/downloads/kube-fledged-0.5x.jpg)
+
 # Problem statement:-
 
 An application deployed as a Pod in Kubernetes might need the capability to launch a dependant application. For e.g. A capital market application
