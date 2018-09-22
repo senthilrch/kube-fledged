@@ -38,3 +38,31 @@ developer/administrator what objects would get created for the dependant applica
 the master?
 4. How will the master Pod signal the controller to delete the dependant application?
 5. IDentify more usecases where this feature can be used.
+
+## Pod Manifest (Annotations):-
+
+If a Pod needs to have the ability to launch a new application then the Pod's manifest should have a suitable annotation. In the absence
+of this annotation the controller will not honor any request to create a dependant application. The annotation will also have details as
+to what application the Pod is allowed to launch together with other attributes.
+
+When the controller receives a request from a Pod for launching the new application, the Controller will read the annotation. The annotatio
+will have all necessary details for launching the new application.
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: myapp-pod
+  labels:
+    app: myapp
+  annotations:
+    fledged.io: 
+	  manifests: <name of configmap containing manifests to be created>
+	  helm-chart: <path of helm chart defining the application>
+	  duration: <time duration in seconds after which the application should be deleted>
+spec:
+  containers:
+  - name: myapp-container
+    image: busybox
+    command: ['sh', '-c', 'echo Hello Kubernetes! && sleep 3600']
+```
