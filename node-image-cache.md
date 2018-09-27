@@ -41,9 +41,12 @@ will be used. This eliminates the delay incurred in downloading the image.
 Kubernetes has an in-built image garbage collection mechanism. On a periodic basis, the kubelet in the node
 check if the disk usage has reached a certain threshold (configurable via flags). Once this threshold is
 reached kubelet automatically deletes all unused images in the node. This is a much needed
-functionality of the kubelet. This can result in deletion of images present in the node image cache that
+functionality of the kubelet. However, this can result in deletion of images present in the node image cache that
 is proposed in this solution. Many users in the k8s community have raised issues to have the
-kubelet configured to skip some images during garbage collection. One user has already
-implemented a solution for this that has been tested in Production and has raised a PR to
-accpet the solution. Please refer below:-
+kubelet configurable to have a list of whitelisted images that will not be affected by garbage collection. One user has already
+implemented a solution for this that has been tested in Production and has raised a PR. Please refer below:-
+
+https://github.com/kubernetes/kubernetes/pull/68549
+
+
 
