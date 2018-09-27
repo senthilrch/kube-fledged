@@ -31,11 +31,12 @@ use cases which cannot tolerate this delay.
 4. Nodes might lose network connectivity to the local registry mirror so the Pod will be stuck
 until the connectivity is restored.
 
-# 3. Proposed Solution:-
-The proposed solution is to have an image cache on the kubernetes worker node. Applications that
+# 3. Proposed Solution - Distributed Cluster Image Cache:-
+The proposed solution is to have a distributed cluster image cache. The image cache is distributed across all/multiple worker nodes and not in a centralized local repository mirror.
+Applications that
 require near instant Pod startup or that cannot tolerate loss of connectivity to image registry
-will have the container images stored in the node image cache. When a Pod is scheduled to the
-node that has image pull policy either "Never" or "IfNotPresent", the image from the image cache
+will have the container images stored in the cluster image cache and made available directly in the node. When a Pod is scheduled to the
+node that has image pull policy either "Never" or "IfNotPresent", the image from the image cache in the node
 will be used. This eliminates the delay incurred in downloading the image.
 
 ### 3.1. Challenges with the Proposed Solution:-
@@ -49,5 +50,37 @@ implemented a solution for this that has been tested in Production and has raise
 
 https://github.com/kubernetes/kubernetes/pull/68549
 
+### 3.2. Temporary workaround:-
+(Document the workaround proposal to prevent kubelet gc from removing the images in node image cache)
 
+# ClusterImageCache API resource:-
+```yaml
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  # name must match the spec fields below, and be in the form: <plural>.<group>
+  name: clusterimagecaches.fledged.k8s.io
+spec:
+  # group name to use for REST API: /apis/<group>/<version>
+  group: fledged.k8s.io
+  # list of versions supported by this CustomResourceDefinition
+  versions:
+    - name: v1beta1
+      # Each version can be enabled/disabled by Served flag.
+      served: true
+      # One and only one version must be marked as the storage version.
+      storage: true
+  # either Namespaced or Cluster
+  scope: Cluster
+  names:
+    # plural name to be used in the URL: /apis/<group>/<version>/<plural>
+    plural: clusterimagecaches
+    # singular name to be used as an alias on the CLI and for display
+    singular: clusterimagecache
+    # kind is normally the CamelCased singular type. Your resource manifests use this.
+    kind: ClusterImageCache
+    # shortNames allow shorter string to match your resource on the CLI
+    shortNames:
+    - cic
+```
 
