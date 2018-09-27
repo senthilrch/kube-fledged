@@ -31,8 +31,8 @@ use cases which cannot tolerate this delay.
 4. Nodes might lose network connectivity to the local registry mirror so the Pod will be stuck
 until the connectivity is restored.
 
-# 3. Proposed Solution - Distributed Cluster Image Cache:-
-The proposed solution is to have a distributed cluster image cache. The image cache is distributed across all/multiple worker nodes and not in a centralized local repository mirror.
+# 3. Proposed Solution - *Distributed* Cluster Image Cache:-
+The proposed solution is to have a ** *distributed* ** cluster image cache. The image cache is distributed across all/multiple worker nodes and not in a centralized local repository mirror.
 Applications that
 require near instant Pod startup or that cannot tolerate loss of connectivity to image registry
 will have the container images stored in the cluster image cache and made available directly in the node. When a Pod is scheduled to the
@@ -71,7 +71,7 @@ spec:
       # One and only one version must be marked as the storage version.
       storage: true
   # either Namespaced or Cluster
-  scope: Cluster
+  scope: Namespaced
   names:
     # plural name to be used in the URL: /apis/<group>/<version>/<plural>
     plural: clusterimagecaches
