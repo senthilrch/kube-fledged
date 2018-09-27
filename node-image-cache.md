@@ -1,4 +1,4 @@
-# Problem Statement:-
+# 1. Problem Statement:-
 Kubernetes is the Container Orchestration Engine of choice for a wide variety of Applications. When a Pod is successfully
 scheduled to a worker node, the container images required for the Pod are pulled down from a image registry. Depending on the
 size of the image and network latency, the image pull will consume considerable time duration. Ultimately this increases the time
@@ -11,14 +11,15 @@ the connectivity to the image registry might not be available all the time
 
 We will need a robust solution to solve these problems
 
-# Existing Solution:-
+# 2. Existing Solution:-
 The existing solution to tackle this problem is to have a Registry mirror running inside the
 Cluster. The first time you request an image from your local registry mirror, it pulls the
 image from the Master image registry and stores it locally before sending it to the client.
 On subsequent requests, the local registry mirror is able to serve the image from its own
-storage. See ![](https://docs.docker.com/registry/recipes/mirror/)
+storage. See https://docs.docker.com/registry/recipes/mirror/
 
 This is an acceptable solution for most use cases. However it has the following drawbacks:-
+
 1. Setting up and maintaining the Local registry mirror consumes considerable computational
 and human resources.
 2. For huge clusters spanning multiple regions, we need to have multiple local registry mirrors. This
@@ -30,14 +31,14 @@ use cases which cannot tolerate this delay.
 4. Nodes might lose network connectivity to the local registry mirror so the Pod will be stuck
 until the connectivity is restored.
 
-# Proposed Solution:-
+# 3. Proposed Solution:-
 The proposed solution is to have an image cache on the kubernetes worker node. Applications that
 require near instant Pod startup or that cannot tolerate loss of connectivity to image registry
 will have the container images stored in the node image cache. When a Pod is scheduled to the
 node that has image pull policy either "Never" or "IfNotPresent", the image from the image cache
 will be used. This eliminates the delay incurred in downloading the image.
 
-# Challenges with the Proposed Solution:-
+### 3.1. Challenges with the Proposed Solution:-
 Kubernetes has an in-built image garbage collection mechanism. On a periodic basis, the kubelet in the node
 check if the disk usage has reached a certain threshold (configurable via flags). Once this threshold is
 reached kubelet automatically deletes all unused images in the node. This is a much needed
