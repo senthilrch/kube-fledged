@@ -30,4 +30,20 @@ use cases which cannot tolerate this delay.
 4. Nodes might lose network connectivity to the local registry mirror so the Pod will be stuck
 until the connectivity is restored.
 
-Use case that requir
+# Proposed Solution:-
+The proposed solution is to have an image cache on the kubernetes worker node. Applications that
+require near instant Pod startup or that cannot tolerate loss of connectivity to image registry
+will have the container images stored in the node image cache. When a Pod is scheduled to the
+node that has image pull policy either "Never" or "IfNotPresent", the image from the image cache
+will be used. This eliminates the delay incurred in downloading the image.
+
+# Challenges with the Proposed Solution:-
+Kubernetes has an in-built image garbage collection mechanism. On a periodic basis, the kubelet in the node
+check if the disk usage has reached a certain threshold (configurable via flags). Once this threshold is
+reached kubelet automatically deletes all unused images in the node. This is a much needed
+functionality of the kubelet. This can result in deletion of images present in the node image cache that
+is proposed in this solution. Many users in the k8s community have raised issues to have the
+kubelet configured to skip some images during garbage collection. One user has already
+implemented a solution for this that has been tested in Production and has raised a PR to
+accpet the solution. Please refer below:-
+
