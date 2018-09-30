@@ -12,7 +12,7 @@ the connectivity to the image registry might not be available all the time
 We will need a robust solution to solve these problems
 
 # 2. Existing Solution:-
-The existing solution to tackle this problem is to have a Registry mirror running inside the
+The existing solution to tackle the problem of reducing the Pod startup time is to have a Registry mirror running inside the
 Cluster. The first time you request an image from your local registry mirror, it pulls the
 image from the Master image registry and stores it locally before sending it to the client.
 On subsequent requests, the local registry mirror is able to serve the image from its own
@@ -34,7 +34,7 @@ until the connectivity is restored.
 # 3. Proposed Solution - *Distributed* Cluster Image Cache:-
 The proposed solution is to have a ** *distributed* ** cluster image cache. The image cache is distributed across all/multiple worker nodes and not in a centralized local repository mirror.
 Applications that
-require near instant Pod startup or that cannot tolerate loss of connectivity to image registry
+require instant Pod startup or that cannot tolerate loss of connectivity to image registry
 will have the container images stored in the cluster image cache and made available directly in the node. When a Pod is scheduled to the
 node that has image pull policy either "Never" or "IfNotPresent", the image from the image cache in the node
 will be used. This eliminates the delay incurred in downloading the image.
@@ -52,6 +52,35 @@ https://github.com/kubernetes/kubernetes/pull/68549
 
 ### 3.2. Temporary workaround:-
 (Document the workaround proposal to prevent kubelet gc from removing the images in node image cache)
+
+# High level design:-
+The Cluster Image Cache proposed in the solution will be implemented as an extension API resource. This
+gives the advantage of managing (i.e. CRUD operations) the Image cache using Kubernetes-style APIs. Kubernetes offers
+two mechanism for implementing extension APIs viz. Extension API server and Custom Resource Definition. We will
+use Custom Resource Definition (CRD) to implement the extension API.
+
+A new controller needs to be written to act on the CRD resources. The controller will need to watch for ClusterImageCache API
+resource and react accordingly.
+
+### Create action:-
+A new Image Cache needs to be created. This will result in pulling the container images specified in the API resource on to
+the nodes specified in the API resource. Nodes will be specified in the form of Node Selector that selects a set of Nodes.
+
+### Remove action:-
+(The Image Cache needs to be removed. The previously pulled images will be deleted, provided there are no containers
+using the image. If the images become unused in a future point in time, the Controller will not delete such images. Such
+images will be left in the nodes so that Kubelet's GC action will remove them. If user requires complete wiping of
+the images in the Cache, user needs to ensure there are no containers using the images, before issuing the API operation.)
+
+No action required since the Kubelet's image GC action will be responsible for removing the images. The controller
+will not delete the images in the nodes when the user deletes the Image Cache API resource.
+
+### Update action:-
+New images can be added or existing images removed. Also it is possible that node Selectors are modified. The controller
+needs to take appropriate action to keep the current state of the Image Cache as per the Desired state.
+
+### Display action:-
+No action required by the controller.
 
 # ClusterImageCache API resource:-
 ```yaml
@@ -84,3 +113,28 @@ spec:
     - cic
 ```
 
+# Low level design:-
+
+### Mechanism of pulling images into the Image Cache:-
+
+The Controller first calculates the number of nodes returned by the Node selector. Then creates a Deployment resource
+with replicas equal to no. of nodes along with suitable Labels. The container image mentioned in the Spec will be the image that needs to be pulled.
+Additionally Pod anti-affinity rules are set in the Annotation such that one node can have only one instance of the Pod.
+
+The creation of Deployment resource results in creation of Pod in all nodes. Kubelet of the node will pull the image on to the node.
+The controller will fetch the name of all the Pods using Label selector. Then checks for events in the Pod to see if the
+image has been successfully pulled. Once the controller verifies that images have been pulled for the Pods, it deletes
+the Deployment which results in deletion of the Pods. The deletion of the Pods will not affect the already pulled
+images in the node. These pulled images will form the Image Cache so when a Pod is created by the user, it uses the
+image from the Cache.
+
+### Watching the Nodes:-
+
+The Controller needs to constantly watch the Nodes in the cluster to ensure the current state of the Image Cache
+equals the desired state. If an image get's removed by Kubelet's GC or an Operator/Administrator deletes the image in the
+Image Cache, the controller will identify this since the Node resource will have the list of container images in the node.
+The controller needs to remediate by firing Pods.
+
+### Deleting the Image Cache:-
+
+No action required by the Controller.
