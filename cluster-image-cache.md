@@ -113,6 +113,53 @@ spec:
     - cic
 ```
 
+# ImagePuller Job Spec:-
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: imagepuller
+spec:
+  template:
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: worker1.k8s.cis.com
+#      affinity:
+#        podAntiAffinity:
+#          requiredDuringSchedulingIgnoredDuringExecution:
+#          - labelSelector:
+#              matchExpressions:
+#              - key: job-name
+#                operator: In
+#                values:
+#                - imagepuller
+#            topologyKey: kubernetes.io/hostname
+      initContainers:
+      - name: busybox
+        image: busybox:1.29.2
+        command: ["cp", "/bin/echo", "/tmp/bin"]
+        volumeMounts:
+        - name: tmp-bin
+          mountPath: /tmp/bin
+        imagePullPolicy: IfNotPresent
+      containers:
+      - name: imagepuller
+        image: mysql
+        command: ["/tmp/bin/echo", "Image pulled successfully!"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: tmp-bin
+          mountPath: /tmp/bin
+        imagePullPolicy: IfNotPresent
+      volumes:
+      - name: tmp-bin
+        emptyDir: {}
+      restartPolicy: Never
+#  completions: 2
+#  parallelism: 2
+```
+
 # Low level design:-
 
 ### Mechanism of pulling images into the Image Cache:-
