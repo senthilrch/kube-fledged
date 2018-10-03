@@ -17,7 +17,9 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 // +genclient
@@ -32,28 +34,23 @@ type ImageCache struct {
 	Status ImageCacheStatus `json:"status"`
 }
 
-// ImageList is a list of Images to be cached
-type ImageList struct {
-	[]struct {
-		image           string                    `json:"image"`
-		imagePullSecret core.LocalObjectReference `json:"imagePullSecret,omitempty"`
-	}
+// ImageList is the list of images in ImageCache
+type ImageList []struct {
+	image           string                    `json:"image"`
+	imagePullSecret core.LocalObjectReference `json:"imagePullSecret,omitempty"`
+	nodeSelector    v1.NodeSelector           `json:"nodeSelector,omitempty"`
 }
 
 // ImageCacheSpec is the spec for a ImageCache resource
 type ImageCacheSpec struct {
-	[]struct {
-		nodeSelector v1.NodeSelector `json:"nodeSelector"`
-		imageList    ImageList       `json:"imageList"`
-	}
+	ImageList
 }
-
 
 // ImageCacheStatus is the status for a ImageCache resource
 type ImageCacheStatus struct {
-	status ImageCacheStatus `json:"status"`
-	reason string `json:"reason"`
-	message string `json:"message"`
+	status  ImageCacheActionStatus `json:"status"`
+	reason  string                 `json:"reason"`
+	message string                 `json:"message"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -66,25 +63,24 @@ type ImageCacheList struct {
 	Items []ImageCache `json:"items"`
 }
 
-type ImageCacheStatus string
+type ImageCacheActionStatus string
 
 const (
-	ImageCacheStatusSucceeded    ImageCacheStatus = "Succeeded"
-	ImageCacheStatusFailed   ImageCacheStatus = "Failed"
-	ImageCacheStatusUnknown ImageCacheStatus = "Unknown"
+	ImageCacheActionStatusSucceeded ImageCacheActionStatus = "Succeeded"
+	ImageCacheActionStatusFailed    ImageCacheActionStatus = "Failed"
+	ImageCacheActionStatusUnknown   ImageCacheActionStatus = "Unknown"
 )
 
-const {
-	ImageCacheReasonImagesPulledSuccessfully = "ImagesPulledSuccessfully"
-	ImageCacheReasonImagePullFailedOnAllNodes = "ImagePullFailedOnAllNodes"
+const (
+	ImageCacheReasonImagesPulledSuccessfully   = "ImagesPulledSuccessfully"
+	ImageCacheReasonImagePullFailedOnAllNodes  = "ImagePullFailedOnAllNodes"
 	ImageCacheReasonImagePullFailedOnSomeNodes = "ImagePullFailedOnSomeNodes"
-	ImageCacheReasonImagePullStatusUnknown = "ImagePullStatusUnknown"
-}
+	ImageCacheReasonImagePullStatusUnknown     = "ImagePullStatusUnknown"
+)
 
-const {
-	ImageCacheMessageImagesPulledSuccessfully = "All requested images pulled succesfuly to respective nodes"
-	ImageCacheMessageImagePullFailedOnAllNodes = "Image pull failed on all nodes. Please query the jobs using label selector"
+const (
+	ImageCacheMessageImagesPulledSuccessfully   = "All requested images pulled succesfuly to respective nodes"
+	ImageCacheMessageImagePullFailedOnAllNodes  = "Image pull failed on all nodes. Please query the jobs using label selector"
 	ImageCacheMessageImagePullFailedOnSomeNodes = "Image pull failed on some nodes. Please query the jobs using label selector"
-	ImageCacheMessageImagePullStatusUnknown = "Unable to get the status of Image pull. Retry after some time or contact cluster administrator"
-}
-
+	ImageCacheMessageImagePullStatusUnknown     = "Unable to get the status of Image pull. Retry after some time or contact cluster administrator"
+)

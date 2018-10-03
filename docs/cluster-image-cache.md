@@ -112,7 +112,7 @@ spec:
     shortNames:
     - cic
 ```
-
+<!---
 # ImageCache resource:-
 ```yaml
 apiVersion: fledged.k8s.io/v1alpha1
@@ -134,6 +134,37 @@ spec:
 - nodeSelector: zone=asia-south1-c
   imageList:
   -  image: oraclelinux:7.5
+status:
+  status: Succeeded
+  reason: ImagesPulled
+  message: All requested images pulled succesfuly to respective nodes
+```
+--->
+
+# ImageCache resource:-
+
+```yaml
+apiVersion: fledged.k8s.io/v1alpha1
+kind: ImageCache
+metadata:
+  name: imagecache
+spec:
+  # name of the image to be cached <repository>:<tag>
+- image: nginx:1.15.5
+  # if private registry, mention the kubernetes docker-registry secret 
+  imagePullSecret: regcred-1
+  # the image will be cached in the following nodes
+  nodeSelector: zone=asia-south1-a
+  # following image will be cached in all the nodes in the cluster since
+  # nodeSelector is not present
+- image: redis:4.0.11
+  imagePullSecret: regcred-1
+  # following image is in a public registry e.g. docker hub
+  # hence image pull secret is not present
+- image: tomcat:9.0
+  nodeSelector: zone=asia-south1-b
+- image: mysql:8.0
+  nodeSelector: zone=asia-south1-c
 status:
   status: Succeeded
   reason: ImagesPulled
