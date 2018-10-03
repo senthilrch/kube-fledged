@@ -82,35 +82,62 @@ needs to take appropriate action to keep the current state of the Image Cache as
 ### Display action:-
 No action required by the controller.
 
-# ClusterImageCache API resource:-
+# CustomResourceDefinition API resource:-
 ```yaml
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
   # name must match the spec fields below, and be in the form: <plural>.<group>
-  name: clusterimagecaches.fledged.k8s.io
+  name: imagecaches.fledged.k8s.io
 spec:
   # group name to use for REST API: /apis/<group>/<version>
   group: fledged.k8s.io
   # list of versions supported by this CustomResourceDefinition
   versions:
-    - name: v1beta1
+    - name: v1alpha1
       # Each version can be enabled/disabled by Served flag.
       served: true
       # One and only one version must be marked as the storage version.
       storage: true
   # either Namespaced or Cluster
-  scope: Namespaced
+  scope: Cluster
   names:
     # plural name to be used in the URL: /apis/<group>/<version>/<plural>
-    plural: clusterimagecaches
+    plural: imagecaches
     # singular name to be used as an alias on the CLI and for display
-    singular: clusterimagecache
+    singular: imagecache
     # kind is normally the CamelCased singular type. Your resource manifests use this.
-    kind: ClusterImageCache
+    kind: ImageCache
     # shortNames allow shorter string to match your resource on the CLI
     shortNames:
     - cic
+```
+
+# ImageCache resource:-
+```yaml
+apiVersion: fledged.k8s.io/v1alpha1
+kind: ImageCache
+metadata:
+  name: imagecache
+spec:
+- nodeSelector: zone=asia-south1-a
+  imageList:
+  -  image: nginx:1.15.5
+  -  image: redis:4.0.11
+     imagePullSecret: regcred-1
+- nodeSelector: zone=asia-south1-b
+  imageList:
+  -  image: tomcat:9.0
+     imagePullSecret: regcred-2
+  -  image: mysql:8.0
+     imagePullSecret: regcred-2
+- nodeSelector: zone=asia-south1-c
+  imageList:
+  -  image: oraclelinux:7.5
+status:
+  status: Succeeded
+  reason: ImagesPulled
+  message: All requested images pulled succesfuly to respective nodes
 ```
 
 # ImagePuller Job Spec:-
