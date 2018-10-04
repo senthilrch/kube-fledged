@@ -32,9 +32,6 @@
   branch = "master"
   name = "k8s.io/api"
 
-[prune]
-  go-tests = true
-
 [[constraint]]
   branch = "release-9.0"
   name = "k8s.io/client-go"
