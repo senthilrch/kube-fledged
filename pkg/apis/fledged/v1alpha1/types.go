@@ -33,15 +33,15 @@ type ImageCache struct {
 	Status ImageCacheStatus `json:"status"`
 }
 
-// CacheSpec specifies the Image to be cached
-type CacheSpec []struct {
+// CacheSpecImages specifies the Images to be cached
+type CacheSpecImages struct {
 	Images       []string        `json:"images"`
 	NodeSelector v1.NodeSelector `json:"nodeSelector,omitempty"`
 }
 
 // ImageCacheSpec is the spec for a ImageCache resource
 type ImageCacheSpec struct {
-	CacheSpec CacheSpec
+	CacheSpec []CacheSpecImages `json:"cacheSpec"`
 }
 
 // ImageCacheStatus is the status for a ImageCache resource
