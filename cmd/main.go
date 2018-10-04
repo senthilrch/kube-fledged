@@ -18,7 +18,9 @@ import (
 )
 
 var (
-	kubeconfig string
+	masterURL    string
+	kubeconfig   string
+	backoffLimit int
 )
 
 func main() {
@@ -37,20 +39,20 @@ func main() {
 		glog.Fatalf("Error building kubernetes clientset: %s", err.Error())
 	}
 
-	exampleClient, err := clientset.NewForConfig(cfg)
+	fledgedClient, err := clientset.NewForConfig(cfg)
 	if err != nil {
-		glog.Fatalf("Error building example clientset: %s", err.Error())
+		glog.Fatalf("Error building fledged clientset: %s", err.Error())
 	}
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	exampleInformerFactory := informers.NewSharedInformerFactory(exampleClient, time.Second*30)
+	fledgedInformerFactory := informers.NewSharedInformerFactory(fledgedClient, time.Second*30)
 
-	controller := NewController(kubeClient, exampleClient,
-		kubeInformerFactory.Apps().V1().Deployments(),
-		exampleInformerFactory.Samplecontroller().V1alpha1().Foos())
+	controller := NewController(kubeClient, fledgedClient,
+		kubeInformerFactory.Core().V1().Nodes(),
+		fledgedInformerFactory.Fledged().V1alpha1().ImageCaches())
 
 	go kubeInformerFactory.Start(stopCh)
-	go exampleInformerFactory.Start(stopCh)
+	go fledgedInformerFactory.Start(stopCh)
 
 	if err = controller.Run(2, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %s", err.Error())
@@ -59,4 +61,6 @@ func main() {
 
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig.")
+	flag.IntVar(&backoffLimit, "backoff-limit", 6, "Backoff limit refers to number of retries when image pull fails.")
 }

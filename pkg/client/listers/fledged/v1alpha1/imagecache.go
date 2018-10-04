@@ -1,5 +1,5 @@
 /*
-Copyright The Kubernetes Authors.
+Copyright 2018 The kube-fledged Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,73 +22,73 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/cache"
-	v1alpha1 "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
+	v1alpha1 "k8s.io/kube-fledged/pkg/apis/fledged/v1alpha1"
 )
 
-// FooLister helps list Foos.
-type FooLister interface {
-	// List lists all Foos in the indexer.
-	List(selector labels.Selector) (ret []*v1alpha1.Foo, err error)
-	// Foos returns an object that can list and get Foos.
-	Foos(namespace string) FooNamespaceLister
-	FooListerExpansion
+// ImageCacheLister helps list ImageCaches.
+type ImageCacheLister interface {
+	// List lists all ImageCaches in the indexer.
+	List(selector labels.Selector) (ret []*v1alpha1.ImageCache, err error)
+	// ImageCaches returns an object that can list and get ImageCaches.
+	ImageCaches(namespace string) ImageCacheNamespaceLister
+	ImageCacheListerExpansion
 }
 
-// fooLister implements the FooLister interface.
-type fooLister struct {
+// imageCacheLister implements the ImageCacheLister interface.
+type imageCacheLister struct {
 	indexer cache.Indexer
 }
 
-// NewFooLister returns a new FooLister.
-func NewFooLister(indexer cache.Indexer) FooLister {
-	return &fooLister{indexer: indexer}
+// NewImageCacheLister returns a new ImageCacheLister.
+func NewImageCacheLister(indexer cache.Indexer) ImageCacheLister {
+	return &imageCacheLister{indexer: indexer}
 }
 
-// List lists all Foos in the indexer.
-func (s *fooLister) List(selector labels.Selector) (ret []*v1alpha1.Foo, err error) {
+// List lists all ImageCaches in the indexer.
+func (s *imageCacheLister) List(selector labels.Selector) (ret []*v1alpha1.ImageCache, err error) {
 	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Foo))
+		ret = append(ret, m.(*v1alpha1.ImageCache))
 	})
 	return ret, err
 }
 
-// Foos returns an object that can list and get Foos.
-func (s *fooLister) Foos(namespace string) FooNamespaceLister {
-	return fooNamespaceLister{indexer: s.indexer, namespace: namespace}
+// ImageCaches returns an object that can list and get ImageCaches.
+func (s *imageCacheLister) ImageCaches(namespace string) ImageCacheNamespaceLister {
+	return imageCacheNamespaceLister{indexer: s.indexer, namespace: namespace}
 }
 
-// FooNamespaceLister helps list and get Foos.
-type FooNamespaceLister interface {
-	// List lists all Foos in the indexer for a given namespace.
-	List(selector labels.Selector) (ret []*v1alpha1.Foo, err error)
-	// Get retrieves the Foo from the indexer for a given namespace and name.
-	Get(name string) (*v1alpha1.Foo, error)
-	FooNamespaceListerExpansion
+// ImageCacheNamespaceLister helps list and get ImageCaches.
+type ImageCacheNamespaceLister interface {
+	// List lists all ImageCaches in the indexer for a given namespace.
+	List(selector labels.Selector) (ret []*v1alpha1.ImageCache, err error)
+	// Get retrieves the ImageCache from the indexer for a given namespace and name.
+	Get(name string) (*v1alpha1.ImageCache, error)
+	ImageCacheNamespaceListerExpansion
 }
 
-// fooNamespaceLister implements the FooNamespaceLister
+// imageCacheNamespaceLister implements the ImageCacheNamespaceLister
 // interface.
-type fooNamespaceLister struct {
+type imageCacheNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
 }
 
-// List lists all Foos in the indexer for a given namespace.
-func (s fooNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.Foo, err error) {
+// List lists all ImageCaches in the indexer for a given namespace.
+func (s imageCacheNamespaceLister) List(selector labels.Selector) (ret []*v1alpha1.ImageCache, err error) {
 	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha1.Foo))
+		ret = append(ret, m.(*v1alpha1.ImageCache))
 	})
 	return ret, err
 }
 
-// Get retrieves the Foo from the indexer for a given namespace and name.
-func (s fooNamespaceLister) Get(name string) (*v1alpha1.Foo, error) {
+// Get retrieves the ImageCache from the indexer for a given namespace and name.
+func (s imageCacheNamespaceLister) Get(name string) (*v1alpha1.ImageCache, error) {
 	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
 	if err != nil {
 		return nil, err
 	}
 	if !exists {
-		return nil, errors.NewNotFound(v1alpha1.Resource("foo"), name)
+		return nil, errors.NewNotFound(v1alpha1.Resource("imagecache"), name)
 	}
-	return obj.(*v1alpha1.Foo), nil
+	return obj.(*v1alpha1.ImageCache), nil
 }

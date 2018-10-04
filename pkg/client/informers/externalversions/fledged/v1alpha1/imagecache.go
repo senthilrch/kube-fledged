@@ -1,5 +1,5 @@
 /*
-Copyright The Kubernetes Authors.
+Copyright 2018 The kube-fledged Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,65 +25,65 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
-	samplecontrollerv1alpha1 "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
-	versioned "k8s.io/sample-controller/pkg/client/clientset/versioned"
-	internalinterfaces "k8s.io/sample-controller/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "k8s.io/sample-controller/pkg/client/listers/samplecontroller/v1alpha1"
+	fledgedv1alpha1 "k8s.io/kube-fledged/pkg/apis/fledged/v1alpha1"
+	versioned "k8s.io/kube-fledged/pkg/client/clientset/versioned"
+	internalinterfaces "k8s.io/kube-fledged/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "k8s.io/kube-fledged/pkg/client/listers/fledged/v1alpha1"
 )
 
-// FooInformer provides access to a shared informer and lister for
-// Foos.
-type FooInformer interface {
+// ImageCacheInformer provides access to a shared informer and lister for
+// ImageCaches.
+type ImageCacheInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.FooLister
+	Lister() v1alpha1.ImageCacheLister
 }
 
-type fooInformer struct {
+type imageCacheInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
 	namespace        string
 }
 
-// NewFooInformer constructs a new informer for Foo type.
+// NewImageCacheInformer constructs a new informer for ImageCache type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFooInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredFooInformer(client, namespace, resyncPeriod, indexers, nil)
+func NewImageCacheInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
+	return NewFilteredImageCacheInformer(client, namespace, resyncPeriod, indexers, nil)
 }
 
-// NewFilteredFooInformer constructs a new informer for Foo type.
+// NewFilteredImageCacheInformer constructs a new informer for ImageCache type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
-func NewFilteredFooInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+func NewFilteredImageCacheInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.SamplecontrollerV1alpha1().Foos(namespace).List(options)
+				return client.FledgedV1alpha1().ImageCaches(namespace).List(options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.SamplecontrollerV1alpha1().Foos(namespace).Watch(options)
+				return client.FledgedV1alpha1().ImageCaches(namespace).Watch(options)
 			},
 		},
-		&samplecontrollerv1alpha1.Foo{},
+		&fledgedv1alpha1.ImageCache{},
 		resyncPeriod,
 		indexers,
 	)
 }
 
-func (f *fooInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredFooInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+func (f *imageCacheInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
+	return NewFilteredImageCacheInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
 }
 
-func (f *fooInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&samplecontrollerv1alpha1.Foo{}, f.defaultInformer)
+func (f *imageCacheInformer) Informer() cache.SharedIndexInformer {
+	return f.factory.InformerFor(&fledgedv1alpha1.ImageCache{}, f.defaultInformer)
 }
 
-func (f *fooInformer) Lister() v1alpha1.FooLister {
-	return v1alpha1.NewFooLister(f.Informer().GetIndexer())
+func (f *imageCacheInformer) Lister() v1alpha1.ImageCacheLister {
+	return v1alpha1.NewImageCacheLister(f.Informer().GetIndexer())
 }

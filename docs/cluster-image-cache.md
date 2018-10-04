@@ -100,7 +100,7 @@ spec:
       # One and only one version must be marked as the storage version.
       storage: true
   # either Namespaced or Cluster
-  scope: Cluster
+  scope: Namespaced
   names:
     # plural name to be used in the URL: /apis/<group>/<version>/<plural>
     plural: imagecaches
@@ -112,34 +112,6 @@ spec:
     shortNames:
     - cic
 ```
-<!---
-# ImageCache resource:-
-```yaml
-apiVersion: fledged.k8s.io/v1alpha1
-kind: ImageCache
-metadata:
-  name: imagecache
-spec:
-- nodeSelector: zone=asia-south1-a
-  imageList:
-  -  image: nginx:1.15.5
-  -  image: redis:4.0.11
-     imagePullSecret: regcred-1
-- nodeSelector: zone=asia-south1-b
-  imageList:
-  -  image: tomcat:9.0
-     imagePullSecret: regcred-2
-  -  image: mysql:8.0
-     imagePullSecret: regcred-2
-- nodeSelector: zone=asia-south1-c
-  imageList:
-  -  image: oraclelinux:7.5
-status:
-  status: Succeeded
-  reason: ImagesPulled
-  message: All requested images pulled succesfuly to respective nodes
-```
---->
 
 # ImageCache resource:-
 
@@ -148,23 +120,28 @@ apiVersion: fledged.k8s.io/v1alpha1
 kind: ImageCache
 metadata:
   name: imagecache
+  namespace: kube-fledged
 spec:
-  # name of the image to be cached <repository>:<tag>
-- image: nginx:1.15.5
-  # if private registry, mention the kubernetes docker-registry secret 
-  imagePullSecret: regcred-1
-  # the image will be cached in the following nodes
-  nodeSelector: zone=asia-south1-a
-  # following image will be cached in all the nodes in the cluster since
-  # nodeSelector is not present
-- image: redis:4.0.11
-  imagePullSecret: regcred-1
-  # following image is in a public registry e.g. docker hub
-  # hence image pull secret is not present
-- image: tomcat:9.0
-  nodeSelector: zone=asia-south1-b
-- image: mysql:8.0
-  nodeSelector: zone=asia-south1-c
+  cacheSpec:
+  # Following images are available in a public registry e.g. Docker hub.
+  # These images will be cached to all nodes with label zone=asia-south1-a
+  - images:
+    - nginx:1.15.5
+    - redis:4.0.11
+    nodeSelector: zone=asia-south1-a
+  # Following images are available in an internal private registry e.g. DTR.
+  # These images will be cached to all nodes with label zone=asia-south1-b
+  # imagePullSecrets must be specified in the default service account of namespace kube-fledged
+  - images:
+    - myprivateregistry/myapp:1.0
+    - myprivateregistry/myapp:1.1.1
+    nodeSelector: zone=asia-south1-b
+  # Following images are available in an external private registry e.g. Docker store.
+  # These images will be cached to all nodes in the cluster
+  # imagePullSecrets must be specified in the default service account of namespace kube-fledged
+  - images:
+    - extprivateregistry/extapp:1.0
+    - extprivateregistry/extapp:1.1.1
 status:
   status: Succeeded
   reason: ImagesPulled

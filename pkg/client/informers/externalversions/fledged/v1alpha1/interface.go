@@ -1,5 +1,5 @@
 /*
-Copyright The Kubernetes Authors.
+Copyright 2018 The kube-fledged Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,13 +19,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	internalinterfaces "k8s.io/sample-controller/pkg/client/informers/externalversions/internalinterfaces"
+	internalinterfaces "k8s.io/kube-fledged/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
-	// Foos returns a FooInformer.
-	Foos() FooInformer
+	// ImageCaches returns a ImageCacheInformer.
+	ImageCaches() ImageCacheInformer
 }
 
 type version struct {
@@ -39,7 +39,7 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
 }
 
-// Foos returns a FooInformer.
-func (v *version) Foos() FooInformer {
-	return &fooInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+// ImageCaches returns a ImageCacheInformer.
+func (v *version) ImageCaches() ImageCacheInformer {
+	return &imageCacheInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

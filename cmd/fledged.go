@@ -38,11 +38,11 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 
-	samplev1alpha1 "k8s.io/kube-fledged/pkg/apis/samplecontroller/v1alpha1"
+	fledgedv1alpha1 "k8s.io/kube-fledged/pkg/apis/fledged/v1alpha1"
 	clientset "k8s.io/kube-fledged/pkg/client/clientset/versioned"
-	samplescheme "k8s.io/kube-fledged/pkg/client/clientset/versioned/scheme"
-	informers "k8s.io/kube-fledged/pkg/client/informers/externalversions/samplecontroller/v1alpha1"
-	listers "k8s.io/kube-fledged/pkg/client/listers/samplecontroller/v1alpha1"
+	fledgedscheme "k8s.io/kube-fledged/pkg/client/clientset/versioned/scheme"
+	informers "k8s.io/kube-fledged/pkg/client/informers/externalversions/fledged/v1alpha1"
+	listers "k8s.io/kube-fledged/pkg/client/listers/fledged/v1alpha1"
 )
 
 const controllerAgentName = "fledged"
@@ -62,7 +62,7 @@ const (
 	MessageResourceSynced = "Foo synced successfully"
 )
 
-// Controller is the controller implementation for Foo resources
+// Controller is the controller implementation for ImageCache resources
 type Controller struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
@@ -95,7 +95,7 @@ func NewController(
 	// Create event broadcaster
 	// Add sample-controller types to the default Kubernetes Scheme so Events can be
 	// logged for sample-controller types.
-	utilruntime.Must(samplescheme.AddToScheme(scheme.Scheme))
+	utilruntime.Must(fledgedscheme.AddToScheme(scheme.Scheme))
 	glog.V(4).Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -317,7 +317,7 @@ func (c *Controller) syncHandler(key string) error {
 	return nil
 }
 
-func (c *Controller) updateFooStatus(foo *samplev1alpha1.Foo, deployment *appsv1.Deployment) error {
+func (c *Controller) updateFooStatus(foo *fledgedv1alpha1.Foo, deployment *appsv1.Deployment) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
@@ -387,7 +387,7 @@ func (c *Controller) handleObject(obj interface{}) {
 // newDeployment creates a new Deployment for a Foo resource. It also sets
 // the appropriate OwnerReferences on the resource so handleObject can discover
 // the Foo resource that 'owns' it.
-func newDeployment(foo *samplev1alpha1.Foo) *appsv1.Deployment {
+func newDeployment(foo *fledgedv1alpha1.Foo) *appsv1.Deployment {
 	labels := map[string]string{
 		"app":        "nginx",
 		"controller": foo.Name,
@@ -398,8 +398,8 @@ func newDeployment(foo *samplev1alpha1.Foo) *appsv1.Deployment {
 			Namespace: foo.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(foo, schema.GroupVersionKind{
-					Group:   samplev1alpha1.SchemeGroupVersion.Group,
-					Version: samplev1alpha1.SchemeGroupVersion.Version,
+					Group:   fledgedv1alpha1.SchemeGroupVersion.Group,
+					Version: fledgedv1alpha1.SchemeGroupVersion.Version,
 					Kind:    "Foo",
 				}),
 			},

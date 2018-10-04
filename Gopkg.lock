@@ -477,14 +477,6 @@
   revision = "9dfdf9be683f61f82cda12362c44c784e0778b56"
 
 [[projects]]
-  digest = "1:f734240b669797ce183c08f77e38adf363139037838ac3e7416ad37360ce794c"
-  name = "k8s.io/kubernetes"
-  packages = ["pkg/apis/core"]
-  pruneopts = "UT"
-  revision = "0ed33881dc4355495f623c6f22e7dd0b7632b7c0"
-  version = "v1.12.0"
-
-[[projects]]
   branch = "master"
   digest = "1:afd6c831b004c5dfdb4ff23779171e6f13d1368a1bf4376209312319e697d361"
   name = "k8s.io/sample-controller"
@@ -535,7 +527,6 @@
     "k8s.io/client-go/tools/record",
     "k8s.io/client-go/util/flowcontrol",
     "k8s.io/client-go/util/workqueue",
-    "k8s.io/kubernetes/pkg/apis/core",
     "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1",
     "k8s.io/sample-controller/pkg/client/clientset/versioned",
     "k8s.io/sample-controller/pkg/client/clientset/versioned/scheme",

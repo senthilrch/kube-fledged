@@ -1,5 +1,5 @@
 /*
-Copyright The Kubernetes Authors.
+Copyright 2018 The kube-fledged Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,10 +18,10 @@ limitations under the License.
 
 package v1alpha1
 
-// FooListerExpansion allows custom methods to be added to
-// FooLister.
-type FooListerExpansion interface{}
+// ImageCacheListerExpansion allows custom methods to be added to
+// ImageCacheLister.
+type ImageCacheListerExpansion interface{}
 
-// FooNamespaceListerExpansion allows custom methods to be added to
-// FooNamespaceLister.
-type FooNamespaceListerExpansion interface{}
+// ImageCacheNamespaceListerExpansion allows custom methods to be added to
+// ImageCacheNamespaceLister.
+type ImageCacheNamespaceListerExpansion interface{}

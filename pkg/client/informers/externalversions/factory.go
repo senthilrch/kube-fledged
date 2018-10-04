@@ -1,5 +1,5 @@
 /*
-Copyright The Kubernetes Authors.
+Copyright 2018 The kube-fledged Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,9 +27,9 @@ import (
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
-	versioned "k8s.io/sample-controller/pkg/client/clientset/versioned"
-	internalinterfaces "k8s.io/sample-controller/pkg/client/informers/externalversions/internalinterfaces"
-	samplecontroller "k8s.io/sample-controller/pkg/client/informers/externalversions/samplecontroller"
+	versioned "k8s.io/kube-fledged/pkg/client/clientset/versioned"
+	fledged "k8s.io/kube-fledged/pkg/client/informers/externalversions/fledged"
+	internalinterfaces "k8s.io/kube-fledged/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // SharedInformerOption defines the functional option type for SharedInformerFactory.
@@ -172,9 +172,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Samplecontroller() samplecontroller.Interface
+	Fledged() fledged.Interface
 }
 
-func (f *sharedInformerFactory) Samplecontroller() samplecontroller.Interface {
-	return samplecontroller.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Fledged() fledged.Interface {
+	return fledged.New(f, f.namespace, f.tweakListOptions)
 }

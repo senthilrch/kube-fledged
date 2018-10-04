@@ -19,7 +19,6 @@ package v1alpha1
 import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 // +genclient
@@ -34,23 +33,22 @@ type ImageCache struct {
 	Status ImageCacheStatus `json:"status"`
 }
 
-// ImageList is the list of images in ImageCache
-type ImageList []struct {
-	image           string                    `json:"image"`
-	imagePullSecret core.LocalObjectReference `json:"imagePullSecret,omitempty"`
-	nodeSelector    v1.NodeSelector           `json:"nodeSelector,omitempty"`
+// CacheSpec specifies the Image to be cached
+type CacheSpec []struct {
+	Images       []string        `json:"images"`
+	NodeSelector v1.NodeSelector `json:"nodeSelector,omitempty"`
 }
 
 // ImageCacheSpec is the spec for a ImageCache resource
 type ImageCacheSpec struct {
-	ImageList
+	CacheSpec CacheSpec
 }
 
 // ImageCacheStatus is the status for a ImageCache resource
 type ImageCacheStatus struct {
-	status  ImageCacheActionStatus `json:"status"`
-	reason  string                 `json:"reason"`
-	message string                 `json:"message"`
+	Status  ImageCacheActionStatus `json:"status"`
+	Reason  string                 `json:"reason"`
+	Message string                 `json:"message"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -63,14 +61,17 @@ type ImageCacheList struct {
 	Items []ImageCache `json:"items"`
 }
 
+// ImageCacheActionStatus defines the status of ImageCacheAction
 type ImageCacheActionStatus string
 
+// List of constants for ImageCacheActionStatus
 const (
 	ImageCacheActionStatusSucceeded ImageCacheActionStatus = "Succeeded"
 	ImageCacheActionStatusFailed    ImageCacheActionStatus = "Failed"
 	ImageCacheActionStatusUnknown   ImageCacheActionStatus = "Unknown"
 )
 
+// List of constants for ImageCacheReason
 const (
 	ImageCacheReasonImagesPulledSuccessfully   = "ImagesPulledSuccessfully"
 	ImageCacheReasonImagePullFailedOnAllNodes  = "ImagePullFailedOnAllNodes"
@@ -78,6 +79,7 @@ const (
 	ImageCacheReasonImagePullStatusUnknown     = "ImagePullStatusUnknown"
 )
 
+// List of constants for ImageCacheMessage
 const (
 	ImageCacheMessageImagesPulledSuccessfully   = "All requested images pulled succesfuly to respective nodes"
 	ImageCacheMessageImagePullFailedOnAllNodes  = "Image pull failed on all nodes. Please query the jobs using label selector"

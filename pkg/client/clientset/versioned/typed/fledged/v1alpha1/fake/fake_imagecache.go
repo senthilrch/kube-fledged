@@ -1,5 +1,5 @@
 /*
-Copyright The Kubernetes Authors.
+Copyright 2018 The kube-fledged Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,34 +25,34 @@ import (
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
-	v1alpha1 "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
+	v1alpha1 "k8s.io/kube-fledged/pkg/apis/fledged/v1alpha1"
 )
 
-// FakeFoos implements FooInterface
-type FakeFoos struct {
-	Fake *FakeSamplecontrollerV1alpha1
+// FakeImageCaches implements ImageCacheInterface
+type FakeImageCaches struct {
+	Fake *FakeFledgedV1alpha1
 	ns   string
 }
 
-var foosResource = schema.GroupVersionResource{Group: "samplecontroller.k8s.io", Version: "v1alpha1", Resource: "foos"}
+var imagecachesResource = schema.GroupVersionResource{Group: "fledged.k8s.io", Version: "v1alpha1", Resource: "imagecaches"}
 
-var foosKind = schema.GroupVersionKind{Group: "samplecontroller.k8s.io", Version: "v1alpha1", Kind: "Foo"}
+var imagecachesKind = schema.GroupVersionKind{Group: "fledged.k8s.io", Version: "v1alpha1", Kind: "ImageCache"}
 
-// Get takes name of the foo, and returns the corresponding foo object, and an error if there is any.
-func (c *FakeFoos) Get(name string, options v1.GetOptions) (result *v1alpha1.Foo, err error) {
+// Get takes name of the imageCache, and returns the corresponding imageCache object, and an error if there is any.
+func (c *FakeImageCaches) Get(name string, options v1.GetOptions) (result *v1alpha1.ImageCache, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(foosResource, c.ns, name), &v1alpha1.Foo{})
+		Invokes(testing.NewGetAction(imagecachesResource, c.ns, name), &v1alpha1.ImageCache{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.Foo), err
+	return obj.(*v1alpha1.ImageCache), err
 }
 
-// List takes label and field selectors, and returns the list of Foos that match those selectors.
-func (c *FakeFoos) List(opts v1.ListOptions) (result *v1alpha1.FooList, err error) {
+// List takes label and field selectors, and returns the list of ImageCaches that match those selectors.
+func (c *FakeImageCaches) List(opts v1.ListOptions) (result *v1alpha1.ImageCacheList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewListAction(foosResource, foosKind, c.ns, opts), &v1alpha1.FooList{})
+		Invokes(testing.NewListAction(imagecachesResource, imagecachesKind, c.ns, opts), &v1alpha1.ImageCacheList{})
 
 	if obj == nil {
 		return nil, err
@@ -62,8 +62,8 @@ func (c *FakeFoos) List(opts v1.ListOptions) (result *v1alpha1.FooList, err erro
 	if label == nil {
 		label = labels.Everything()
 	}
-	list := &v1alpha1.FooList{ListMeta: obj.(*v1alpha1.FooList).ListMeta}
-	for _, item := range obj.(*v1alpha1.FooList).Items {
+	list := &v1alpha1.ImageCacheList{ListMeta: obj.(*v1alpha1.ImageCacheList).ListMeta}
+	for _, item := range obj.(*v1alpha1.ImageCacheList).Items {
 		if label.Matches(labels.Set(item.Labels)) {
 			list.Items = append(list.Items, item)
 		}
@@ -71,70 +71,70 @@ func (c *FakeFoos) List(opts v1.ListOptions) (result *v1alpha1.FooList, err erro
 	return list, err
 }
 
-// Watch returns a watch.Interface that watches the requested foos.
-func (c *FakeFoos) Watch(opts v1.ListOptions) (watch.Interface, error) {
+// Watch returns a watch.Interface that watches the requested imageCaches.
+func (c *FakeImageCaches) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(foosResource, c.ns, opts))
+		InvokesWatch(testing.NewWatchAction(imagecachesResource, c.ns, opts))
 
 }
 
-// Create takes the representation of a foo and creates it.  Returns the server's representation of the foo, and an error, if there is any.
-func (c *FakeFoos) Create(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
+// Create takes the representation of a imageCache and creates it.  Returns the server's representation of the imageCache, and an error, if there is any.
+func (c *FakeImageCaches) Create(imageCache *v1alpha1.ImageCache) (result *v1alpha1.ImageCache, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(foosResource, c.ns, foo), &v1alpha1.Foo{})
+		Invokes(testing.NewCreateAction(imagecachesResource, c.ns, imageCache), &v1alpha1.ImageCache{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.Foo), err
+	return obj.(*v1alpha1.ImageCache), err
 }
 
-// Update takes the representation of a foo and updates it. Returns the server's representation of the foo, and an error, if there is any.
-func (c *FakeFoos) Update(foo *v1alpha1.Foo) (result *v1alpha1.Foo, err error) {
+// Update takes the representation of a imageCache and updates it. Returns the server's representation of the imageCache, and an error, if there is any.
+func (c *FakeImageCaches) Update(imageCache *v1alpha1.ImageCache) (result *v1alpha1.ImageCache, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(foosResource, c.ns, foo), &v1alpha1.Foo{})
+		Invokes(testing.NewUpdateAction(imagecachesResource, c.ns, imageCache), &v1alpha1.ImageCache{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.Foo), err
+	return obj.(*v1alpha1.ImageCache), err
 }
 
 // UpdateStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeFoos) UpdateStatus(foo *v1alpha1.Foo) (*v1alpha1.Foo, error) {
+func (c *FakeImageCaches) UpdateStatus(imageCache *v1alpha1.ImageCache) (*v1alpha1.ImageCache, error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(foosResource, "status", c.ns, foo), &v1alpha1.Foo{})
+		Invokes(testing.NewUpdateSubresourceAction(imagecachesResource, "status", c.ns, imageCache), &v1alpha1.ImageCache{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.Foo), err
+	return obj.(*v1alpha1.ImageCache), err
 }
 
-// Delete takes name of the foo and deletes it. Returns an error if one occurs.
-func (c *FakeFoos) Delete(name string, options *v1.DeleteOptions) error {
+// Delete takes name of the imageCache and deletes it. Returns an error if one occurs.
+func (c *FakeImageCaches) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(foosResource, c.ns, name), &v1alpha1.Foo{})
+		Invokes(testing.NewDeleteAction(imagecachesResource, c.ns, name), &v1alpha1.ImageCache{})
 
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
-func (c *FakeFoos) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(foosResource, c.ns, listOptions)
+func (c *FakeImageCaches) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
+	action := testing.NewDeleteCollectionAction(imagecachesResource, c.ns, listOptions)
 
-	_, err := c.Fake.Invokes(action, &v1alpha1.FooList{})
+	_, err := c.Fake.Invokes(action, &v1alpha1.ImageCacheList{})
 	return err
 }
 
-// Patch applies the patch and returns the patched foo.
-func (c *FakeFoos) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Foo, err error) {
+// Patch applies the patch and returns the patched imageCache.
+func (c *FakeImageCaches) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ImageCache, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(foosResource, c.ns, name, data, subresources...), &v1alpha1.Foo{})
+		Invokes(testing.NewPatchSubresourceAction(imagecachesResource, c.ns, name, data, subresources...), &v1alpha1.ImageCache{})
 
 	if obj == nil {
 		return nil, err
 	}
-	return obj.(*v1alpha1.Foo), err
+	return obj.(*v1alpha1.ImageCache), err
 }

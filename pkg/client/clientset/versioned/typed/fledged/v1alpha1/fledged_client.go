@@ -1,5 +1,5 @@
 /*
-Copyright The Kubernetes Authors.
+Copyright 2018 The kube-fledged Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,26 +21,26 @@ package v1alpha1
 import (
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
-	v1alpha1 "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
-	"k8s.io/sample-controller/pkg/client/clientset/versioned/scheme"
+	v1alpha1 "k8s.io/kube-fledged/pkg/apis/fledged/v1alpha1"
+	"k8s.io/kube-fledged/pkg/client/clientset/versioned/scheme"
 )
 
-type SamplecontrollerV1alpha1Interface interface {
+type FledgedV1alpha1Interface interface {
 	RESTClient() rest.Interface
-	FoosGetter
+	ImageCachesGetter
 }
 
-// SamplecontrollerV1alpha1Client is used to interact with features provided by the samplecontroller.k8s.io group.
-type SamplecontrollerV1alpha1Client struct {
+// FledgedV1alpha1Client is used to interact with features provided by the fledged.k8s.io group.
+type FledgedV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *SamplecontrollerV1alpha1Client) Foos(namespace string) FooInterface {
-	return newFoos(c, namespace)
+func (c *FledgedV1alpha1Client) ImageCaches(namespace string) ImageCacheInterface {
+	return newImageCaches(c, namespace)
 }
 
-// NewForConfig creates a new SamplecontrollerV1alpha1Client for the given config.
-func NewForConfig(c *rest.Config) (*SamplecontrollerV1alpha1Client, error) {
+// NewForConfig creates a new FledgedV1alpha1Client for the given config.
+func NewForConfig(c *rest.Config) (*FledgedV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -49,12 +49,12 @@ func NewForConfig(c *rest.Config) (*SamplecontrollerV1alpha1Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &SamplecontrollerV1alpha1Client{client}, nil
+	return &FledgedV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new SamplecontrollerV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new FledgedV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *SamplecontrollerV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *FledgedV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -62,9 +62,9 @@ func NewForConfigOrDie(c *rest.Config) *SamplecontrollerV1alpha1Client {
 	return client
 }
 
-// New creates a new SamplecontrollerV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *SamplecontrollerV1alpha1Client {
-	return &SamplecontrollerV1alpha1Client{c}
+// New creates a new FledgedV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *FledgedV1alpha1Client {
+	return &FledgedV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -82,7 +82,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *SamplecontrollerV1alpha1Client) RESTClient() rest.Interface {
+func (c *FledgedV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

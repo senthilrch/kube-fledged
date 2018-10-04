@@ -1,5 +1,5 @@
 /*
-Copyright The Kubernetes Authors.
+Copyright 2018 The kube-fledged Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@ import (
 	"k8s.io/client-go/discovery"
 	fakediscovery "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/testing"
-	clientset "k8s.io/sample-controller/pkg/client/clientset/versioned"
-	samplecontrollerv1alpha1 "k8s.io/sample-controller/pkg/client/clientset/versioned/typed/samplecontroller/v1alpha1"
-	fakesamplecontrollerv1alpha1 "k8s.io/sample-controller/pkg/client/clientset/versioned/typed/samplecontroller/v1alpha1/fake"
+	clientset "k8s.io/kube-fledged/pkg/client/clientset/versioned"
+	fledgedv1alpha1 "k8s.io/kube-fledged/pkg/client/clientset/versioned/typed/fledged/v1alpha1"
+	fakefledgedv1alpha1 "k8s.io/kube-fledged/pkg/client/clientset/versioned/typed/fledged/v1alpha1/fake"
 )
 
 // NewSimpleClientset returns a clientset that will respond with the provided objects.
@@ -71,12 +71,12 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 
 var _ clientset.Interface = &Clientset{}
 
-// SamplecontrollerV1alpha1 retrieves the SamplecontrollerV1alpha1Client
-func (c *Clientset) SamplecontrollerV1alpha1() samplecontrollerv1alpha1.SamplecontrollerV1alpha1Interface {
-	return &fakesamplecontrollerv1alpha1.FakeSamplecontrollerV1alpha1{Fake: &c.Fake}
+// FledgedV1alpha1 retrieves the FledgedV1alpha1Client
+func (c *Clientset) FledgedV1alpha1() fledgedv1alpha1.FledgedV1alpha1Interface {
+	return &fakefledgedv1alpha1.FakeFledgedV1alpha1{Fake: &c.Fake}
 }
 
-// Samplecontroller retrieves the SamplecontrollerV1alpha1Client
-func (c *Clientset) Samplecontroller() samplecontrollerv1alpha1.SamplecontrollerV1alpha1Interface {
-	return &fakesamplecontrollerv1alpha1.FakeSamplecontrollerV1alpha1{Fake: &c.Fake}
+// Fledged retrieves the FledgedV1alpha1Client
+func (c *Clientset) Fledged() fledgedv1alpha1.FledgedV1alpha1Interface {
+	return &fakefledgedv1alpha1.FakeFledgedV1alpha1{Fake: &c.Fake}
 }
