@@ -1,0 +1,15 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: fledged
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: fledged
+subjects:
+- kind: ServiceAccount
+  name: fledged
+  namespace: kube-fledged
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:nodes

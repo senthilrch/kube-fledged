@@ -1,4 +1,4 @@
-.PHONY: clean
+.PHONY: clean image deploy update
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
@@ -19,8 +19,8 @@ GOARM=7
 
 ### BUILDING
 clean:
-	rm -f build/fledged*
-	rm -f dist/*.tar.gz
+	rm -f build/fledged* && \
+	rm -f dist/*.tar.gz || \
 	docker image rm senthilrch/fledged:latest
 
 fledged: 
@@ -29,10 +29,18 @@ fledged:
 
 image: clean fledged
 	cd build && docker build -t "senthilrch/fledged:latest" . && \
-    docker save -o fledged-latest.tar senthilrch/fledged:latest && \
+	docker save -o fledged-latest.tar senthilrch/fledged:latest && \
 	gzip fledged-latest.tar && docker push senthilrch/fledged:latest
 
-rollout:
-	kubectl scale deployment fledged --replicas=0 && sleep 5 && \
-	kubectl scale deployment fledged --replicas=1 && sleep 5 && \
-	kubectl get pods -l run=fledged
+deploy:
+	kubectl apply -f deploy/fledged-crd.yaml && \
+	kubectl apply -f deploy/fledged-namespace.yaml && \
+	kubectl apply -f deploy/fledged-serviceaccount.yaml && \
+	kubectl apply -f deploy/fledged-clusterrole.yaml && \
+	kubectl apply -f deploy/fledged-clusterrolebinding.yaml && \
+	kubectl apply -f deploy/fledged-deployment.yaml
+
+update:
+	kubectl scale deployment fledged --replicas=0 -nf && sleep 5 && \
+	kubectl scale deployment fledged --replicas=1 -nf && sleep 5 && \
+	kubectl get pods -l run=fledged -nf

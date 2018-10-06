@@ -1,0 +1,29 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: fledged
+  namespace: kube-fledged
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fledged
+  template:
+    metadata:
+      labels:
+        app: fledged
+    spec:
+      containers:
+      - env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: 192.168.44.50
+        - name: KUBERNETES_SERVICE_PORT
+          value: "6443"
+        image: senthilrch/fledged
+        imagePullPolicy: Always
+        name: fledged
+      nodeSelector:
+        kubernetes.io/hostname: worker1.k8s.cis.com
+      serviceAccountName: fledged
+
+

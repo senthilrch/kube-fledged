@@ -1,0 +1,30 @@
+{
+    "apiVersion": "fledged.k8s.io/v1alpha1",
+    "kind": "ImageCache", 
+    "metadata": {
+        "name": "imagecache1",
+        "namespace": "kube-fledged"
+      },
+    "spec": {
+      "cacheSpec": [
+        {
+          "images": [
+            "nginx:1.15.5", 
+            "redis:4.0.11"
+          ], 
+          "nodeSelector": {
+            "kubernetes.io/hostname": "worker1.k8s.cis.com"
+          }
+        }, 
+        {
+          "images": [
+            "mysql", 
+            "hello-world"
+          ], 
+          "nodeSelector": {
+            "kubernetes.io/hostname": "master.k8s.cis.com"
+          }
+        }
+      ]
+    }
+}
