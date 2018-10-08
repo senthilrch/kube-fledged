@@ -21,8 +21,12 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -58,6 +62,19 @@ const (
 	// is synced successfully
 	MessageResourceSynced = "Foo synced successfully"
 )
+
+type EventType string
+
+const (
+	EventAdd    EventType = "add"
+	EventUpdate EventType = "update"
+	EventDelete EventType = "delete"
+)
+
+type WorkQueueKey struct {
+	eventType EventType
+	objKey    string
+}
 
 // Controller is the controller implementation for ImageCache resources
 type Controller struct {
@@ -113,9 +130,14 @@ func NewController(
 	glog.Info("Setting up event handlers")
 	// Set up an event handler for when ImageCache resources change
 	imageCacheInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueueImageCache,
+		AddFunc: func(obj interface{}) {
+			controller.enqueueImageCache(EventAdd, nil, obj)
+		},
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueImageCache(new)
+			controller.enqueueImageCache(EventUpdate, old, new)
+		},
+		DeleteFunc: func(obj interface{}) {
+			controller.enqueueImageCache(EventDelete, obj, nil)
 		},
 	})
 	// Set up an event handler for when Node resources change. This
@@ -183,6 +205,7 @@ func (c *Controller) runWorker() {
 // processNextWorkItem will read a single work item off the workqueue and
 // attempt to process it, by calling the syncHandler.
 func (c *Controller) processNextWorkItem() bool {
+	//glog.Info("processNextWorkItem::Beginning...")
 	obj, shutdown := c.workqueue.Get()
 
 	if shutdown {
@@ -198,19 +221,19 @@ func (c *Controller) processNextWorkItem() bool {
 		// put back on the workqueue and attempted again after a back-off
 		// period.
 		defer c.workqueue.Done(obj)
-		var key string
+		var key WorkQueueKey
 		var ok bool
 		// We expect strings to come off the workqueue. These are of the
 		// form namespace/name. We do this as the delayed nature of the
 		// workqueue means the items in the informer cache may actually be
 		// more up to date that when the item was initially put onto the
 		// workqueue.
-		if key, ok = obj.(string); !ok {
+		if key, ok = obj.(WorkQueueKey); !ok {
 			// As the item in the workqueue is actually invalid, we call
 			// Forget here else we'd go into a loop of attempting to
 			// process a work item that is invalid.
 			c.workqueue.Forget(obj)
-			runtime.HandleError(fmt.Errorf("expected string in workqueue but got %#v", obj))
+			runtime.HandleError(fmt.Errorf("Unexpected type in workqueue: %#v", obj))
 			return nil
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
@@ -221,7 +244,7 @@ func (c *Controller) processNextWorkItem() bool {
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		glog.Infof("Successfully synced '%s'", key)
+		glog.Infof("Successfully synced '%s' for event '%s'", key.objKey, key.eventType)
 		return nil
 	}(obj)
 
@@ -236,21 +259,78 @@ func (c *Controller) processNextWorkItem() bool {
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the ImageCache resource
 // with the current status of the resource.
-func (c *Controller) syncHandler(key string) error {
+func (c *Controller) syncHandler(wqKey WorkQueueKey) error {
+
 	// Convert the namespace/name string into a distinct namespace and name
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
+	namespace, name, err := cache.SplitMetaNamespaceKey(wqKey.objKey)
 	if err != nil {
-		runtime.HandleError(fmt.Errorf("invalid resource key: %s", key))
+		runtime.HandleError(fmt.Errorf("invalid resource key: %s", wqKey.objKey))
 		return nil
 	}
 
+	switch wqKey.eventType {
+	case EventAdd:
+
+		// Get the ImageCache resource with this namespace/name
+		imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
+		if err != nil {
+			// The ImageCache resource may no longer exist, in which case we stop
+			// processing.
+			if errors.IsNotFound(err) {
+				runtime.HandleError(fmt.Errorf("ImageCache '%s' in work queue no longer exists", wqKey.objKey))
+				return nil
+			}
+			return err
+		}
+
+		cacheSpec := imageCache.Spec.CacheSpec
+		glog.Infof("cacheSpec: %+v", cacheSpec)
+		var nodes []*corev1.Node
+
+		for _, i := range cacheSpec {
+			if len(i.NodeSelector) > 0 {
+				if nodes, err = c.nodesLister.List(labels.Set(i.NodeSelector).AsSelector()); err != nil {
+					glog.Errorf("Error listing nodes using nodeselector %+v: %v", i.NodeSelector, err)
+					return err
+				}
+			} else {
+				if nodes, err = c.nodesLister.List(labels.Everything()); err != nil {
+					glog.Errorf("Error listing nodes using nodeselector labels.Everything(): %v", err)
+					return err
+				}
+			}
+			//glog.Infof("No. of nodes in %+v is %d", i.NodeSelector, len(nodes))
+			if len(nodes) == 0 {
+				glog.Errorf("NodeSelector %+v did not match any nodes.", i.NodeSelector)
+				return fmt.Errorf("NodeSelector %+v did not match any nodes", i.NodeSelector)
+			}
+
+			for _, n := range nodes {
+				// Define new Job manifest
+				job := newJob(imageCache, i.Images, n.Labels["kubernetes.io/hostname"])
+				// Create a Job to pull images into this node
+				if _, err = c.kubeclientset.BatchV1().Jobs(imageCache.Namespace).Create(job); err != nil {
+					glog.Errorf("Error creating job in node %s: %v", n.Name, err)
+					return err
+				}
+				// Wait for the Job to complete
+				// Read the completion status of the Job
+				// Store the completion status
+			}
+		}
+
+		// Update the status of ImageCache
+
+	}
+
+	return nil
 	// Get the ImageCache resource with this namespace/name
 	imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
 	if err != nil {
 		// The ImageCache resource may no longer exist, in which case we stop
 		// processing.
 		if errors.IsNotFound(err) {
-			runtime.HandleError(fmt.Errorf("ImageCache '%s' in work queue no longer exists", key))
+			runtime.HandleError(fmt.Errorf("ImageCache '%s' in work queue no longer exists", wqKey.objKey))
 			return nil
 		}
 
@@ -333,14 +413,34 @@ func (c *Controller) updateImageCacheStatus(imageCache *fledgedv1alpha1.ImageCac
 // enqueueImageCache takes a ImageCache resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
 // passed resources of any type other than ImageCache.
-func (c *Controller) enqueueImageCache(obj interface{}) {
+func (c *Controller) enqueueImageCache(eventType EventType, old, new interface{}) {
 	var key string
 	var err error
+	var obj interface{}
+	var wqKey WorkQueueKey
+
+	//glog.Info("enqueueImageCache::Processing ImageCache creation/modification...")
+
+	switch eventType {
+	case EventAdd:
+		obj = new
+	case EventUpdate:
+		obj = new
+		return
+	case EventDelete:
+		obj = old
+	}
+
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		runtime.HandleError(err)
 		return
 	}
-	c.workqueue.AddRateLimited(key)
+	wqKey.eventType = eventType
+	wqKey.objKey = key
+
+	c.workqueue.AddRateLimited(wqKey)
+
+	//glog.Info("enqueueImageCache::ImageCache resource queued...")
 }
 
 // handleObject will take any resource implementing metav1.Object and attempt
@@ -428,3 +528,82 @@ func newDeployment(foo *fledgedv1alpha1.Foo) *appsv1.Deployment {
 	}
 }
 */
+
+func newJob(imagecache *fledgedv1alpha1.ImageCache, images []string, hostname string) *batchv1.Job {
+	labels := map[string]string{
+		"app":        "imagecache",
+		"imagecache": imagecache.Name,
+		"controller": controllerAgentName,
+	}
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: imagecache.Name,
+			Namespace:    imagecache.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(imagecache, schema.GroupVersionKind{
+					Group:   fledgedv1alpha1.SchemeGroupVersion.Group,
+					Version: fledgedv1alpha1.SchemeGroupVersion.Version,
+					Kind:    "ImageCache",
+				}),
+			},
+			Labels: labels,
+		},
+		Spec: batchv1.JobSpec{
+			//BackoffLimit: BackoffLimit,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					GenerateName: imagecache.Name,
+					Namespace:    imagecache.Namespace,
+					Labels:       labels,
+				},
+				Spec: corev1.PodSpec{
+					NodeSelector: map[string]string{
+						"kubernetes.io/hostname": hostname,
+					},
+					InitContainers: []corev1.Container{
+						{
+							Name:    "busybox",
+							Image:   "busybox:1.29.2",
+							Command: []string{"cp", "/bin/echo", "/tmp/bin"},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "tmp-bin",
+									MountPath: "/tmp/bin",
+								},
+							},
+							ImagePullPolicy: corev1.PullIfNotPresent,
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:    "imagepuller",
+							Image:   images[0],
+							Command: []string{"/tmp/bin/echo", "Image pulled successfully!"},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "tmp-bin",
+									MountPath: "/tmp/bin",
+								},
+							},
+							ImagePullPolicy: corev1.PullIfNotPresent,
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "tmp-bin",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+					},
+					RestartPolicy: corev1.RestartPolicyNever,
+				},
+			},
+		},
+	}
+
+	return job
+	//c.kubeclientset.AppsV1().Deployments(foo.Namespace).Update(newDeployment(foo))
+	//c.kubeclientset.BatchV1beta1().Jobs
+}

@@ -24,6 +24,12 @@
           "nodeSelector": {
             "kubernetes.io/hostname": "master.k8s.cis.com"
           }
+        },
+        {
+          "images": [
+            "docker", 
+            "jenkins"
+          ]
         }
       ]
     }

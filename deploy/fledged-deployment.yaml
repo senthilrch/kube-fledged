@@ -20,6 +20,8 @@ spec:
         - name: KUBERNETES_SERVICE_PORT
           value: "6443"
         image: senthilrch/fledged
+        command: ["/opt/bin/fledged"]
+        args: ["--stderrthreshold=INFO"]
         imagePullPolicy: Always
         name: fledged
       nodeSelector:

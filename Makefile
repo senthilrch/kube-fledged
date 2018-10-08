@@ -23,7 +23,7 @@ clean:
 	rm -f dist/*.tar.gz || \
 	docker image rm senthilrch/fledged:latest
 
-fledged: 
+fledged:
 	CGO_ENABLED=0 go build -o build/fledged \
 	  -ldflags '-s -w -extldflags "-static"' cmd/fledged.go
 
@@ -41,6 +41,6 @@ deploy:
 	kubectl apply -f deploy/fledged-deployment.yaml
 
 update:
-	kubectl scale deployment fledged --replicas=0 -nf && sleep 5 && \
-	kubectl scale deployment fledged --replicas=1 -nf && sleep 5 && \
-	kubectl get pods -l run=fledged -nf
+	kubectl scale deployment fledged --replicas=0 -n kube-fledged && sleep 5 && \
+	kubectl scale deployment fledged --replicas=1 -n kube-fledged && sleep 5 && \
+	kubectl get pods -l app=fledged -n kube-fledged

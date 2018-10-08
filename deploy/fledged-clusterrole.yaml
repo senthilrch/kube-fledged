@@ -36,3 +36,10 @@ rules:
       - create
       - update
       - patch
+  - apiGroups:
+      - "batch"
+    resources:
+      - jobs
+    verbs:
+      - get
+      - create
