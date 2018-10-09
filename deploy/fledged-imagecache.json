@@ -10,7 +10,8 @@
         {
           "images": [
             "nginx:1.15.5", 
-            "redis:4.0.11"
+            "redis:4.0.11",
+            "nonexistentimage"
           ], 
           "nodeSelector": {
             "kubernetes.io/hostname": "worker1.k8s.cis.com"
@@ -30,6 +31,14 @@
             "docker", 
             "jenkins"
           ]
+        },
+        {
+          "images": [
+            "nonexistentimage"
+          ], 
+          "nodeSelector": {
+            "kubernetes.io/hostname": "worker1.k8s.cis.com"
+          }
         }
       ]
     }

@@ -65,13 +65,15 @@ type ImageCacheActionStatus string
 
 // List of constants for ImageCacheActionStatus
 const (
-	ImageCacheActionStatusSucceeded ImageCacheActionStatus = "Succeeded"
-	ImageCacheActionStatusFailed    ImageCacheActionStatus = "Failed"
-	ImageCacheActionStatusUnknown   ImageCacheActionStatus = "Unknown"
+	ImageCacheActionStatusProcessing ImageCacheActionStatus = "Processing"
+	ImageCacheActionStatusSucceeded  ImageCacheActionStatus = "Succeeded"
+	ImageCacheActionStatusFailed     ImageCacheActionStatus = "Failed"
+	ImageCacheActionStatusUnknown    ImageCacheActionStatus = "Unknown"
 )
 
 // List of constants for ImageCacheReason
 const (
+	ImageCacheReasonPullingImages              = "PullingImages"
 	ImageCacheReasonImagesPulledSuccessfully   = "ImagesPulledSuccessfully"
 	ImageCacheReasonImagePullFailedOnAllNodes  = "ImagePullFailedOnAllNodes"
 	ImageCacheReasonImagePullFailedOnSomeNodes = "ImagePullFailedOnSomeNodes"
@@ -80,6 +82,7 @@ const (
 
 // List of constants for ImageCacheMessage
 const (
+	ImageCacheMessagePullingImages              = "Images are being pulled on to the nodes. Please view the status after some time"
 	ImageCacheMessageImagesPulledSuccessfully   = "All requested images pulled succesfuly to respective nodes"
 	ImageCacheMessageImagePullFailedOnAllNodes  = "Image pull failed on all nodes. Please query the jobs using label selector"
 	ImageCacheMessageImagePullFailedOnSomeNodes = "Image pull failed on some nodes. Please query the jobs using label selector"
