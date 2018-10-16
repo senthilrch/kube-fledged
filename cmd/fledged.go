@@ -7,11 +7,8 @@ import (
 	"github.com/golang/glog"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
-
-	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
+	"k8s.io/client-go/tools/clientcmd" // Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-
 	"k8s.io/kube-fledged/cmd/app"
 	clientset "k8s.io/kube-fledged/pkg/client/clientset/versioned"
 	informers "k8s.io/kube-fledged/pkg/client/informers/externalversions"
@@ -55,7 +52,7 @@ func main() {
 	go kubeInformerFactory.Start(stopCh)
 	go fledgedInformerFactory.Start(stopCh)
 
-	if err = controller.Run(2, stopCh); err != nil {
+	if err = controller.Run(1, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %s", err.Error())
 	}
 }

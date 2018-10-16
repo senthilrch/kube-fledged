@@ -21,12 +21,9 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -38,16 +35,16 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-
 	fledgedv1alpha1 "k8s.io/kube-fledged/pkg/apis/fledged/v1alpha1"
 	clientset "k8s.io/kube-fledged/pkg/client/clientset/versioned"
 	fledgedscheme "k8s.io/kube-fledged/pkg/client/clientset/versioned/scheme"
 	informers "k8s.io/kube-fledged/pkg/client/informers/externalversions/fledged/v1alpha1"
 	listers "k8s.io/kube-fledged/pkg/client/listers/fledged/v1alpha1"
-	"k8s.io/kube-fledged/pkg/signals"
+	"k8s.io/kube-fledged/pkg/images"
 )
 
 const controllerAgentName = "fledged"
+const fledgedNameSpace = "kube-fledged"
 
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a Foo is synced
@@ -63,19 +60,6 @@ const (
 	// is synced successfully
 	MessageResourceSynced = "Foo synced successfully"
 )
-
-type EventType string
-
-const (
-	EventAdd    EventType = "add"
-	EventUpdate EventType = "update"
-	EventDelete EventType = "delete"
-)
-
-type WorkQueueKey struct {
-	eventType EventType
-	objKey    string
-}
 
 // Controller is the controller implementation for ImageCache resources
 type Controller struct {
@@ -94,8 +78,9 @@ type Controller struct {
 	// means we can ensure we only process a fixed amount of resources at a
 	// time, and makes it easy to ensure we are never processing the same item
 	// simultaneously in two different workers.
-	workqueue   workqueue.RateLimitingInterface
-	statusqueue workqueue.RateLimitingInterface
+	workqueue      workqueue.RateLimitingInterface
+	imagepullqueue workqueue.RateLimitingInterface
+	imageManager   *images.ImageManager
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
@@ -126,21 +111,24 @@ func NewController(
 		imageCachesLister: imageCacheInformer.Lister(),
 		imageCachesSynced: imageCacheInformer.Informer().HasSynced,
 		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches"),
-		statusqueue:       workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus"),
+		imagepullqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus"),
 		recorder:          recorder,
 	}
+
+	imageManager := images.NewImageManager(controller.workqueue, controller.imagepullqueue, controller.kubeclientset, fledgedNameSpace)
+	controller.imageManager = imageManager
 
 	glog.Info("Setting up event handlers")
 	// Set up an event handler for when ImageCache resources change
 	imageCacheInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			controller.enqueueImageCache(EventAdd, nil, obj)
+			controller.enqueueImageCache(images.ImageCacheCreate, nil, obj)
 		},
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueueImageCache(EventUpdate, old, new)
+			controller.enqueueImageCache(images.ImageCacheUpdate, old, new)
 		},
 		DeleteFunc: func(obj interface{}) {
-			controller.enqueueImageCache(EventDelete, obj, nil)
+			controller.enqueueImageCache(images.ImageCacheDelete, obj, nil)
 		},
 	})
 	// Set up an event handler for when Node resources change. This
@@ -174,7 +162,7 @@ func NewController(
 func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
 	defer c.workqueue.ShutDown()
-	defer c.statusqueue.ShutDown()
+	defer c.imagepullqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
 	glog.Info("Starting fledged controller")
@@ -186,10 +174,12 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	}
 
 	glog.Info("Starting workers")
-	// Launch two workers to process ImageCache resources
+	// Launch workers to process ImageCache resources
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
+
+	c.imageManager.Run(stopCh)
 
 	glog.Info("Started workers")
 	<-stopCh
@@ -203,11 +193,6 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 // workqueue.
 func (c *Controller) runWorker() {
 	for c.processNextWorkItem() {
-	}
-}
-
-func (c *Controller) runStatusUpdateWorker() {
-	for c.processNextStatusUpdateWorkItem() {
 	}
 }
 
@@ -230,14 +215,14 @@ func (c *Controller) processNextWorkItem() bool {
 		// put back on the workqueue and attempted again after a back-off
 		// period.
 		defer c.workqueue.Done(obj)
-		var key WorkQueueKey
+		var key images.WorkQueueKey
 		var ok bool
 		// We expect strings to come off the workqueue. These are of the
 		// form namespace/name. We do this as the delayed nature of the
 		// workqueue means the items in the informer cache may actually be
 		// more up to date that when the item was initially put onto the
 		// workqueue.
-		if key, ok = obj.(WorkQueueKey); !ok {
+		if key, ok = obj.(images.WorkQueueKey); !ok {
 			// As the item in the workqueue is actually invalid, we call
 			// Forget here else we'd go into a loop of attempting to
 			// process a work item that is invalid.
@@ -253,7 +238,7 @@ func (c *Controller) processNextWorkItem() bool {
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		glog.Infof("Successfully synced '%s' for event '%s'", key.objKey, key.eventType)
+		glog.Infof("Successfully synced '%s' for event '%s'", key.ObjKey, key.WorkType)
 		return nil
 	}(obj)
 
@@ -263,101 +248,24 @@ func (c *Controller) processNextWorkItem() bool {
 	}
 
 	return true
-}
-
-func (c *Controller) processNextStatusUpdateWorkItem() bool {
-	//glog.Info("processNextWorkItem::Beginning...")
-	obj, shutdown := c.statusqueue.Get()
-
-	if shutdown {
-		return false
-	}
-
-	// We wrap this block in a func so we can defer c.workqueue.Done.
-	err := func(obj interface{}) error {
-		// We call Done here so the workqueue knows we have finished
-		// processing this item. We also must remember to call Forget if we
-		// do not want this work item being re-queued. For example, we do
-		// not call Forget if a transient error occurs, instead the item is
-		// put back on the workqueue and attempted again after a back-off
-		// period.
-		defer c.statusqueue.Done(obj)
-		var key string
-		var ok bool
-		// We expect strings to come off the workqueue. These are of the
-		// form namespace/name. We do this as the delayed nature of the
-		// workqueue means the items in the informer cache may actually be
-		// more up to date that when the item was initially put onto the
-		// workqueue.
-		if key, ok = obj.(string); !ok {
-			// As the item in the workqueue is actually invalid, we call
-			// Forget here else we'd go into a loop of attempting to
-			// process a work item that is invalid.
-			c.statusqueue.Forget(obj)
-			runtime.HandleError(fmt.Errorf("Unexpected type in statusqueue: %#v", obj))
-			return nil
-		}
-		// Run the syncHandler, passing it the namespace/name string of the
-		// ImageCache resource to be synced.
-		if err := c.statusUpdateSyncHandler(key); err != nil {
-			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
-		}
-		// Finally, if no error occurs we Forget this item so it does not
-		// get queued again until another change happens.
-		c.statusqueue.Forget(obj)
-		glog.Infof("Successfully synced '%s'", key)
-		return nil
-	}(obj)
-
-	if err != nil {
-		runtime.HandleError(err)
-		return true
-	}
-
-	return true
-}
-
-func (c *Controller) statusUpdateSyncHandler(key string) error {
-	// Convert the namespace/name string into a distinct namespace and name
-	namespace, name, err := cache.SplitMetaNamespaceKey(key)
-	if err != nil {
-		runtime.HandleError(fmt.Errorf("invalid resource key: %s", key))
-		return nil
-	}
-
-	job, err := c.kubeclientset.BatchV1().Jobs(namespace).Get(name, metav1.GetOptions{})
-	if err != nil {
-		glog.Errorf("Error getting job %s: %v", name, err)
-		return err
-	}
-
-	if job.Status.CompletionTime == nil {
-		// Add this job to the end of the queue
-		c.statusqueue.AddRateLimited(key)
-		return nil
-	}
-
-	// Job has terminated. Read the Job completion status. If it is successful, delete the job
-	// from etcd. If not do not delete the job.
-	return nil
 }
 
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the ImageCache resource
 // with the current status of the resource.
-func (c *Controller) syncHandler(wqKey WorkQueueKey) error {
+func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
 	var status *fledgedv1alpha1.ImageCacheStatus
 
 	// Convert the namespace/name string into a distinct namespace and name
-	namespace, name, err := cache.SplitMetaNamespaceKey(wqKey.objKey)
+	namespace, name, err := cache.SplitMetaNamespaceKey(wqKey.ObjKey)
 	if err != nil {
-		runtime.HandleError(fmt.Errorf("invalid resource key: %s", wqKey.objKey))
+		runtime.HandleError(fmt.Errorf("invalid resource key: %s", wqKey.ObjKey))
 		return nil
 	}
 
-	switch wqKey.eventType {
-	case EventAdd:
+	switch wqKey.WorkType {
+	case images.ImageCacheCreate:
 
 		// Get the ImageCache resource with this namespace/name
 		imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
@@ -365,7 +273,7 @@ func (c *Controller) syncHandler(wqKey WorkQueueKey) error {
 			// The ImageCache resource may no longer exist, in which case we stop
 			// processing.
 			if errors.IsNotFound(err) {
-				runtime.HandleError(fmt.Errorf("ImageCache '%s' in work queue no longer exists", wqKey.objKey))
+				runtime.HandleError(fmt.Errorf("ImageCache '%s' in work queue no longer exists", wqKey.ObjKey))
 				return nil
 			}
 			return err
@@ -404,45 +312,36 @@ func (c *Controller) syncHandler(wqKey WorkQueueKey) error {
 				return fmt.Errorf("NodeSelector %+v did not match any nodes", i.NodeSelector)
 			}
 
+			//var ic *fledgedv1alpha1.ImageCache = new(fledgedv1alpha1.ImageCache)
+			//*ic = *imageCache
 			for _, n := range nodes {
 				for m := range i.Images {
-					// Define new Job manifest
-					job := newJob(imageCache, i.Images[m], n.Labels["kubernetes.io/hostname"])
-					// Create a Job to pull the image into the node
-					if _, err = c.kubeclientset.BatchV1().Jobs(imageCache.Namespace).Create(job); err != nil {
-						glog.Errorf("Error creating job in node %s: %v", n.Name, err)
-						return err
+					ipr := images.ImagePullRequest{
+						Image:      i.Images[m],
+						Node:       n.Labels["kubernetes.io/hostname"],
+						Imagecache: imageCache,
 					}
-
-					key, err := cache.MetaNamespaceKeyFunc(*job)
-					if err != nil {
-						runtime.HandleError(err)
-						return err
-					}
-					c.statusqueue.AddRateLimited(key)
+					c.imagepullqueue.AddRateLimited(ipr)
 				}
 			}
 		}
-		// Start and stop the statusqueue worker in an exponential backoff manner
-		// subject to a max deadlineseconds.
-		// Launch one worker to process the imagepuller queue
-		stopCh := signals.SetupSignalHandler()
-		go wait.Until(c.runStatusUpdateWorker, time.Second, stopCh)
-		// Now check the length of the statusqueue. If there are still items in the queue,
-		// it means those Jobs are stuck because of some error. fetch the pods, get the error
-		// reasons, update the imagecache status. Do not delete the failing jobs, so user can
-		// check the reason and delete those jobs manually
+		c.imagepullqueue.AddRateLimited(images.ImagePullRequest{})
 
 		// Finally, we update the status block of the ImageCache resource to reflect the
 		// current state of the world
-		err = c.updateImageCacheStatus(imageCache, status)
-		if err != nil {
-			return err
-		}
+		/*
+			err = c.updateImageCacheStatus(imageCache, status)
+			if err != nil {
+				return err
+			}
+		*/
 
 		c.recorder.Event(imageCache, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 		return nil
 
+	case images.ImageCacheStatusUpdate:
+		glog.Infof("wqKey.Status = %+v", wqKey.Status)
+		return nil
 	}
 
 	return nil
@@ -466,21 +365,21 @@ func (c *Controller) updateImageCacheStatus(imageCache *fledgedv1alpha1.ImageCac
 // enqueueImageCache takes a ImageCache resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
 // passed resources of any type other than ImageCache.
-func (c *Controller) enqueueImageCache(eventType EventType, old, new interface{}) {
+func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interface{}) {
 	var key string
 	var err error
 	var obj interface{}
-	var wqKey WorkQueueKey
+	var wqKey images.WorkQueueKey
 
 	//glog.Info("enqueueImageCache::Processing ImageCache creation/modification...")
 
-	switch eventType {
-	case EventAdd:
+	switch workType {
+	case images.ImageCacheCreate:
 		obj = new
-	case EventUpdate:
+	case images.ImageCacheUpdate:
 		obj = new
 		return
-	case EventDelete:
+	case images.ImageCacheDelete:
 		obj = old
 	}
 
@@ -488,8 +387,8 @@ func (c *Controller) enqueueImageCache(eventType EventType, old, new interface{}
 		runtime.HandleError(err)
 		return
 	}
-	wqKey.eventType = eventType
-	wqKey.objKey = key
+	wqKey.WorkType = workType
+	wqKey.ObjKey = key
 
 	c.workqueue.AddRateLimited(wqKey)
 
@@ -536,108 +435,4 @@ func (c *Controller) handleObject(obj interface{}) {
 			return
 		}
 	*/
-}
-
-func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string) *batchv1.Job {
-	labels := map[string]string{
-		"app":        "imagecache",
-		"imagecache": imagecache.Name,
-		"controller": controllerAgentName,
-	}
-
-	backoffLimit := int32(0)
-	//activeDeadlineSeconds := int64(120)
-
-	/*
-		container := corev1.Container{
-			Command: []string{"/tmp/bin/echo", "Image pulled successfully!"},
-			VolumeMounts: []corev1.VolumeMount{
-				{
-					Name:      "tmp-bin",
-					MountPath: "/tmp/bin",
-				},
-			},
-			ImagePullPolicy: corev1.PullIfNotPresent,
-		}
-
-		var containers []corev1.Container
-
-		for i := range images {
-			container.Image = images[i]
-			container.Name = "imagepuller-" + strconv.Itoa(i+1)
-			containers = append(containers, container)
-		}
-	*/
-
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: imagecache.Name + "-",
-			Namespace:    imagecache.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(imagecache, schema.GroupVersionKind{
-					Group:   fledgedv1alpha1.SchemeGroupVersion.Group,
-					Version: fledgedv1alpha1.SchemeGroupVersion.Version,
-					Kind:    "ImageCache",
-				}),
-			},
-			Labels: labels,
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit: &backoffLimit,
-			//ActiveDeadlineSeconds: &activeDeadlineSeconds,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					//GenerateName: imagecache.Name,
-					Namespace: imagecache.Namespace,
-					Labels:    labels,
-					//Finalizers:   []string{"imagecache"},
-				},
-				Spec: corev1.PodSpec{
-					NodeSelector: map[string]string{
-						"kubernetes.io/hostname": hostname,
-					},
-					InitContainers: []corev1.Container{
-						{
-							Name:    "busybox",
-							Image:   "busybox:1.29.2",
-							Command: []string{"cp", "/bin/echo", "/tmp/bin"},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "tmp-bin",
-									MountPath: "/tmp/bin",
-								},
-							},
-							ImagePullPolicy: corev1.PullIfNotPresent,
-						},
-					},
-					Containers: []corev1.Container{
-						{
-							Name:    "imagepuller",
-							Image:   image,
-							Command: []string{"/tmp/bin/echo", "Image pulled successfully!"},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "tmp-bin",
-									MountPath: "/tmp/bin",
-								},
-							},
-							ImagePullPolicy: corev1.PullIfNotPresent,
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "tmp-bin",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-					RestartPolicy: corev1.RestartPolicyNever,
-					//ActiveDeadlineSeconds: &activeDeadlineSeconds,
-				},
-			},
-		},
-	}
-
-	return job
 }

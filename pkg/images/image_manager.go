@@ -16,35 +16,339 @@ limitations under the License.
 
 package images
 
-// imageManager provides the functionalities for image pulling and image removal
+import (
+	"fmt"
+	"time"
+
+	"github.com/golang/glog"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
+	kubeinformers "k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
+	fledgedv1alpha1 "k8s.io/kube-fledged/pkg/apis/fledged/v1alpha1"
+)
+
+const controllerAgentName = "fledged"
+
+// ImageManager provides the functionalities for image pulling and image removal
 type ImageManager struct {
-	pullChan chan<- PullResult
-	puller   ImagePuller
+	workqueue      workqueue.RateLimitingInterface
+	imagepullqueue workqueue.RateLimitingInterface
+	// kubeclientset is a standard kubernetes clientset
+	kubeclientset       kubernetes.Interface
+	imagepullstatus     map[string]ImagePullResult
+	kubeInformerFactory kubeinformers.SharedInformerFactory
+	podsLister          corelisters.PodLister
+	podsSynced          cache.InformerSynced
 }
 
-func NewImageManager(imageService ImageService, serialized bool, qps float32, burst int) ImageManager {
-	var puller ImagePuller
-	puller = newParallelImagePuller(imageService)
-	pullChan := make(chan PullResult)
-	return &ImageManager{
-		puller:   puller,
-		pullChan: pullChan,
+type ImagePullRequest struct {
+	Image      string
+	Node       string
+	Imagecache *fledgedv1alpha1.ImageCache
+}
+
+type ImagePullResult struct {
+	imagepullrequest *ImagePullRequest
+	status           string
+	reason           string
+	message          string
+}
+
+type WorkType string
+
+const (
+	ImageCacheCreate       WorkType = "create"
+	ImageCacheUpdate       WorkType = "update"
+	ImageCacheDelete       WorkType = "delete"
+	ImageCacheStatusUpdate WorkType = "statusupdate"
+)
+
+type WorkQueueKey struct {
+	WorkType WorkType
+	ObjKey   string
+	Status   *map[string]ImagePullResult
+}
+
+func NewImageManager(
+	workqueue workqueue.RateLimitingInterface,
+	imagepullqueue workqueue.RateLimitingInterface,
+	kubeclientset kubernetes.Interface,
+	namespace string) *ImageManager {
+
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(
+		kubeclientset,
+		time.Second*30,
+		kubeinformers.WithNamespace(namespace))
+	podInformer := kubeInformerFactory.Core().V1().Pods()
+
+	//podInformer := coreinformers.NewPodInformer(kubeclientset, namespace, time.Second*30, nil)
+
+	imagemanager := &ImageManager{
+		workqueue:           workqueue,
+		imagepullqueue:      imagepullqueue,
+		kubeclientset:       kubeclientset,
+		imagepullstatus:     map[string]ImagePullResult{},
+		kubeInformerFactory: kubeInformerFactory,
+		podsLister:          podInformer.Lister(),
+		//podsLister: corelisters.NewPodLister(podInformer.GetIndexer()),
+		podsSynced: podInformer.Informer().HasSynced,
+		//podsSynced: podInformer.HasSynced,
+	}
+	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		//AddFunc: controller.handleObject,
+		UpdateFunc: func(old, new interface{}) {
+			newPod := new.(*corev1.Pod)
+			oldPod := old.(*corev1.Pod)
+			if newPod.ResourceVersion == oldPod.ResourceVersion {
+				// Periodic resync will send update events for all known Nodes.
+				// Two different versions of the same Nodes will always have different RVs.
+				return
+			}
+			//glog.Infof("Pod %s changed status to %s", newPod.Name, newPod.Status.Phase)
+			if (newPod.Status.Phase == corev1.PodSucceeded || newPod.Status.Phase == corev1.PodFailed) &&
+				(oldPod.Status.Phase != corev1.PodSucceeded && oldPod.Status.Phase != corev1.PodFailed) {
+				imagemanager.handlePodStatusChange(newPod)
+			}
+		},
+		//DeleteFunc: controller.handleObject,
+	})
+	return imagemanager
+}
+
+func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
+	glog.Infof("Pod %s changed status to %s", pod.Name, pod.Status.Phase)
+	ipres := m.imagepullstatus[pod.Labels["job-name"]]
+	if pod.Status.Phase == corev1.PodSucceeded {
+		ipres.status = "succeeded"
+	}
+	if pod.Status.Phase == corev1.PodFailed {
+		ipres.status = "failed"
+		ipres.reason = "imagepullfailed"
+		ipres.message = "failed to pull image to node. please check the pod events"
+	}
+	m.imagepullstatus[pod.Labels["job-name"]] = ipres
+	//glog.Infof("imagepullstatus map: %+v", m.imagepullstatus)
+}
+
+func (m *ImageManager) updatePendingImagePullResults() {
+	glog.Infof("Inside updatePendingImagePullResults()")
+	glog.Infof("imagepullstatus map: %+v", m.imagepullstatus)
+	for job, ipres := range m.imagepullstatus {
+		if ipres.status == "jobcreated" {
+			pods, _ := m.podsLister.Pods(ipres.imagepullrequest.Imagecache.Namespace).
+				List(labels.Set(map[string]string{"job-name": job}).AsSelector())
+			ipres.status = "failed"
+			ipres.reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
+			ipres.message = pods[0].Status.ContainerStatuses[0].State.Waiting.Message
+			/*
+				eventlist, _ := m.kubeclientset.EventsV1beta1().Events(ipres.imagepullrequest.Imagecache.Namespace).
+					List(metav1.ListOptions{FieldSelector: "involvedObject.name=" + pods[0].Name + ",reason=Failed"})
+				for _, v := range eventlist.Items {
+					ipres.message = ipres.message + v.Note
+				}
+			*/
+			m.imagepullstatus[job] = ipres
+		}
+	}
+	glog.Infof("imagepullstatus map: %+v", m.imagepullstatus)
+}
+
+func (m *ImageManager) updateImageCacheStatus() {
+	//time.AfterFunc(time.Second*60, m.updatePendingImagePullResults)
+	time.Sleep(time.Second * 60)
+	m.updatePendingImagePullResults()
+	m.workqueue.AddRateLimited(WorkQueueKey{WorkType: ImageCacheStatusUpdate, Status: &m.imagepullstatus})
+	return
+}
+
+func (m *ImageManager) Run(stopCh <-chan struct{}) {
+	defer runtime.HandleCrash()
+	glog.Info("Starting image manager")
+	go m.kubeInformerFactory.Start(stopCh)
+	go wait.Until(m.runWorker, time.Second, stopCh)
+	glog.Info("Started image manager")
+	<-stopCh
+	glog.Info("Shutting down image manager")
+
+}
+
+// runWorker is a long-running function that will continually call the
+// processNextWorkItem function in order to read and process a message on the
+// workqueue.
+func (m *ImageManager) runWorker() {
+	for m.processNextWorkItem() {
 	}
 }
 
-// PullImageToNode pulls the image to the node. Performs retries based on error
-func (m *imageManager) PullImageToNode(image string) (string, string, error) {
-	m.puller.pullImage(image, m.pullChan)
-	/*
-		if imagePullResult.err != nil {
-			if imagePullResult.err == RegistryUnavailable {
-				msg := fmt.Sprintf("image pull failed for %s because the registry is unavailable.", container.Image)
-				return "", msg, imagePullResult.err
-			}
+// processNextWorkItem will read a single work item off the workqueue and
+// attempt to process it, by calling the syncHandler.
+func (m *ImageManager) processNextWorkItem() bool {
+	//glog.Info("processNextWorkItem::Beginning...")
+	obj, shutdown := m.imagepullqueue.Get()
 
-			return "", imagePullResult.err.Error(), ErrImagePull
+	if shutdown {
+		return false
+	}
+
+	// We wrap this block in a func so we can defer c.workqueue.Done.
+	err := func(obj interface{}) error {
+		// We call Done here so the workqueue knows we have finished
+		// processing this item. We also must remember to call Forget if we
+		// do not want this work item being re-queued. For example, we do
+		// not call Forget if a transient error occurs, instead the item is
+		// put back on the workqueue and attempted again after a back-off
+		// period.
+		defer m.imagepullqueue.Done(obj)
+		var ipr ImagePullRequest
+		var ok bool
+		// We expect strings to come off the workqueue. These are of the
+		// form namespace/name. We do this as the delayed nature of the
+		// workqueue means the items in the informer cache may actually be
+		// more up to date that when the item was initially put onto the
+		// workqueue.
+		if ipr, ok = obj.(ImagePullRequest); !ok {
+			// As the item in the workqueue is actually invalid, we call
+			// Forget here else we'd go into a loop of attempting to
+			// process a work item that is invalid.
+			m.imagepullqueue.Forget(obj)
+			runtime.HandleError(fmt.Errorf("Unexpected type in workqueue: %#v", obj))
+			return nil
 		}
-		return imagePullResult.imageRef, "", nil
-	*/
-	return "", "", nil
+		//glog.Infof("ipr=%+v", ipr)
+
+		if (ipr == ImagePullRequest{}) {
+			m.imagepullqueue.Forget(obj)
+			m.updateImageCacheStatus()
+			return nil
+		}
+		// Run the syncHandler, passing it the namespace/name string of the
+		// ImageCache resource to be synced.
+		job, err := m.pullImage(ipr)
+		if err != nil {
+			return fmt.Errorf("error pulling image '%s' to node '%s': %s", ipr.Image, ipr.Node, err.Error())
+		}
+		// Finally, if no error occurs we Forget this item so it does not
+		// get queued again until another change happens.
+		m.imagepullstatus[job.Name] = ImagePullResult{imagepullrequest: &ipr, status: "jobcreated"}
+		m.imagepullqueue.Forget(obj)
+		glog.Infof("Successfully created job to pull image '%s' to node '%s'", ipr.Image, ipr.Node)
+		return nil
+	}(obj)
+
+	if err != nil {
+		runtime.HandleError(err)
+		return true
+	}
+
+	return true
+}
+
+// PullImageToNode pulls the image to the node. Performs retries based on error
+func (m *ImageManager) pullImage(ipr ImagePullRequest) (*batchv1.Job, error) {
+	// Define new Job manifest
+	newjob := newJob(ipr.Imagecache, ipr.Image, ipr.Node)
+	// Create a Job to pull the image into the node
+	job, err := m.kubeclientset.BatchV1().Jobs(ipr.Imagecache.Namespace).Create(newjob)
+	if err != nil {
+		glog.Errorf("Error creating job in node %s: %v", ipr.Node, err)
+		return nil, err
+	}
+	return job, nil
+}
+
+func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string) *batchv1.Job {
+	if imagecache == nil {
+		glog.Info("imagecache pointer is nil")
+		return nil
+	}
+
+	labels := map[string]string{
+		"app":        "imagecache",
+		"imagecache": imagecache.Name,
+		"controller": controllerAgentName,
+	}
+
+	backoffLimit := int32(0)
+	//activeDeadlineSeconds := int64(120)
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: imagecache.Name + "-",
+			Namespace:    imagecache.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(imagecache, schema.GroupVersionKind{
+					Group:   fledgedv1alpha1.SchemeGroupVersion.Group,
+					Version: fledgedv1alpha1.SchemeGroupVersion.Version,
+					Kind:    "ImageCache",
+				}),
+			},
+			Labels: labels,
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit: &backoffLimit,
+			//ActiveDeadlineSeconds: &activeDeadlineSeconds,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					//GenerateName: imagecache.Name,
+					Namespace: imagecache.Namespace,
+					Labels:    labels,
+					//Finalizers:   []string{"imagecache"},
+				},
+				Spec: corev1.PodSpec{
+					NodeSelector: map[string]string{
+						"kubernetes.io/hostname": hostname,
+					},
+					InitContainers: []corev1.Container{
+						{
+							Name:    "busybox",
+							Image:   "busybox:1.29.2",
+							Command: []string{"cp", "/bin/echo", "/tmp/bin"},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "tmp-bin",
+									MountPath: "/tmp/bin",
+								},
+							},
+							ImagePullPolicy: corev1.PullIfNotPresent,
+						},
+					},
+					Containers: []corev1.Container{
+						{
+							Name:    "imagepuller",
+							Image:   image,
+							Command: []string{"/tmp/bin/echo", "Image pulled successfully!"},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "tmp-bin",
+									MountPath: "/tmp/bin",
+								},
+							},
+							ImagePullPolicy: corev1.PullIfNotPresent,
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "tmp-bin",
+							VolumeSource: corev1.VolumeSource{
+								EmptyDir: &corev1.EmptyDirVolumeSource{},
+							},
+						},
+					},
+					RestartPolicy: corev1.RestartPolicyNever,
+					//ActiveDeadlineSeconds: &activeDeadlineSeconds,
+				},
+			},
+		},
+	}
+
+	return job
 }
