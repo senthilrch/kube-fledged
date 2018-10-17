@@ -10,8 +10,7 @@
         {
           "images": [
             "nginx:1.15.5", 
-            "redis:4.0.11",
-            "nonexistentimage"
+            "redis:4.0.11"
           ], 
           "nodeSelector": {
             "kubernetes.io/hostname": "worker1.k8s.cis.com"
@@ -34,7 +33,7 @@
         },
         {
           "images": [
-            "nonexistentimage"
+            "alpine"
           ], 
           "nodeSelector": {
             "kubernetes.io/hostname": "worker1.k8s.cis.com"

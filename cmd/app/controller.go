@@ -23,6 +23,7 @@ import (
 	"github.com/golang/glog"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -255,7 +256,9 @@ func (c *Controller) processNextWorkItem() bool {
 // with the current status of the resource.
 func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
-	var status *fledgedv1alpha1.ImageCacheStatus
+	status := &fledgedv1alpha1.ImageCacheStatus{
+		Failures: map[string]fledgedv1alpha1.NodeReasonMessage{},
+	}
 
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(wqKey.ObjKey)
@@ -312,8 +315,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 				return fmt.Errorf("NodeSelector %+v did not match any nodes", i.NodeSelector)
 			}
 
-			//var ic *fledgedv1alpha1.ImageCache = new(fledgedv1alpha1.ImageCache)
-			//*ic = *imageCache
 			for _, n := range nodes {
 				for m := range i.Images {
 					ipr := images.ImagePullRequest{
@@ -327,20 +328,41 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		}
 		c.imagepullqueue.AddRateLimited(images.ImagePullRequest{})
 
-		// Finally, we update the status block of the ImageCache resource to reflect the
-		// current state of the world
-		/*
-			err = c.updateImageCacheStatus(imageCache, status)
-			if err != nil {
-				return err
-			}
-		*/
-
 		c.recorder.Event(imageCache, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 		return nil
 
 	case images.ImageCacheStatusUpdate:
 		glog.Infof("wqKey.Status = %+v", wqKey.Status)
+		// Finally, we update the status block of the ImageCache resource to reflect the
+		// current state of the world
+		// Get the ImageCache resource with this namespace/name
+		//imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
+		imageCache, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		status.Status = fledgedv1alpha1.ImageCacheActionStatusSucceeded
+		status.Reason = fledgedv1alpha1.ImageCacheReasonImagesPulledSuccessfully
+		status.Message = fledgedv1alpha1.ImageCacheMessageImagesPulledSuccessfully
+
+		for _, v := range *wqKey.Status {
+			if v.Status == "failed" {
+				status.Failures[v.ImagePullRequest.Image] = fledgedv1alpha1.NodeReasonMessage{
+					Node:    v.ImagePullRequest.Node,
+					Reason:  v.Reason,
+					Message: v.Message,
+				}
+				status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
+				status.Reason = fledgedv1alpha1.ImageCacheReasonImagePullFailedOnSomeNodes
+				status.Message = fledgedv1alpha1.ImageCacheMessageImagePullFailedOnSomeNodes
+			}
+		}
+
+		err = c.updateImageCacheStatus(imageCache, status)
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 

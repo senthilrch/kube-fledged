@@ -45,9 +45,17 @@ type ImageCacheSpec struct {
 
 // ImageCacheStatus is the status for a ImageCache resource
 type ImageCacheStatus struct {
-	Status  ImageCacheActionStatus `json:"status"`
-	Reason  string                 `json:"reason"`
-	Message string                 `json:"message"`
+	Status   ImageCacheActionStatus       `json:"status"`
+	Reason   string                       `json:"reason"`
+	Message  string                       `json:"message"`
+	Failures map[string]NodeReasonMessage `json:"failures,omitempty"`
+}
+
+// NodeReasonMessage has failure reason and message for a node
+type NodeReasonMessage struct {
+	Node    string `json:"node"`
+	Reason  string `json:"reason"`
+	Message string `json:"message"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -84,7 +92,7 @@ const (
 const (
 	ImageCacheMessagePullingImages              = "Images are being pulled on to the nodes. Please view the status after some time"
 	ImageCacheMessageImagesPulledSuccessfully   = "All requested images pulled succesfuly to respective nodes"
-	ImageCacheMessageImagePullFailedOnAllNodes  = "Image pull failed on all nodes. Please query the jobs using label selector"
-	ImageCacheMessageImagePullFailedOnSomeNodes = "Image pull failed on some nodes. Please query the jobs using label selector"
+	ImageCacheMessageImagePullFailedOnAllNodes  = "Image pull failed on all nodes. Please see \"failures\" section"
+	ImageCacheMessageImagePullFailedOnSomeNodes = "Image pull failed on some nodes. Please see \"failures\" section"
 	ImageCacheMessageImagePullStatusUnknown     = "Unable to get the status of Image pull. Retry after some time or contact cluster administrator"
 )

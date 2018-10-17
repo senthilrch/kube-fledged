@@ -57,10 +57,10 @@ type ImagePullRequest struct {
 }
 
 type ImagePullResult struct {
-	imagepullrequest *ImagePullRequest
-	status           string
-	reason           string
-	message          string
+	ImagePullRequest *ImagePullRequest
+	Status           string
+	Reason           string
+	Message          string
 }
 
 type WorkType string
@@ -128,12 +128,12 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 	glog.Infof("Pod %s changed status to %s", pod.Name, pod.Status.Phase)
 	ipres := m.imagepullstatus[pod.Labels["job-name"]]
 	if pod.Status.Phase == corev1.PodSucceeded {
-		ipres.status = "succeeded"
+		ipres.Status = "succeeded"
 	}
 	if pod.Status.Phase == corev1.PodFailed {
-		ipres.status = "failed"
-		ipres.reason = "imagepullfailed"
-		ipres.message = "failed to pull image to node. please check the pod events"
+		ipres.Status = "failed"
+		ipres.Reason = "imagepullfailed"
+		ipres.Message = "failed to pull image to node. please check the pod events"
 	}
 	m.imagepullstatus[pod.Labels["job-name"]] = ipres
 	//glog.Infof("imagepullstatus map: %+v", m.imagepullstatus)
@@ -143,12 +143,12 @@ func (m *ImageManager) updatePendingImagePullResults() {
 	glog.Infof("Inside updatePendingImagePullResults()")
 	glog.Infof("imagepullstatus map: %+v", m.imagepullstatus)
 	for job, ipres := range m.imagepullstatus {
-		if ipres.status == "jobcreated" {
-			pods, _ := m.podsLister.Pods(ipres.imagepullrequest.Imagecache.Namespace).
+		if ipres.Status == "jobcreated" {
+			pods, _ := m.podsLister.Pods(ipres.ImagePullRequest.Imagecache.Namespace).
 				List(labels.Set(map[string]string{"job-name": job}).AsSelector())
-			ipres.status = "failed"
-			ipres.reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
-			ipres.message = pods[0].Status.ContainerStatuses[0].State.Waiting.Message
+			ipres.Status = "failed"
+			ipres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
+			ipres.Message = pods[0].Status.ContainerStatuses[0].State.Waiting.Message
 			/*
 				eventlist, _ := m.kubeclientset.EventsV1beta1().Events(ipres.imagepullrequest.Imagecache.Namespace).
 					List(metav1.ListOptions{FieldSelector: "involvedObject.name=" + pods[0].Name + ",reason=Failed"})
@@ -166,8 +166,22 @@ func (m *ImageManager) updateImageCacheStatus() {
 	//time.AfterFunc(time.Second*60, m.updatePendingImagePullResults)
 	time.Sleep(time.Second * 60)
 	m.updatePendingImagePullResults()
-	m.workqueue.AddRateLimited(WorkQueueKey{WorkType: ImageCacheStatusUpdate, Status: &m.imagepullstatus})
-	return
+	imagecache := &fledgedv1alpha1.ImageCache{}
+	for _, ipres := range m.imagepullstatus {
+		imagecache = ipres.ImagePullRequest.Imagecache
+		break
+	}
+	if objKey, err := cache.MetaNamespaceKeyFunc(imagecache); err == nil {
+		m.workqueue.AddRateLimited(WorkQueueKey{
+			WorkType: ImageCacheStatusUpdate,
+			Status:   &m.imagepullstatus,
+			ObjKey:   objKey,
+		})
+		return
+	} else {
+		runtime.HandleError(err)
+		return
+	}
 }
 
 func (m *ImageManager) Run(stopCh <-chan struct{}) {
@@ -238,7 +252,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
-		m.imagepullstatus[job.Name] = ImagePullResult{imagepullrequest: &ipr, status: "jobcreated"}
+		m.imagepullstatus[job.Name] = ImagePullResult{ImagePullRequest: &ipr, Status: "jobcreated"}
 		m.imagepullqueue.Forget(obj)
 		glog.Infof("Successfully created job to pull image '%s' to node '%s'", ipr.Image, ipr.Node)
 		return nil
