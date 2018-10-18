@@ -38,6 +38,11 @@
           "nodeSelector": {
             "kubernetes.io/hostname": "worker1.k8s.cis.com"
           }
+        },
+        {
+          "images": [
+            "nonexistentimage"
+          ]
         }
       ]
     }

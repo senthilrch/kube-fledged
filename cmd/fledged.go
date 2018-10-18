@@ -8,6 +8,7 @@ import (
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/clientcmd" // Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
+
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"k8s.io/kube-fledged/cmd/app"
 	clientset "k8s.io/kube-fledged/pkg/client/clientset/versioned"
@@ -16,9 +17,10 @@ import (
 )
 
 var (
-	masterURL    string
-	kubeconfig   string
-	backoffLimit int
+	masterURL                  string
+	kubeconfig                 string
+	imageCacheRefreshFrequency time.Duration
+	imagePullDeadlineDuration  time.Duration
 )
 
 func main() {
@@ -47,7 +49,8 @@ func main() {
 
 	controller := app.NewController(kubeClient, fledgedClient,
 		kubeInformerFactory.Core().V1().Nodes(),
-		fledgedInformerFactory.Fledged().V1alpha1().ImageCaches())
+		fledgedInformerFactory.Fledged().V1alpha1().ImageCaches(),
+		imageCacheRefreshFrequency, imagePullDeadlineDuration)
 
 	go kubeInformerFactory.Start(stopCh)
 	go fledgedInformerFactory.Start(stopCh)
@@ -60,5 +63,6 @@ func main() {
 func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig.")
-	flag.IntVar(&backoffLimit, "backoff-limit", 6, "Backoff limit refers to number of retries when image pull fails.")
+	flag.DurationVar(&imagePullDeadlineDuration, "image-pull-deadline-duration", time.Minute*5, "Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed")
+	flag.DurationVar(&imageCacheRefreshFrequency, "image-cache-refresh-frequency", time.Minute*5, "The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to 0s will disable refresh")
 }

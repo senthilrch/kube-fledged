@@ -21,7 +21,10 @@ spec:
           value: "6443"
         image: senthilrch/fledged
         command: ["/opt/bin/fledged"]
-        args: ["--stderrthreshold=INFO"]
+        args:
+        - "--stderrthreshold=INFO"
+        - "--image-pull-deadline-duration=1m"
+        - "--image-cache-refresh-frequency=0s"
         imagePullPolicy: Always
         name: fledged
       nodeSelector:

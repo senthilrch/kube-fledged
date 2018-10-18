@@ -18,6 +18,7 @@ package app
 
 import (
 	"fmt"
+	"reflect"
 	"time"
 
 	"github.com/golang/glog"
@@ -84,7 +85,8 @@ type Controller struct {
 	imageManager   *images.ImageManager
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
-	recorder record.EventRecorder
+	recorder                   record.EventRecorder
+	imageCacheRefreshFrequency time.Duration
 }
 
 // NewController returns a new fledged controller
@@ -92,7 +94,9 @@ func NewController(
 	kubeclientset kubernetes.Interface,
 	fledgedclientset clientset.Interface,
 	nodeInformer coreinformers.NodeInformer,
-	imageCacheInformer informers.ImageCacheInformer) *Controller {
+	imageCacheInformer informers.ImageCacheInformer,
+	imageCacheRefreshFrequency time.Duration,
+	imagePullDeadlineDuration time.Duration) *Controller {
 
 	// Create event broadcaster
 	// Add fledged types to the default Kubernetes Scheme so Events can be
@@ -105,18 +109,19 @@ func NewController(
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
 	controller := &Controller{
-		kubeclientset:     kubeclientset,
-		fledgedclientset:  fledgedclientset,
-		nodesLister:       nodeInformer.Lister(),
-		nodesSynced:       nodeInformer.Informer().HasSynced,
-		imageCachesLister: imageCacheInformer.Lister(),
-		imageCachesSynced: imageCacheInformer.Informer().HasSynced,
-		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches"),
-		imagepullqueue:    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus"),
-		recorder:          recorder,
+		kubeclientset:              kubeclientset,
+		fledgedclientset:           fledgedclientset,
+		nodesLister:                nodeInformer.Lister(),
+		nodesSynced:                nodeInformer.Informer().HasSynced,
+		imageCachesLister:          imageCacheInformer.Lister(),
+		imageCachesSynced:          imageCacheInformer.Informer().HasSynced,
+		workqueue:                  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches"),
+		imagepullqueue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus"),
+		recorder:                   recorder,
+		imageCacheRefreshFrequency: imageCacheRefreshFrequency,
 	}
 
-	imageManager := images.NewImageManager(controller.workqueue, controller.imagepullqueue, controller.kubeclientset, fledgedNameSpace)
+	imageManager := images.NewImageManager(controller.workqueue, controller.imagepullqueue, controller.kubeclientset, fledgedNameSpace, imagePullDeadlineDuration)
 	controller.imageManager = imageManager
 
 	glog.Info("Setting up event handlers")
@@ -174,19 +179,39 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
 
-	glog.Info("Starting workers")
+	glog.Info("Starting image cache worker")
 	// Launch workers to process ImageCache resources
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 
-	c.imageManager.Run(stopCh)
+	if c.imageCacheRefreshFrequency.Nanoseconds() != int64(0) {
+		glog.Info("Starting cache refresh worker")
+		go wait.Until(c.runRefreshWorker, c.imageCacheRefreshFrequency, stopCh)
+	}
 
 	glog.Info("Started workers")
+	c.imageManager.Run(stopCh)
+
 	<-stopCh
 	glog.Info("Shutting down workers")
 
 	return nil
+}
+
+// runRefreshWorker is resposible of refreshing the image cache
+func (c *Controller) runRefreshWorker() {
+	// List the ImageCache resources
+	imageCaches, err := c.imageCachesLister.ImageCaches(fledgedNameSpace).List(labels.Everything())
+	if err != nil {
+		glog.Errorf("Error in listing image caches: %v", err)
+		return
+	}
+	for i := range imageCaches {
+		if imageCaches[i].Status.Status != fledgedv1alpha1.ImageCacheActionStatusProcessing {
+			c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
+		}
+	}
 }
 
 // runWorker is a long-running function that will continually call the
@@ -234,12 +259,12 @@ func (c *Controller) processNextWorkItem() bool {
 		// Run the syncHandler, passing it the namespace/name string of the
 		// ImageCache resource to be synced.
 		if err := c.syncHandler(key); err != nil {
-			return fmt.Errorf("error syncing '%s': %s", key, err.Error())
+			return fmt.Errorf("error syncing imagecache: %v", err.Error())
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		c.workqueue.Forget(obj)
-		glog.Infof("Successfully synced '%s' for event '%s'", key.ObjKey, key.WorkType)
+		//glog.Infof("Successfully synced '%s' for event '%s'", key.ObjKey, key.WorkType)
 		return nil
 	}(obj)
 
@@ -255,7 +280,6 @@ func (c *Controller) processNextWorkItem() bool {
 // converge the two. It then updates the Status block of the ImageCache resource
 // with the current status of the resource.
 func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
-
 	status := &fledgedv1alpha1.ImageCacheStatus{
 		Failures: map[string]fledgedv1alpha1.NodeReasonMessage{},
 	}
@@ -267,8 +291,10 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		return nil
 	}
 
+	glog.Infof("Starting to sync image cache %s(%s)", name, wqKey.WorkType)
+
 	switch wqKey.WorkType {
-	case images.ImageCacheCreate:
+	case images.ImageCacheCreate, images.ImageCacheUpdate, images.ImageCacheRefresh:
 
 		// Get the ImageCache resource with this namespace/name
 		imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
@@ -283,7 +309,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		}
 
 		cacheSpec := imageCache.Spec.CacheSpec
-		glog.Infof("cacheSpec: %+v", cacheSpec)
+		//glog.Infof("cacheSpec: %+v", cacheSpec)
 		var nodes []*corev1.Node
 
 		status = &fledgedv1alpha1.ImageCacheStatus{
@@ -328,8 +354,8 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		}
 		c.imagepullqueue.AddRateLimited(images.ImagePullRequest{})
 
-		c.recorder.Event(imageCache, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
-		return nil
+		//c.recorder.Event(imageCache, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
+		//return nil
 
 	case images.ImageCacheStatusUpdate:
 		glog.Infof("wqKey.Status = %+v", wqKey.Status)
@@ -363,9 +389,12 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		if err != nil {
 			return err
 		}
-		return nil
+		//return nil
+	case images.ImageCacheDelete:
+		//TODO: Use finalizer. delete all images in the nodes. Once deleted, remove the finalizer
+		//For now we leave the images in the nodes.
 	}
-
+	glog.Infof("Completed sync actions for image cache %s(%s)", name, wqKey.WorkType)
 	return nil
 
 }
@@ -400,8 +429,14 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		obj = new
 	case images.ImageCacheUpdate:
 		obj = new
-		return
+		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
+		newImageCache := new.(*fledgedv1alpha1.ImageCache)
+		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
+			return
+		}
 	case images.ImageCacheDelete:
+		obj = old
+	case images.ImageCacheRefresh:
 		obj = old
 	}
 
