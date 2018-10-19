@@ -45,10 +45,10 @@ type ImageCacheSpec struct {
 
 // ImageCacheStatus is the status for a ImageCache resource
 type ImageCacheStatus struct {
-	Status   ImageCacheActionStatus       `json:"status"`
-	Reason   string                       `json:"reason"`
-	Message  string                       `json:"message"`
-	Failures map[string]NodeReasonMessage `json:"failures,omitempty"`
+	Status   ImageCacheActionStatus         `json:"status"`
+	Reason   string                         `json:"reason"`
+	Message  string                         `json:"message"`
+	Failures map[string][]NodeReasonMessage `json:"failures,omitempty"`
 }
 
 // NodeReasonMessage has failure reason and message for a node
@@ -81,18 +81,18 @@ const (
 
 // List of constants for ImageCacheReason
 const (
-	ImageCacheReasonPullingImages              = "PullingImages"
-	ImageCacheReasonImagesPulledSuccessfully   = "ImagesPulledSuccessfully"
-	ImageCacheReasonImagePullFailedOnAllNodes  = "ImagePullFailedOnAllNodes"
-	ImageCacheReasonImagePullFailedOnSomeNodes = "ImagePullFailedOnSomeNodes"
-	ImageCacheReasonImagePullStatusUnknown     = "ImagePullStatusUnknown"
+	ImageCacheReasonPullingImages                = "PullingImages"
+	ImageCacheReasonImagesPulledSuccessfully     = "ImagesPulledSuccessfully"
+	ImageCacheReasonImagePullFailedForSomeImages = "ImagePullFailedForSomeImages"
+	ImageCacheReasonImagePullFailedOnSomeNodes   = "ImagePullFailedOnSomeNodes"
+	ImageCacheReasonImagePullStatusUnknown       = "ImagePullStatusUnknown"
 )
 
 // List of constants for ImageCacheMessage
 const (
-	ImageCacheMessagePullingImages              = "Images are being pulled on to the nodes. Please view the status after some time"
-	ImageCacheMessageImagesPulledSuccessfully   = "All requested images pulled succesfuly to respective nodes"
-	ImageCacheMessageImagePullFailedOnAllNodes  = "Image pull failed on all nodes. Please see \"failures\" section"
-	ImageCacheMessageImagePullFailedOnSomeNodes = "Image pull failed on some nodes. Please see \"failures\" section"
-	ImageCacheMessageImagePullStatusUnknown     = "Unable to get the status of Image pull. Retry after some time or contact cluster administrator"
+	ImageCacheMessagePullingImages                = "Images are being pulled on to the nodes. Please view the status after some time"
+	ImageCacheMessageImagesPulledSuccessfully     = "All requested images pulled succesfuly to respective nodes"
+	ImageCacheMessageImagePullFailedForSomeImages = "Image pull failed for some images. Please see \"failures\" section"
+	ImageCacheMessageImagePullFailedOnSomeNodes   = "Image pull failed on some nodes. Please see \"failures\" section"
+	ImageCacheMessageImagePullStatusUnknown       = "Unable to get the status of Image pull. Retry after some time or contact cluster administrator"
 )

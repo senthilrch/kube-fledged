@@ -24,7 +24,7 @@ spec:
         args:
         - "--stderrthreshold=INFO"
         - "--image-pull-deadline-duration=1m"
-        - "--image-cache-refresh-frequency=0s"
+        - "--image-cache-refresh-frequency=1m"
         imagePullPolicy: Always
         name: fledged
       nodeSelector:

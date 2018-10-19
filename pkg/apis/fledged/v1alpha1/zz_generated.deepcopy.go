@@ -141,9 +141,17 @@ func (in *ImageCacheStatus) DeepCopyInto(out *ImageCacheStatus) {
 	*out = *in
 	if in.Failures != nil {
 		in, out := &in.Failures, &out.Failures
-		*out = make(map[string]NodeReasonMessage, len(*in))
+		*out = make(map[string][]NodeReasonMessage, len(*in))
 		for key, val := range *in {
-			(*out)[key] = val
+			var outVal []NodeReasonMessage
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				in, out := &val, &outVal
+				*out = make([]NodeReasonMessage, len(*in))
+				copy(*out, *in)
+			}
+			(*out)[key] = outVal
 		}
 	}
 	return

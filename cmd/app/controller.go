@@ -137,27 +137,6 @@ func NewController(
 			controller.enqueueImageCache(images.ImageCacheDelete, obj, nil)
 		},
 	})
-	// Set up an event handler for when Node resources change. This
-	// handler will lookup the owner of the given Node, and if it is
-	// owned by a Foo resource will enqueue that Foo resource for
-	// processing. This way, we don't need to implement custom logic for
-	// handling Node resources. More info on this pattern:
-	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
-	nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handleObject,
-		UpdateFunc: func(old, new interface{}) {
-			newNode := new.(*corev1.Node)
-			oldNode := old.(*corev1.Node)
-			if newNode.ResourceVersion == oldNode.ResourceVersion {
-				// Periodic resync will send update events for all known Nodes.
-				// Two different versions of the same Nodes will always have different RVs.
-				return
-			}
-			controller.handleObject(new)
-		},
-		DeleteFunc: controller.handleObject,
-	})
-
 	return controller
 }
 
@@ -199,19 +178,41 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	return nil
 }
 
-// runRefreshWorker is resposible of refreshing the image cache
-func (c *Controller) runRefreshWorker() {
-	// List the ImageCache resources
-	imageCaches, err := c.imageCachesLister.ImageCaches(fledgedNameSpace).List(labels.Everything())
-	if err != nil {
-		glog.Errorf("Error in listing image caches: %v", err)
+// enqueueImageCache takes a ImageCache resource and converts it into a namespace/name
+// string which is then put onto the work queue. This method should *not* be
+// passed resources of any type other than ImageCache.
+func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interface{}) {
+	var key string
+	var err error
+	var obj interface{}
+	var wqKey images.WorkQueueKey
+
+	switch workType {
+	case images.ImageCacheCreate:
+		obj = new
+	case images.ImageCacheUpdate:
+		obj = new
+		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
+		newImageCache := new.(*fledgedv1alpha1.ImageCache)
+		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
+			return
+		}
+	case images.ImageCacheDelete:
+		obj = old
+	case images.ImageCacheRefresh:
+		obj = old
+	}
+
+	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
+		runtime.HandleError(err)
 		return
 	}
-	for i := range imageCaches {
-		if imageCaches[i].Status.Status != fledgedv1alpha1.ImageCacheActionStatusProcessing {
-			c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
-		}
-	}
+	wqKey.WorkType = workType
+	wqKey.ObjKey = key
+
+	c.workqueue.AddRateLimited(wqKey)
+
+	glog.V(4).Infof("enqueueImageCache::ImageCache resource queued for work type %s", workType)
 }
 
 // runWorker is a long-running function that will continually call the
@@ -276,12 +277,28 @@ func (c *Controller) processNextWorkItem() bool {
 	return true
 }
 
+// runRefreshWorker is resposible of refreshing the image cache
+func (c *Controller) runRefreshWorker() {
+	// List the ImageCache resources
+	imageCaches, err := c.imageCachesLister.ImageCaches(fledgedNameSpace).List(labels.Everything())
+	if err != nil {
+		glog.Errorf("Error in listing image caches: %v", err)
+		return
+	}
+	for i := range imageCaches {
+		// Do not refresh if image cache is already under processing
+		if imageCaches[i].Status.Status != fledgedv1alpha1.ImageCacheActionStatusProcessing {
+			c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
+		}
+	}
+}
+
 // syncHandler compares the actual state with the desired, and attempts to
 // converge the two. It then updates the Status block of the ImageCache resource
 // with the current status of the resource.
 func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 	status := &fledgedv1alpha1.ImageCacheStatus{
-		Failures: map[string]fledgedv1alpha1.NodeReasonMessage{},
+		Failures: map[string][]fledgedv1alpha1.NodeReasonMessage{},
 	}
 
 	// Convert the namespace/name string into a distinct namespace and name
@@ -309,7 +326,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		}
 
 		cacheSpec := imageCache.Spec.CacheSpec
-		//glog.Infof("cacheSpec: %+v", cacheSpec)
+		glog.V(4).Infof("cacheSpec: %+v", cacheSpec)
 		var nodes []*corev1.Node
 
 		status = &fledgedv1alpha1.ImageCacheStatus{
@@ -335,7 +352,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 					return err
 				}
 			}
-			//glog.Infof("No. of nodes in %+v is %d", i.NodeSelector, len(nodes))
+			glog.V(4).Infof("No. of nodes in %+v is %d", i.NodeSelector, len(nodes))
 			if len(nodes) == 0 {
 				glog.Errorf("NodeSelector %+v did not match any nodes.", i.NodeSelector)
 				return fmt.Errorf("NodeSelector %+v did not match any nodes", i.NodeSelector)
@@ -362,7 +379,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		// Finally, we update the status block of the ImageCache resource to reflect the
 		// current state of the world
 		// Get the ImageCache resource with this namespace/name
-		//imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
 		imageCache, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			return err
@@ -374,14 +390,15 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
 		for _, v := range *wqKey.Status {
 			if v.Status == "failed" {
-				status.Failures[v.ImagePullRequest.Image] = fledgedv1alpha1.NodeReasonMessage{
-					Node:    v.ImagePullRequest.Node,
-					Reason:  v.Reason,
-					Message: v.Message,
-				}
+				status.Failures[v.ImagePullRequest.Image] = append(
+					status.Failures[v.ImagePullRequest.Image], fledgedv1alpha1.NodeReasonMessage{
+						Node:    v.ImagePullRequest.Node,
+						Reason:  v.Reason,
+						Message: v.Message,
+					})
 				status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
-				status.Reason = fledgedv1alpha1.ImageCacheReasonImagePullFailedOnSomeNodes
-				status.Message = fledgedv1alpha1.ImageCacheMessageImagePullFailedOnSomeNodes
+				status.Reason = fledgedv1alpha1.ImageCacheReasonImagePullFailedForSomeImages
+				status.Message = fledgedv1alpha1.ImageCacheMessageImagePullFailedForSomeImages
 			}
 		}
 
@@ -411,85 +428,4 @@ func (c *Controller) updateImageCacheStatus(imageCache *fledgedv1alpha1.ImageCac
 	// which is ideal for ensuring nothing other than resource status has been updated.
 	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
 	return err
-}
-
-// enqueueImageCache takes a ImageCache resource and converts it into a namespace/name
-// string which is then put onto the work queue. This method should *not* be
-// passed resources of any type other than ImageCache.
-func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interface{}) {
-	var key string
-	var err error
-	var obj interface{}
-	var wqKey images.WorkQueueKey
-
-	//glog.Info("enqueueImageCache::Processing ImageCache creation/modification...")
-
-	switch workType {
-	case images.ImageCacheCreate:
-		obj = new
-	case images.ImageCacheUpdate:
-		obj = new
-		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
-		newImageCache := new.(*fledgedv1alpha1.ImageCache)
-		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
-			return
-		}
-	case images.ImageCacheDelete:
-		obj = old
-	case images.ImageCacheRefresh:
-		obj = old
-	}
-
-	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
-		runtime.HandleError(err)
-		return
-	}
-	wqKey.WorkType = workType
-	wqKey.ObjKey = key
-
-	c.workqueue.AddRateLimited(wqKey)
-
-	//glog.Info("enqueueImageCache::ImageCache resource queued...")
-}
-
-// handleObject will take any resource implementing metav1.Object and attempt
-// to find the Foo resource that 'owns' it. It does this by looking at the
-// objects metadata.ownerReferences field for an appropriate OwnerReference.
-// It then enqueues that Foo resource to be processed. If the object does not
-// have an appropriate OwnerReference, it will simply be skipped.
-func (c *Controller) handleObject(obj interface{}) {
-	/*
-		var object metav1.Object
-		var ok bool
-		if object, ok = obj.(metav1.Object); !ok {
-			tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
-			if !ok {
-				runtime.HandleError(fmt.Errorf("error decoding object, invalid type"))
-				return
-			}
-			object, ok = tombstone.Obj.(metav1.Object)
-			if !ok {
-				runtime.HandleError(fmt.Errorf("error decoding object tombstone, invalid type"))
-				return
-			}
-			glog.V(4).Infof("Recovered deleted object '%s' from tombstone", object.GetName())
-		}
-		glog.V(4).Infof("Processing object: %s", object.GetName())
-		if ownerRef := metav1.GetControllerOf(object); ownerRef != nil {
-			// If this object is not owned by a Foo, we should not do anything more
-			// with it.
-			if ownerRef.Kind != "Foo" {
-				return
-			}
-
-			foo, err := c.foosLister.Foos(object.GetNamespace()).Get(ownerRef.Name)
-			if err != nil {
-				glog.V(4).Infof("ignoring orphaned object '%s' of foo '%s'", object.GetSelfLink(), ownerRef.Name)
-				return
-			}
-
-			c.enqueueFoo(foo)
-			return
-		}
-	*/
 }
