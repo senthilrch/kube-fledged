@@ -1,4 +1,4 @@
-.PHONY: clean image deploy update
+.PHONY: clean image push deploy update
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
@@ -30,11 +30,14 @@ fledged:
 image: clean fledged
 	cd build && docker build -t "senthilrch/fledged:latest" . && \
 	docker save -o fledged-latest.tar senthilrch/fledged:latest && \
-	gzip fledged-latest.tar && docker push senthilrch/fledged:latest
+	gzip fledged-latest.tar
+
+push:
+	docker push senthilrch/fledged:latest
 
 deploy:
-	kubectl apply -f deploy/fledged-crd.yaml && \
-	kubectl apply -f deploy/fledged-namespace.yaml && \
+	kubectl apply -f deploy/fledged-crd.yaml && sleep 2 && \
+	kubectl apply -f deploy/fledged-namespace.yaml && sleep 2 && \
 	kubectl apply -f deploy/fledged-serviceaccount.yaml && \
 	kubectl apply -f deploy/fledged-clusterrole.yaml && \
 	kubectl apply -f deploy/fledged-clusterrolebinding.yaml && \
