@@ -296,10 +296,14 @@ func (m *ImageManager) processNextWorkItem() bool {
 	return true
 }
 
-// PullImageToNode pulls the image to the node. Performs retries based on error
+// pullImage pulls the image to the node
 func (m *ImageManager) pullImage(ipr ImagePullRequest) (*batchv1.Job, error) {
-	// Define new Job manifest
-	newjob := newJob(ipr.Imagecache, ipr.Image, ipr.Node)
+	// Construct the Job manifest
+	newjob, err := newJob(ipr.Imagecache, ipr.Image, ipr.Node)
+	if err != nil {
+		glog.Errorf("Error when constructing job manifest: %v", err)
+		return nil, err
+	}
 	// Create a Job to pull the image into the node
 	job, err := m.kubeclientset.BatchV1().Jobs(ipr.Imagecache.Namespace).Create(newjob)
 	if err != nil {
@@ -309,10 +313,11 @@ func (m *ImageManager) pullImage(ipr ImagePullRequest) (*batchv1.Job, error) {
 	return job, nil
 }
 
-func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string) *batchv1.Job {
+// newJob constructs a job manifest for pulling an image to a node
+func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string) (*batchv1.Job, error) {
 	if imagecache == nil {
-		glog.Info("imagecache pointer is nil")
-		return nil
+		glog.Error("imagecache pointer is nil")
+		return nil, fmt.Errorf("imagecache pointer is nil")
 	}
 
 	labels := map[string]string{
@@ -389,10 +394,10 @@ func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname strin
 					},
 					RestartPolicy: corev1.RestartPolicyNever,
 					//ActiveDeadlineSeconds: &activeDeadlineSeconds,
+					ImagePullSecrets: imagecache.Spec.ImagePullSecrets,
 				},
 			},
 		},
 	}
-
-	return job
+	return job, nil
 }
