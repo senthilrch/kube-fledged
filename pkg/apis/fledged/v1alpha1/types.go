@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 // +genclient
@@ -41,6 +42,7 @@ type CacheSpecImages struct {
 // ImageCacheSpec is the spec for a ImageCache resource
 type ImageCacheSpec struct {
 	CacheSpec []CacheSpecImages `json:"cacheSpec"`
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 // ImageCacheStatus is the status for a ImageCache resource

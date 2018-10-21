@@ -1,21 +1,14 @@
 # kube-fledged
 
-kube-fledged is a kubernetes application for creating and managing a cache of container images in a kubernetes
-cluster. It allows a user to define a list of images and onto which worker nodes those images should be cached
-(i.e. pre-pulled). This enables application Pods to be up and running almost instantly, since the images need not
-be pulled from the registry.
+kube-fledged is a kubernetes application for creating and managing a cache of container images in a kubernetes cluster. It allows a user to define a list of images and onto which worker nodes those images should be cached (i.e. pre-pulled). This enables application Pods to be up and running almost instantly, since the images need not be pulled from the registry.
 
-kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable
-parameters to customize the functioning as per one's needs.
+kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable parameters to customize the functioning as per one's needs. 
 
 ## Use cases
 
-- Applications that require rapid start-up. For e.g. an application performing real-time data processing needs to
-scale rapidly due to a burst in traffic.
-- IoT applications that run on Edge devices where the network connectivity between the edge and image registry is
-intermittent.
-- If a cluster administrator or operator needs to roll-out upgrades to an application and want to verify before-hand
-if the new images can be pulled successfully.
+- Applications that require rapid start-up. For e.g. an application performing real-time data processing needs to scale rapidly due to a burst in traffic.
+- IoT applications that run on Edge devices where the network connectivity between the edge and image registry is intermittent.
+- If a cluster administrator or operator needs to roll-out upgrades to an application and want to verify before-hand if the new images can be pulled successfully.
 
 ## Build and Deploy
 
@@ -23,10 +16,9 @@ These instructions will help you build kube-fledged from source and deploy it on
 
 ### Prerequisites
 
-- A functioning kubernetes cluster (v1.12 or above). It could be a simple development cluster like minikube or a large
-production cluster.
+- A functioning kubernetes cluster (v1.12 or above). It could be a simple development cluster like minikube or a large production cluster.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- make, go (v1.11 or above) and kubectl installed on a local machine. kubectl configured properly to access the cluster.
+- make, go and kubectl installed on a local machine. kubectl configured properly to access the cluster.
 
 ### Build
 
@@ -47,16 +39,16 @@ $ cd kube-fledged
 $ git checkout fledged_stable
 ```
 
-Build and push the docker image to registry (e.g. Docker hub).
+Build and push the docker image to your registry
 
 ```
-$ export FLEDGED_REPOSITORY=<your registry>/fledged:<your tag>
+$ export FLEDGED_IMAGE_NAME=<your registry>/fledged:<your tag>
 $ make image && make push
 ```
 
 ### Deploy
 
-All manifests required for deploying are present inside kube-fledged/deploy. These steps deploys the
+All manifests required for deploying are present inside kube-fledged/deploy. These steps deploy the
 application into a separate namespace called "kube-fledged" with default configuration flags.
 
 Edit "fledged-deployment.yaml":-
@@ -74,6 +66,14 @@ Edit "fledged-deployment.yaml":-
         image: <your registry>/fledged:<your tag>
 ```
 
+If you pushed the image to a private registry, add imagePullSecrets to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod)
+
+```
+      serviceAccountName: fledged
+      imagePullSecrets:
+        - name: <your registry key>
+```
+
 Deploy the application to the cluster
 ```
 $ make deploy
@@ -82,7 +82,7 @@ $ make deploy
 Verify if the application is up and running
 ```
 $ kubectl get pods -n kube-fledged -l app=fledged
-$ kubectl logs <pod name output from above command> -n kube-fledged
+$ kubectl logs <pod name obtained from above command> -n kube-fledged
 ```
 
 ## Manage image cache
@@ -116,6 +116,7 @@ Give an example
 
 * [kubernetes/sample-controller](https://github.com/kubernetes/sample-controller) - Building our own kubernetes-style controller using CRD.
 * [Dep](https://github.com/golang/dep) - Go dependency management tool
+* [Make](https://www.gnu.org/software/make/) - GNU Make
 
 ## Contributing
 
