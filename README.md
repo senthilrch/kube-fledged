@@ -1,24 +1,24 @@
 # kube-fledged
 
-kube-fledged is a kubernetes application for creating and managing a cache of container images in a kubernetes cluster. It allows a user to define a list of images and onto which worker nodes those images should be cached (i.e. pre-pulled). This enables application Pods to be up and running almost instantly, since the images need not be pulled from the registry.
+**_kube-fledged_** is a kubernetes application for creating and managing a cache of container images in a kubernetes cluster. It allows a user to define a list of images and onto which worker nodes those images should be cached (i.e. pre-pulled). This enables application Pods to start almost instantly, since the images need not be pulled from the registry.
 
-kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable parameters to customize the functioning as per one's needs. 
+_kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable parameters to customize the functioning as per one's needs. 
 
 ## Use cases
 
-- Applications that require rapid start-up. For e.g. an application performing real-time data processing needs to scale rapidly due to a burst in traffic.
-- IoT applications that run on Edge devices where the network connectivity between the edge and image registry is intermittent.
-- If a cluster administrator or operator needs to roll-out upgrades to an application and want to verify before-hand if the new images can be pulled successfully.
+- Applications that require rapid start-up. For e.g. an application performing real-time data processing needs to scale rapidly due to a burst in data volume.
+- IoT applications that run on Edge devices when the network connectivity between the edge and image registry is intermittent.
+- If a cluster administrator or operator needs to roll-out upgrades to an application and wants to verify before-hand if the new images can be pulled successfully.
 
 ## Build and Deploy
 
-These instructions will help you build kube-fledged from source and deploy it on a kubernetes cluster.
+These instructions will help you build _kube-fledged_ from source and deploy it on a kubernetes cluster.
 
 ### Prerequisites
 
 - A functioning kubernetes cluster (v1.12 or above). It could be a simple development cluster like minikube or a large production cluster.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- make, go, docker and kubectl installed on a local machine. kubectl configured properly to access the cluster.
+- make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
 
 ### Build
 
@@ -29,32 +29,30 @@ $ mkdir -p $HOME/src && mkdir -p $HOME/src/k8s.io
 $ export GOPATH=$HOME
 ```
 
-Clone the repository and switch to "fledged_stable" branch
+Clone the repository
 
 ```
-$ cd $HOME/src/k8s.io
 $ git clone https://senthilrch@bitbucket.org/senthilrch/kube-fledged.git $HOME/src/k8s.io/kube-fledged
-$ cd kube-fledged
-$ git checkout fledged_stable
+$ cd $HOME/src/k8s.io/kube-fledged
 ```
 
-Build and push the docker image to your registry
+Build and push the docker image to registry (e.g. Docker hub)
 
 ```
-$ export FLEDGED_IMAGE_NAME=<your registry>/fledged:<your tag>
+$ export FLEDGED_IMAGE_NAME=<your docker hub username>/fledged:<your tag>
+$ docker login -u <username> -p <password>
 $ make image && make push
 ```
 
 ### Deploy
 
-All manifests required for deploying are present inside kube-fledged/deploy. These steps deploy the
-application into a separate namespace called "kube-fledged" with default configuration flags.
+All manifests required for deploying _kube-fledged_ are present inside kube-fledged/deploy. These steps deploy _kube-fledged_ into a separate namespace called "kube-fledged" with default configuration flags.
 
 Edit "fledged-deployment.yaml":-
 
 - Set the value of KUBERNETES_SERVICE_HOST to the IP/hostname of api server of the cluster 
 - Set KUBERNETES_SERVICE_PORT to port number of api server
-- Set "image" to "<your registry>/fledged:<your tag>"
+- Set "image" to "<your docker hub username>/fledged:<your tag>"
 
 ```
       - env:
@@ -62,10 +60,10 @@ Edit "fledged-deployment.yaml":-
           value: "<IP or hostname of api server>"
         - name: KUBERNETES_SERVICE_PORT
           value: "<port number of api server>"
-        image: <your registry>/fledged:<your tag>
+        image: <your docker hub username>/fledged:<your tag>
 ```
 
-If you pushed the image to a private registry, add imagePullSecrets to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod)
+If you pushed the image to a private repository, add imagePullSecrets to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod)
 
 ```
       serviceAccountName: fledged
@@ -73,43 +71,67 @@ If you pushed the image to a private registry, add imagePullSecrets to the end o
         - name: <your registry key>
 ```
 
-Deploy the application to the cluster
+Deploy _kube-fledged_ to the cluster
 ```
 $ make deploy
 ```
 
-Verify if the application is up and running
+Verify if _kube-fledged_ is up and running
 ```
 $ kubectl get pods -n kube-fledged -l app=fledged
 $ kubectl logs <pod name obtained from above command> -n kube-fledged
 ```
 
-## Manage image cache
+## How to use
 
-## Documentation
+_kube-fledged_ provides APIs to perform CRUD operations on image cache.  These APIs can be consumed via kubectl or curl
 
-- API reference
-- Configuration Flags
+### Create image cache
 
-## Running the tests
-
-Explain how to run the automated tests for this system
-
-### Break down into end to end tests
-
-Explain what these tests test and why
-
+Refer to sample image cache manifest in "deploy/fledged-imagecache.json". Edit it as per your needs before creating image cache. If images are in private repositories requiring credentials to pull, add "imagePullSecrets" to the end.
 ```
-Give an example
+      "imagePullSecrets": [
+        {
+          "name": "regcred"
+        }
+      ]
 ```
 
-### And coding style tests
-
-Explain what these tests test and why
-
+Create the image cache using kubectl. Verify successful creation
 ```
-Give an example
+$ kubectl create -f deploy/fledged-imagecache.json
+$ kubectl get imagecaches -n kube-fledged
 ```
+
+### View the status of image cache
+
+Use following command to view the status of image cache in "json" format.
+```
+$ kubectl get imagecaches imagecache1 -n kube-fledged -o json
+```
+
+### Add/remove images in image cache
+
+Use kubectl edit command to add/remove images in image cache. The edit command opens the manifest in an editor. Edit your changes, save and exit.
+```
+$ kubectl edit imagecaches imagecache1 -n kube-fledged
+$ kubectl get imagecaches imagecache1 -n kube-fledged -o json
+```
+
+### Delete image cache
+
+An existing image cache can be deleted using following command.
+```
+$ kubectl delete imagecaches imagecache1 -n kube-fledged
+```
+
+## Configuration Flags
+
+`--image-pull-deadline-duration:` Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed. e.g. "5m"
+
+`--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. e.g. "15m"
+
+`--stderrthreshold:` Log level. set the value of this flag to INFO
 
 ## Built With
 
@@ -117,22 +139,16 @@ Give an example
 * [Dep](https://github.com/golang/dep) - Go dependency management tool
 * [Make](https://www.gnu.org/software/make/) - GNU Make
 
-## Contributing
-
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
-
 ## Authors
 
-* **Senthil Raja Chermapandian** - *v1.0* - [senthilrch](https://github.com/senthilrch)
+* **Senthil Raja Chermapandian** : [senthilrch](https://github.com/senthilrch)
 
 See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
+
+## Contributing
+
+Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests.
 
 ## License
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE.md](LICENSE.md) file for details
-
-## Acknowledgments
-
-* Hat tip to anyone whose code was used
-* Inspiration
-* etc
