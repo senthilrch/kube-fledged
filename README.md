@@ -18,23 +18,22 @@ These instructions will help you build kube-fledged from source and deploy it on
 
 - A functioning kubernetes cluster (v1.12 or above). It could be a simple development cluster like minikube or a large production cluster.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- make, go and kubectl installed on a local machine. kubectl configured properly to access the cluster.
+- make, go, docker and kubectl installed on a local machine. kubectl configured properly to access the cluster.
 
 ### Build
 
 Create the source code directories on local machine and setup $GOPATH
 
 ```
-$ mkdir -p src
-$ export GOPATH=$GOPATH:$PWD/src
-$ mkdir -p src/k8s.io
+$ mkdir -p $HOME/src && mkdir -p $HOME/src/k8s.io
+$ export GOPATH=$HOME
 ```
 
-Clone the repository to src/k8s.io and switch to "fledged_stable" branch
+Clone the repository and switch to "fledged_stable" branch
 
 ```
-$ cd src/k8s.io
-$ git clone https://senthilrch@bitbucket.org/senthilrch/kube-fledged.git
+$ cd $HOME/src/k8s.io
+$ git clone https://senthilrch@bitbucket.org/senthilrch/kube-fledged.git $HOME/src/k8s.io/kube-fledged
 $ cd kube-fledged
 $ git checkout fledged_stable
 ```
