@@ -38,11 +38,20 @@ import (
 
 const controllerAgentName = "fledged"
 
-// ImageManager provides the functionalities for image pulling and image removal
+const (
+	ImagePullResultStatusSucceeded  = "succeeded"
+	ImagePullResultStatusFailed     = "failed"
+	ImagePullResultStatusJobCreated = "jobcreated"
+
+	ImagePullResultReasonImagePullFailed = "imagepullfailed"
+
+	ImagePullResultMessageImagePullFailed = "failed to pull image to node. for details, please check events of pod"
+)
+
+// ImageManager provides the functionalities for pulling and deleting images
 type ImageManager struct {
-	workqueue      workqueue.RateLimitingInterface
-	imagepullqueue workqueue.RateLimitingInterface
-	// kubeclientset is a standard kubernetes clientset
+	workqueue                 workqueue.RateLimitingInterface
+	imagepullqueue            workqueue.RateLimitingInterface
 	kubeclientset             kubernetes.Interface
 	imagepullstatus           map[string]ImagePullResult
 	kubeInformerFactory       kubeinformers.SharedInformerFactory
@@ -51,12 +60,14 @@ type ImageManager struct {
 	imagePullDeadlineDuration time.Duration
 }
 
+// ImagePullRequest has image name and node name
 type ImagePullRequest struct {
 	Image      string
 	Node       string
 	Imagecache *fledgedv1alpha1.ImageCache
 }
 
+// ImagePullResult stores the result of pulling image
 type ImagePullResult struct {
 	ImagePullRequest *ImagePullRequest
 	Status           string
@@ -64,8 +75,10 @@ type ImagePullResult struct {
 	Message          string
 }
 
+// WorkType refers to type of work to be done by sync handler
 type WorkType string
 
+// Work types
 const (
 	ImageCacheCreate       WorkType = "create"
 	ImageCacheUpdate       WorkType = "update"
@@ -74,12 +87,14 @@ const (
 	ImageCacheRefresh      WorkType = "refresh"
 )
 
+// WorkQueueKey is an item in the sync handler's work queue
 type WorkQueueKey struct {
 	WorkType WorkType
 	ObjKey   string
 	Status   *map[string]ImagePullResult
 }
 
+// NewImageManager returns a new image manager object
 func NewImageManager(
 	workqueue workqueue.RateLimitingInterface,
 	imagepullqueue workqueue.RateLimitingInterface,
@@ -93,37 +108,33 @@ func NewImageManager(
 		kubeinformers.WithNamespace(namespace))
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 
-	//podInformer := coreinformers.NewPodInformer(kubeclientset, namespace, time.Second*30, nil)
-
 	imagemanager := &ImageManager{
-		workqueue:           workqueue,
-		imagepullqueue:      imagepullqueue,
-		kubeclientset:       kubeclientset,
-		imagepullstatus:     map[string]ImagePullResult{},
-		kubeInformerFactory: kubeInformerFactory,
-		podsLister:          podInformer.Lister(),
-		//podsLister: corelisters.NewPodLister(podInformer.GetIndexer()),
-		podsSynced: podInformer.Informer().HasSynced,
-		//podsSynced: podInformer.HasSynced,
+		workqueue:                 workqueue,
+		imagepullqueue:            imagepullqueue,
+		kubeclientset:             kubeclientset,
+		imagepullstatus:           map[string]ImagePullResult{},
+		kubeInformerFactory:       kubeInformerFactory,
+		podsLister:                podInformer.Lister(),
+		podsSynced:                podInformer.Informer().HasSynced,
 		imagePullDeadlineDuration: imagePullDeadlineDuration,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		//AddFunc: controller.handleObject,
+		//AddFunc: ,
 		UpdateFunc: func(old, new interface{}) {
 			newPod := new.(*corev1.Pod)
 			oldPod := old.(*corev1.Pod)
 			if newPod.ResourceVersion == oldPod.ResourceVersion {
-				// Periodic resync will send update events for all known Nodes.
-				// Two different versions of the same Nodes will always have different RVs.
+				// Periodic resync will send update events for all known Pods.
+				// Two different versions of the same Pod will always have different RVs.
 				return
 			}
-			//glog.Infof("Pod %s changed status to %s", newPod.Name, newPod.Status.Phase)
+			glog.V(4).Infof("Pod %s changed status to %s", newPod.Name, newPod.Status.Phase)
 			if (newPod.Status.Phase == corev1.PodSucceeded || newPod.Status.Phase == corev1.PodFailed) &&
 				(oldPod.Status.Phase != corev1.PodSucceeded && oldPod.Status.Phase != corev1.PodFailed) {
 				imagemanager.handlePodStatusChange(newPod)
 			}
 		},
-		//DeleteFunc: controller.handleObject,
+		//DeleteFunc: ,
 	})
 	return imagemanager
 }
@@ -132,28 +143,50 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 	glog.Infof("Pod %s changed status to %s", pod.Name, pod.Status.Phase)
 	ipres := m.imagepullstatus[pod.Labels["job-name"]]
 	if pod.Status.Phase == corev1.PodSucceeded {
-		ipres.Status = "succeeded"
+		ipres.Status = ImagePullResultStatusSucceeded
 	}
 	if pod.Status.Phase == corev1.PodFailed {
-		ipres.Status = "failed"
-		ipres.Reason = "imagepullfailed"
-		ipres.Message = "failed to pull image to node. for details, please check events of pod " + pod.Name
+		ipres.Status = ImagePullResultStatusFailed
+		ipres.Reason = ImagePullResultReasonImagePullFailed
+		ipres.Message = ImagePullResultMessageImagePullFailed + " " + pod.Name
 	}
 	m.imagepullstatus[pod.Labels["job-name"]] = ipres
-	//glog.Infof("imagepullstatus map: %+v", m.imagepullstatus)
 }
 
-func (m *ImageManager) updatePendingImagePullResults() {
-	//glog.Infof("Inside updatePendingImagePullResults()")
-	//glog.Infof("imagepullstatus map: %+v", m.imagepullstatus)
+func (m *ImageManager) updatePendingImagePullResults() error {
 	for job, ipres := range m.imagepullstatus {
-		if ipres.Status == "jobcreated" {
-			pods, _ := m.podsLister.Pods(ipres.ImagePullRequest.Imagecache.Namespace).
+		if ipres.Status == ImagePullResultStatusJobCreated {
+			if ipres.ImagePullRequest == nil {
+				glog.Errorf("Error accessing ImagePullRequest for job %s", job)
+				return fmt.Errorf("Error accessing ImagePullRequest for job %s", job)
+			}
+			pods, err := m.podsLister.Pods(ipres.ImagePullRequest.Imagecache.Namespace).
 				List(labels.Set(map[string]string{"job-name": job}).AsSelector())
-			ipres.Status = "failed"
-			ipres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
-			ipres.Message = pods[0].Status.ContainerStatuses[0].State.Waiting.Message +
-				": failed to pull image to node. for details, please check events of pod " + pods[0].Name
+			if err != nil {
+				glog.Errorf("Error listing Pods: %v", err)
+				return err
+			}
+			if len(pods) == 0 {
+				glog.Errorf("No pods matched job %s", job)
+				return fmt.Errorf("No pods matched job %s", job)
+			}
+			if len(pods) > 1 {
+				glog.Errorf("More than one pod matched job %s", job)
+				return fmt.Errorf("More than one pod matched job %s", job)
+			}
+			ipres.Status = ImagePullResultStatusFailed
+			if pods[0].Status.Phase == corev1.PodPending {
+				if pods[0].Status.ContainerStatuses[0].State.Waiting != nil {
+					ipres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
+					ipres.Message = pods[0].Status.ContainerStatuses[0].State.Waiting.Message +
+						": " + ImagePullResultMessageImagePullFailed + " " + pods[0].Name
+				}
+				if pods[0].Status.ContainerStatuses[0].State.Terminated != nil {
+					ipres.Reason = pods[0].Status.ContainerStatuses[0].State.Terminated.Reason
+					ipres.Message = pods[0].Status.ContainerStatuses[0].State.Terminated.Message +
+						": " + ImagePullResultMessageImagePullFailed + " " + pods[0].Name
+				}
+			}
 			/*
 				eventlist, _ := m.kubeclientset.EventsV1beta1().Events(ipres.imagepullrequest.Imagecache.Namespace).
 					List(metav1.ListOptions{FieldSelector: "involvedObject.name=" + pods[0].Name + ",reason=Failed"})
@@ -164,56 +197,74 @@ func (m *ImageManager) updatePendingImagePullResults() {
 			m.imagepullstatus[job] = ipres
 		}
 	}
-	//glog.Infof("imagepullstatus map: %+v", m.imagepullstatus)
+	glog.V(4).Infof("imagepullstatus map: %+v", m.imagepullstatus)
+	return nil
 }
 
-func (m *ImageManager) updateImageCacheStatus() {
+func (m *ImageManager) updateImageCacheStatus() error {
 	//time.Sleep(m.imagePullDeadlineDuration)
 	wait.Poll(time.Second, m.imagePullDeadlineDuration,
 		func() (done bool, err error) {
 			done, err = true, nil
 			for _, ipres := range m.imagepullstatus {
-				if ipres.Status == "jobcreated" {
+				if ipres.Status == ImagePullResultStatusJobCreated {
 					done, err = false, nil
 					return
 				}
 			}
 			return
 		})
-	m.updatePendingImagePullResults()
+	err := m.updatePendingImagePullResults()
+	if err != nil {
+		return err
+	}
 
 	ipstatus := map[string]ImagePullResult{}
+
 	deletePropagation := metav1.DeletePropagationBackground
 	for job, ipres := range m.imagepullstatus {
 		ipstatus[job] = ipres
 		// delete successful jobs
-		if ipres.Status == "succeeded" {
+		if ipres.Status == ImagePullResultStatusSucceeded {
+			if ipres.ImagePullRequest == nil {
+				glog.Errorf("Unable to access ImagePullRequest for job %s", job)
+				return fmt.Errorf("Unable to access ImagePullRequest for job %s", job)
+			}
 			if err := m.kubeclientset.BatchV1().Jobs(ipres.ImagePullRequest.Imagecache.Namespace).
 				Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
-				glog.Warningf("Unable to delete job %s: %v", job, err)
+				glog.Errorf("Error deleting job %s: %v", job, err)
+				return err
 			}
 		}
 	}
 
 	imagecache := &fledgedv1alpha1.ImageCache{}
 	for _, ipres := range m.imagepullstatus {
-		imagecache = ipres.ImagePullRequest.Imagecache
-		break
+		if ipres.ImagePullRequest != nil {
+			imagecache = ipres.ImagePullRequest.Imagecache
+			break
+		}
 	}
-	if objKey, err := cache.MetaNamespaceKeyFunc(imagecache); err == nil {
-		m.workqueue.AddRateLimited(WorkQueueKey{
-			WorkType: ImageCacheStatusUpdate,
-			Status:   &ipstatus,
-			ObjKey:   objKey,
-		})
-		m.imagepullstatus = map[string]ImagePullResult{}
-		return
-	} else {
-		runtime.HandleError(err)
-		return
+
+	if imagecache == nil {
+		glog.Errorf("Unable to obtain reference to image cache")
+		return fmt.Errorf("Unable to obtain reference to image cache")
 	}
+	objKey, err := cache.MetaNamespaceKeyFunc(imagecache)
+	if err != nil {
+		glog.Errorf("Error from cache.MetaNamespaceKeyFunc(imagecache): %v", err)
+		return err
+	}
+	m.workqueue.AddRateLimited(WorkQueueKey{
+		WorkType: ImageCacheStatusUpdate,
+		Status:   &ipstatus,
+		ObjKey:   objKey,
+	})
+	m.imagepullstatus = map[string]ImagePullResult{}
+	return nil
 }
 
+// Run starts the Image Manager go routine
 func (m *ImageManager) Run(stopCh <-chan struct{}) {
 	defer runtime.HandleCrash()
 	glog.Info("Starting image manager")
@@ -271,7 +322,9 @@ func (m *ImageManager) processNextWorkItem() bool {
 
 		if (ipr == ImagePullRequest{}) {
 			m.imagepullqueue.Forget(obj)
-			m.updateImageCacheStatus()
+			if err := m.updateImageCacheStatus(); err != nil {
+				return err
+			}
 			return nil
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
