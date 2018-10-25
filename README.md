@@ -127,11 +127,11 @@ $ kubectl delete imagecaches imagecache1 -n kube-fledged
 
 ## How it works
 
-Kubernetes allows developers to extend the kubernetes api via [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/). Kube-fledged defines a custom resource of kind “ImageCache” and implements a custom controller (named _fledged_) that does the heavy-lifting. This allows users to use kubectl commands for creation and deletion of ImageCache resources.
+Kubernetes allows developers to extend the kubernetes api via [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/). _kube-fledged_ defines a custom resource of kind “ImageCache” and implements a custom controller (named _fledged_). _fledged_ does the heavy-lifting for managing image cache. Users can use kubectl commands for creation and deletion of ImageCache resources.
 
 _fledged_ has a built-in image manager routine that is responsible for pulling images. Images are pulled on to nodes using kubernetes jobs. If enabled, image cache is refreshed periodically by the refresh worker. _fledged_ updates the status of image pulls and refreshes in the status field of ImageCache resource.
 
-For more detailed description, go through _kube-fledged’s_ [design proposal](docs/cluster-image-cache.md).
+For more detailed description, go through _kube-fledged's_ [design proposal](docs/cluster-image-cache.md).
 
 
 ## Configuration Flags
