@@ -125,6 +125,15 @@ An existing image cache can be deleted using following command.
 $ kubectl delete imagecaches imagecache1 -n kube-fledged
 ```
 
+## How it works
+
+Kubernetes allows developers to extend the kubernetes api via [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/). Kube-fledged defines a custom resource of kind “ImageCache” and implements a custom controller (named _fledged_) that does the heavy-lifting. This allows users to use kubectl commands for creation and deletion of ImageCache resources.
+
+_fledged_ has a built-in image manager routine that is responsible for pulling images. Images are pulled on to nodes using kubernetes jobs. If enabled, image cache is refreshed periodically by the refresh worker. _fledged_ updates the status of image pulls and refreshes in the status field of ImageCache resource.
+
+For more detailed description, go through _kube-fledged’s_ [design proposal](docs/cluster-image-cache.md).
+
+
 ## Configuration Flags
 
 `--image-pull-deadline-duration:` Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed. e.g. "5m"
@@ -139,15 +148,10 @@ $ kubectl delete imagecaches imagecache1 -n kube-fledged
 * [Dep](https://github.com/golang/dep) - Go dependency management tool
 * [Make](https://www.gnu.org/software/make/) - GNU Make
 
-## Authors
-
-* **Senthil Raja Chermapandian** : [senthilrch](https://github.com/senthilrch)
-
-See also the list of [contributors](https://github.com/your/project/contributors) who participated in this project.
 
 ## Contributing
 
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests.
+Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of conduct, and the process for submitting pull requests.
 
 ## License
 
