@@ -142,6 +142,11 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 `--stderrthreshold:` Log level. set the value of this flag to INFO
 
+## Supported Platforms
+
+- linux/amd64
+
+
 ## Built With
 
 * [kubernetes/sample-controller](https://github.com/kubernetes/sample-controller) - Building our own kubernetes-style controller using CRD.
