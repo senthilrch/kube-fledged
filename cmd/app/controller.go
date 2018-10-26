@@ -49,21 +49,14 @@ const controllerAgentName = "fledged"
 const fledgedNameSpace = "kube-fledged"
 
 const (
-	// SuccessSynced is used as part of the Event 'reason' when a Foo is synced
+	// SuccessSynced is used as part of the Event 'reason' when a ImageCache is synced
 	SuccessSynced = "Synced"
-	// ErrResourceExists is used as part of the Event 'reason' when a Foo fails
-	// to sync due to a Deployment of the same name already existing.
-	ErrResourceExists = "ErrResourceExists"
-
-	// MessageResourceExists is the message used for Events when a resource
-	// fails to sync due to a Deployment already existing
-	MessageResourceExists = "Resource %q already exists and is not managed by Foo"
-	// MessageResourceSynced is the message used for an Event fired when a Foo
+	// MessageResourceSynced is the message used for an Event fired when a ImageCache
 	// is synced successfully
 	MessageResourceSynced = "Foo synced successfully"
 )
 
-// Controller is the controller implementation for ImageCache resources
+// Controller is the controller for ImageCache resources
 type Controller struct {
 	// kubeclientset is a standard kubernetes clientset
 	kubeclientset kubernetes.Interface
@@ -98,9 +91,6 @@ func NewController(
 	imageCacheRefreshFrequency time.Duration,
 	imagePullDeadlineDuration time.Duration) *Controller {
 
-	// Create event broadcaster
-	// Add fledged types to the default Kubernetes Scheme so Events can be
-	// logged for fledged types.
 	utilruntime.Must(fledgedscheme.AddToScheme(scheme.Scheme))
 	glog.V(4).Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
@@ -369,6 +359,8 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 				}
 			}
 		}
+		// We add an empty image pull request to signal the image manager that all
+		// requests for this sync action have been placed in the imagepullqueue
 		c.imagepullqueue.AddRateLimited(images.ImagePullRequest{})
 
 		//c.recorder.Event(imageCache, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
@@ -381,6 +373,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		// Get the ImageCache resource with this namespace/name
 		imageCache, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
+			glog.Errorf("Error getting image cache %s: %v", name, err)
 			return err
 		}
 
@@ -389,24 +382,26 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		status.Message = fledgedv1alpha1.ImageCacheMessageImagesPulledSuccessfully
 
 		for _, v := range *wqKey.Status {
-			if v.Status == "failed" {
-				status.Failures[v.ImagePullRequest.Image] = append(
-					status.Failures[v.ImagePullRequest.Image], fledgedv1alpha1.NodeReasonMessage{
-						Node:    v.ImagePullRequest.Node,
-						Reason:  v.Reason,
-						Message: v.Message,
-					})
-				status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
-				status.Reason = fledgedv1alpha1.ImageCacheReasonImagePullFailedForSomeImages
-				status.Message = fledgedv1alpha1.ImageCacheMessageImagePullFailedForSomeImages
+			if v.Status == images.ImagePullResultStatusFailed {
+				if v.ImagePullRequest != nil {
+					status.Failures[v.ImagePullRequest.Image] = append(
+						status.Failures[v.ImagePullRequest.Image], fledgedv1alpha1.NodeReasonMessage{
+							Node:    v.ImagePullRequest.Node,
+							Reason:  v.Reason,
+							Message: v.Message,
+						})
+					status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
+					status.Reason = fledgedv1alpha1.ImageCacheReasonImagePullFailedForSomeImages
+					status.Message = fledgedv1alpha1.ImageCacheMessageImagePullFailedForSomeImages
+				}
 			}
 		}
 
 		err = c.updateImageCacheStatus(imageCache, status)
 		if err != nil {
+			glog.Errorf("Error updating ImageCache status: %v", err)
 			return err
 		}
-		//return nil
 	case images.ImageCacheDelete:
 		//TODO: Use finalizer. delete all images in the nodes. Once deleted, remove the finalizer
 		//For now we leave the images in the nodes.

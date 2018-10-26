@@ -380,7 +380,7 @@ func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname strin
 	}
 
 	backoffLimit := int32(0)
-	activeDeadlineSeconds := (time.Hour).Nanoseconds()
+	activeDeadlineSeconds := int64((time.Hour).Seconds())
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
