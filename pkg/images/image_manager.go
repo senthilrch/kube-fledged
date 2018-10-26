@@ -69,7 +69,7 @@ type ImagePullRequest struct {
 
 // ImagePullResult stores the result of pulling image
 type ImagePullResult struct {
-	ImagePullRequest *ImagePullRequest
+	ImagePullRequest ImagePullRequest
 	Status           string
 	Reason           string
 	Message          string
@@ -156,9 +156,9 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 func (m *ImageManager) updatePendingImagePullResults() error {
 	for job, ipres := range m.imagepullstatus {
 		if ipres.Status == ImagePullResultStatusJobCreated {
-			if ipres.ImagePullRequest == nil {
-				glog.Errorf("Error accessing ImagePullRequest for job %s", job)
-				return fmt.Errorf("Error accessing ImagePullRequest for job %s", job)
+			if ipres.ImagePullRequest.Imagecache == nil {
+				glog.Errorf("Error accessing image cache for job %s", job)
+				return fmt.Errorf("Error accessing image cache for job %s", job)
 			}
 			pods, err := m.podsLister.Pods(ipres.ImagePullRequest.Imagecache.Namespace).
 				List(labels.Set(map[string]string{"job-name": job}).AsSelector())
@@ -226,9 +226,9 @@ func (m *ImageManager) updateImageCacheStatus() error {
 		ipstatus[job] = ipres
 		// delete successful jobs
 		if ipres.Status == ImagePullResultStatusSucceeded {
-			if ipres.ImagePullRequest == nil {
-				glog.Errorf("Unable to access ImagePullRequest for job %s", job)
-				return fmt.Errorf("Unable to access ImagePullRequest for job %s", job)
+			if ipres.ImagePullRequest.Imagecache == nil {
+				glog.Errorf("Unable to access image cache for job %s", job)
+				return fmt.Errorf("Unable to access image cache for job %s", job)
 			}
 			if err := m.kubeclientset.BatchV1().Jobs(ipres.ImagePullRequest.Imagecache.Namespace).
 				Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
@@ -240,7 +240,7 @@ func (m *ImageManager) updateImageCacheStatus() error {
 
 	imagecache := &fledgedv1alpha1.ImageCache{}
 	for _, ipres := range m.imagepullstatus {
-		if ipres.ImagePullRequest != nil {
+		if ipres.ImagePullRequest.Imagecache != nil {
 			imagecache = ipres.ImagePullRequest.Imagecache
 			break
 		}
@@ -335,7 +335,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
-		m.imagepullstatus[job.Name] = ImagePullResult{ImagePullRequest: &ipr, Status: "jobcreated"}
+		m.imagepullstatus[job.Name] = ImagePullResult{ImagePullRequest: ipr, Status: ImagePullResultStatusJobCreated}
 		m.imagepullqueue.Forget(obj)
 		glog.Infof("Successfully created job to pull image '%s' to node '%s'", ipr.Image, ipr.Node)
 		return nil

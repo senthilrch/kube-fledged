@@ -383,17 +383,15 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
 		for _, v := range *wqKey.Status {
 			if v.Status == images.ImagePullResultStatusFailed {
-				if v.ImagePullRequest != nil {
-					status.Failures[v.ImagePullRequest.Image] = append(
-						status.Failures[v.ImagePullRequest.Image], fledgedv1alpha1.NodeReasonMessage{
-							Node:    v.ImagePullRequest.Node,
-							Reason:  v.Reason,
-							Message: v.Message,
-						})
-					status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
-					status.Reason = fledgedv1alpha1.ImageCacheReasonImagePullFailedForSomeImages
-					status.Message = fledgedv1alpha1.ImageCacheMessageImagePullFailedForSomeImages
-				}
+				status.Failures[v.ImagePullRequest.Image] = append(
+					status.Failures[v.ImagePullRequest.Image], fledgedv1alpha1.NodeReasonMessage{
+						Node:    v.ImagePullRequest.Node,
+						Reason:  v.Reason,
+						Message: v.Message,
+					})
+				status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
+				status.Reason = fledgedv1alpha1.ImageCacheReasonImagePullFailedForSomeImages
+				status.Message = fledgedv1alpha1.ImageCacheMessageImagePullFailedForSomeImages
 			}
 		}
 
