@@ -319,10 +319,21 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		glog.V(4).Infof("cacheSpec: %+v", cacheSpec)
 		var nodes []*corev1.Node
 
-		status = &fledgedv1alpha1.ImageCacheStatus{
-			Status:  fledgedv1alpha1.ImageCacheActionStatusProcessing,
-			Reason:  fledgedv1alpha1.ImageCacheReasonPullingImages,
-			Message: fledgedv1alpha1.ImageCacheMessagePullingImages,
+		status.Status = fledgedv1alpha1.ImageCacheActionStatusProcessing
+
+		if wqKey.WorkType == images.ImageCacheCreate {
+			status.Reason = fledgedv1alpha1.ImageCacheReasonImageCacheCreate
+			status.Message = fledgedv1alpha1.ImageCacheMessagePullingImages
+		}
+
+		if wqKey.WorkType == images.ImageCacheUpdate {
+			status.Reason = fledgedv1alpha1.ImageCacheReasonImageCacheUpdate
+			status.Message = fledgedv1alpha1.ImageCacheMessageUpdatingCache
+		}
+
+		if wqKey.WorkType == images.ImageCacheRefresh {
+			status.Reason = fledgedv1alpha1.ImageCacheReasonImageCacheRefresh
+			status.Message = fledgedv1alpha1.ImageCacheMessageRefreshingCache
 		}
 
 		if err = c.updateImageCacheStatus(imageCache, status); err != nil {

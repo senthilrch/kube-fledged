@@ -17,8 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // +genclient
@@ -41,7 +41,7 @@ type CacheSpecImages struct {
 
 // ImageCacheSpec is the spec for a ImageCache resource
 type ImageCacheSpec struct {
-	CacheSpec []CacheSpecImages `json:"cacheSpec"`
+	CacheSpec        []CacheSpecImages             `json:"cacheSpec"`
 	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
@@ -83,7 +83,10 @@ const (
 
 // List of constants for ImageCacheReason
 const (
-	ImageCacheReasonPullingImages                = "PullingImages"
+	ImageCacheReasonImageCacheCreate             = "ImageCacheCreate"
+	ImageCacheReasonImageCacheUpdate             = "ImageCacheUpdate"
+	ImageCacheReasonImageCacheRefresh            = "ImageCacheRefresh"
+	ImageCacheReasonImageCacheDelete             = "ImageCacheDelete"
 	ImageCacheReasonImagesPulledSuccessfully     = "ImagesPulledSuccessfully"
 	ImageCacheReasonImagePullFailedForSomeImages = "ImagePullFailedForSomeImages"
 	ImageCacheReasonImagePullFailedOnSomeNodes   = "ImagePullFailedOnSomeNodes"
@@ -93,6 +96,9 @@ const (
 // List of constants for ImageCacheMessage
 const (
 	ImageCacheMessagePullingImages                = "Images are being pulled on to the nodes. Please view the status after some time"
+	ImageCacheMessageUpdatingCache                = "Image cache is being updated. Please view the status after some time"
+	ImageCacheMessageRefreshingCache              = "Image cache is being refreshed. Please view the status after some time"
+	ImageCacheMessageDeletingImages               = "Images in the cache are being deleted. Please view the status after some time"
 	ImageCacheMessageImagesPulledSuccessfully     = "All requested images pulled succesfuly to respective nodes"
 	ImageCacheMessageImagePullFailedForSomeImages = "Image pull failed for some images. Please see \"failures\" section"
 	ImageCacheMessageImagePullFailedOnSomeNodes   = "Image pull failed on some nodes. Please see \"failures\" section"
