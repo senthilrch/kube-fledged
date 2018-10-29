@@ -24,6 +24,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -37,6 +38,7 @@ import (
 )
 
 const controllerAgentName = "fledged"
+const fledgedNameSpace = "kube-fledged"
 
 const (
 	ImagePullResultStatusSucceeded  = "succeeded"
@@ -141,7 +143,14 @@ func NewImageManager(
 
 func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 	glog.Infof("Pod %s changed status to %s", pod.Name, pod.Status.Phase)
-	ipres := m.imagepullstatus[pod.Labels["job-name"]]
+	ipres, ok := m.imagepullstatus[pod.Labels["job-name"]]
+
+	// Corresponding job might have expired and got deleted.
+	// ignore pod status change for such jobs
+	if !ok {
+		return
+	}
+
 	if pod.Status.Phase == corev1.PodSucceeded {
 		ipres.Status = ImagePullResultStatusSucceeded
 	}
@@ -151,16 +160,19 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 		ipres.Message = ImagePullResultMessageImagePullFailed + " " + pod.Name
 	}
 	m.imagepullstatus[pod.Labels["job-name"]] = ipres
+	return
 }
 
 func (m *ImageManager) updatePendingImagePullResults() error {
 	for job, ipres := range m.imagepullstatus {
 		if ipres.Status == ImagePullResultStatusJobCreated {
-			if ipres.ImagePullRequest.Imagecache == nil {
-				glog.Errorf("Error accessing image cache for job %s", job)
-				return fmt.Errorf("Error accessing image cache for job %s", job)
-			}
-			pods, err := m.podsLister.Pods(ipres.ImagePullRequest.Imagecache.Namespace).
+			/*
+				if ipres.ImagePullRequest.Imagecache == nil {
+					glog.Errorf("Error accessing image cache for job %s", job)
+					return fmt.Errorf("Error accessing image cache for job %s", job)
+				}
+			*/
+			pods, err := m.podsLister.Pods(fledgedNameSpace).
 				List(labels.Set(map[string]string{"job-name": job}).AsSelector())
 			if err != nil {
 				glog.Errorf("Error listing Pods: %v", err)
@@ -178,22 +190,29 @@ func (m *ImageManager) updatePendingImagePullResults() error {
 			if pods[0].Status.Phase == corev1.PodPending {
 				if pods[0].Status.ContainerStatuses[0].State.Waiting != nil {
 					ipres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
-					ipres.Message = pods[0].Status.ContainerStatuses[0].State.Waiting.Message +
-						": " + ImagePullResultMessageImagePullFailed + " " + pods[0].Name
 				}
 				if pods[0].Status.ContainerStatuses[0].State.Terminated != nil {
 					ipres.Reason = pods[0].Status.ContainerStatuses[0].State.Terminated.Reason
-					ipres.Message = pods[0].Status.ContainerStatuses[0].State.Terminated.Message +
-						": " + ImagePullResultMessageImagePullFailed + " " + pods[0].Name
 				}
 			}
-			/*
-				eventlist, _ := m.kubeclientset.EventsV1beta1().Events(ipres.imagepullrequest.Imagecache.Namespace).
-					List(metav1.ListOptions{FieldSelector: "involvedObject.name=" + pods[0].Name + ",reason=Failed"})
-				for _, v := range eventlist.Items {
-					ipres.message = ipres.message + v.Note
-				}
-			*/
+			fieldSelector := fields.Set{
+				"involvedObject.kind":      "Pod",
+				"involvedObject.name":      pods[0].Name,
+				"involvedObject.namespace": fledgedNameSpace,
+				"reason":                   "Failed",
+			}.AsSelector().String()
+
+			eventlist, err := m.kubeclientset.CoreV1().Events(fledgedNameSpace).
+				List(metav1.ListOptions{FieldSelector: fieldSelector})
+			if err != nil {
+				glog.Errorf("Error listing events for pod (%s): %v", pods[0].Name, err)
+				return err
+			}
+
+			for _, v := range eventlist.Items {
+				ipres.Message = ipres.Message + ":" + v.Message
+			}
+
 			m.imagepullstatus[job] = ipres
 		}
 	}
@@ -224,17 +243,11 @@ func (m *ImageManager) updateImageCacheStatus() error {
 	deletePropagation := metav1.DeletePropagationBackground
 	for job, ipres := range m.imagepullstatus {
 		ipstatus[job] = ipres
-		// delete successful jobs
-		if ipres.Status == ImagePullResultStatusSucceeded {
-			if ipres.ImagePullRequest.Imagecache == nil {
-				glog.Errorf("Unable to access image cache for job %s", job)
-				return fmt.Errorf("Unable to access image cache for job %s", job)
-			}
-			if err := m.kubeclientset.BatchV1().Jobs(ipres.ImagePullRequest.Imagecache.Namespace).
-				Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
-				glog.Errorf("Error deleting job %s: %v", job, err)
-				return err
-			}
+		// delete jobs
+		if err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
+			Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
+			glog.Errorf("Error deleting job %s: %v", job, err)
+			return err
 		}
 	}
 
@@ -358,7 +371,7 @@ func (m *ImageManager) pullImage(ipr ImagePullRequest) (*batchv1.Job, error) {
 		return nil, err
 	}
 	// Create a Job to pull the image into the node
-	job, err := m.kubeclientset.BatchV1().Jobs(ipr.Imagecache.Namespace).Create(newjob)
+	job, err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).Create(newjob)
 	if err != nil {
 		glog.Errorf("Error creating job in node %s: %v", ipr.Node, err)
 		return nil, err
