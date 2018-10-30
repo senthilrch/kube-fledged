@@ -88,7 +88,7 @@ _kube-fledged_ provides APIs to perform CRUD operations on image cache.  These A
 
 ### Create image cache
 
-Refer to sample image cache manifest in "deploy/fledged-imagecache.json". Edit it as per your needs before creating image cache. If images are in private repositories requiring credentials to pull, add "imagePullSecrets" to the end.
+Refer to sample image cache manifest in "deploy/fledged-imagecache.yaml". Edit it as per your needs before creating image cache. If images are in private repositories requiring credentials to pull, add "imagePullSecrets" to the end.
 ```
       "imagePullSecrets": [
         {
@@ -99,7 +99,7 @@ Refer to sample image cache manifest in "deploy/fledged-imagecache.json". Edit i
 
 Create the image cache using kubectl. Verify successful creation
 ```
-$ kubectl create -f deploy/fledged-imagecache.json
+$ kubectl create -f deploy/fledged-imagecache.yaml
 $ kubectl get imagecaches -n kube-fledged
 ```
 

@@ -1,3 +1,4 @@
+---
 apiVersion: fledged.k8s.io/v1alpha1
 kind: ImageCache
 metadata:
@@ -6,12 +7,13 @@ metadata:
 spec:
   cacheSpec:
   - images:
-    - nginx:1.15.5
-    - redis:4.0.11
-    nodeSelector:
-      kubernetes.io/hostname: worker1.k8s.cis.com
+    - senthilrch/my-private-app:1.0
+    - nginx
   - images:
-    - mysql
-    - hello-world
+    - redis
+    - jenkins
+    - docker
     nodeSelector:
-      kubernetes.io/hostname: master.k8s.cis.com
+      kubernetes.io/hostname: worker1
+  imagePullSecrets:
+  - name: myregistrykey
