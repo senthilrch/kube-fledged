@@ -23,8 +23,8 @@ spec:
         command: ["/opt/bin/fledged"]
         args:
         - "--stderrthreshold=INFO"
-        - "--image-pull-deadline-duration=1m"
-        - "--image-cache-refresh-frequency=1m"
+        - "--image-pull-deadline-duration=5m"
+        - "--image-cache-refresh-frequency=15m"
         imagePullPolicy: Always
         name: fledged
       nodeSelector:

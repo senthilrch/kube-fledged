@@ -64,5 +64,5 @@ func init() {
 	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig.")
 	flag.DurationVar(&imagePullDeadlineDuration, "image-pull-deadline-duration", time.Minute*5, "Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed")
-	flag.DurationVar(&imageCacheRefreshFrequency, "image-cache-refresh-frequency", time.Minute*5, "The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to 0s will disable refresh")
+	flag.DurationVar(&imageCacheRefreshFrequency, "image-cache-refresh-frequency", time.Minute*15, "The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to 0s will disable refresh")
 }
