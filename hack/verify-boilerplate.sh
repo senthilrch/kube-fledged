@@ -18,31 +18,18 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-SCRIPT_ROOT=$(dirname "${BASH_SOURCE}")/..
+KUBE_ROOT=$(dirname "${BASH_SOURCE}")/..
 
-DIFFROOT="${SCRIPT_ROOT}/pkg"
-TMP_DIFFROOT="${SCRIPT_ROOT}/_tmp/pkg"
-_tmp="${SCRIPT_ROOT}/_tmp"
+boilerDir="${KUBE_ROOT}/hack/boilerplate"
+boiler="${boilerDir}/boilerplate.py"
 
-cleanup() {
-  rm -rf "${_tmp}"
-}
-trap "cleanup" EXIT SIGINT
+files_need_boilerplate=($(${boiler} "$@"))
 
-cleanup
+# Run boilerplate check
+if [[ ${#files_need_boilerplate[@]} -gt 0 ]]; then
+  for file in "${files_need_boilerplate[@]}"; do
+    echo "Boilerplate header is wrong for: ${file}" >&2
+  done
 
-mkdir -p "${TMP_DIFFROOT}"
-cp -a "${DIFFROOT}"/* "${TMP_DIFFROOT}"
-
-"${SCRIPT_ROOT}/hack/update-codegen.sh"
-echo "diffing ${DIFFROOT} against freshly generated codegen"
-ret=0
-diff -Naupr "${DIFFROOT}" "${TMP_DIFFROOT}" || ret=$?
-cp -a "${TMP_DIFFROOT}"/* "${DIFFROOT}"
-if [[ $ret -eq 0 ]]
-then
-  echo "${DIFFROOT} up to date."
-else
-  echo "${DIFFROOT} is out of date. Please run hack/update-codegen.sh"
   exit 1
 fi

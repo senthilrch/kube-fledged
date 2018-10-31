@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2017 The Kubernetes Authors.
+# Copyright 2018 The kube-fledged authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +29,7 @@ ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   k8s.io/kube-fledged/pkg/client k8s.io/kube-fledged/pkg/apis \
   fledged:v1alpha1 \
   --output-base "$(dirname ${BASH_SOURCE})/../../.." \
-  --go-header-file ${SCRIPT_ROOT}/hack/custom-boilerplate.go.txt
+  --go-header-file ${SCRIPT_ROOT}/hack/boilerplate/boilerplate.generatego.txt
 
 # To use your own boilerplate text use:
 #   --go-header-file ${SCRIPT_ROOT}/hack/custom-boilerplate.go.txt
