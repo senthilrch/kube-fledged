@@ -142,7 +142,7 @@ func NewImageManager(
 }
 
 func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
-	glog.Infof("Pod %s changed status to %s", pod.Name, pod.Status.Phase)
+	glog.V(4).Infof("Pod %s changed status to %s", pod.Name, pod.Status.Phase)
 	ipres, ok := m.imagepullstatus[pod.Labels["job-name"]]
 
 	// Corresponding job might have expired and got deleted.
@@ -153,11 +153,13 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 
 	if pod.Status.Phase == corev1.PodSucceeded {
 		ipres.Status = ImagePullResultStatusSucceeded
+		glog.Infof("Job %s succeeded (%s --> %s)", pod.Labels["job-name"], ipres.ImagePullRequest.Image, ipres.ImagePullRequest.Node)
 	}
 	if pod.Status.Phase == corev1.PodFailed {
 		ipres.Status = ImagePullResultStatusFailed
 		ipres.Reason = ImagePullResultReasonImagePullFailed
 		ipres.Message = ImagePullResultMessageImagePullFailed + " " + pod.Name
+		glog.Infof("Job %s failed (%s --> %s)", pod.Labels["job-name"], ipres.ImagePullRequest.Image, ipres.ImagePullRequest.Node)
 	}
 	m.imagepullstatus[pod.Labels["job-name"]] = ipres
 	return
@@ -350,7 +352,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 		// get queued again until another change happens.
 		m.imagepullstatus[job.Name] = ImagePullResult{ImagePullRequest: ipr, Status: ImagePullResultStatusJobCreated}
 		m.imagepullqueue.Forget(obj)
-		glog.Infof("Successfully created job to pull image '%s' to node '%s'", ipr.Image, ipr.Node)
+		glog.Infof("Job %s created (%s --> %s)", job.Name, ipr.Image, ipr.Node)
 		return nil
 	}(obj)
 
