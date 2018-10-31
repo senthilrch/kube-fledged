@@ -180,6 +180,12 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 	switch workType {
 	case images.ImageCacheCreate:
 		obj = new
+		newImageCache := new.(*fledgedv1alpha1.ImageCache)
+		// If the ImageCache resource already has a status field, it means it's already
+		// synced, so do not queue it for processing
+		if !reflect.DeepEqual(newImageCache.Status, fledgedv1alpha1.ImageCacheStatus{}) {
+			return
+		}
 	case images.ImageCacheUpdate:
 		obj = new
 		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
