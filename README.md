@@ -1,6 +1,7 @@
 # kube-fledged
 
-**_kube-fledged_** is a kubernetes application for creating and managing a cache of container images in a kubernetes cluster. It allows a user to define a list of images and onto which worker nodes those images should be cached (i.e. pre-pulled). This enables application Pods to start almost instantly, since the images need not be pulled from the registry.
+**_kube-fledged_** is a kubernetes application for creating and managing a cache of container images directly on the worker nodes of a kubernetes cluster. It allows a user to define a list
+of images and onto which worker nodes those images should be cached (i.e. pre-pulled). As a result, application pods start almost instantly, since the images need not be pulled from the registry.
 
 _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable parameters to customize the functioning as per one's needs. 
 
@@ -22,7 +23,7 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
 
 ### Build
 
-Create the source code directories on local machine and setup $GOPATH
+Create the source code directories on local linux machine and setup $GOPATH
 
 ```
 $ mkdir -p $HOME/src && mkdir -p $HOME/src/k8s.io
@@ -39,20 +40,20 @@ $ cd $HOME/src/k8s.io/kube-fledged
 Build and push the docker image to registry (e.g. Docker hub)
 
 ```
-$ export FLEDGED_IMAGE_NAME=<your docker hub username>/fledged:<your tag>
+$ export FLEDGED_IMAGE_NAME=<your_docker_hub_username>/fledged:<your_tag>
 $ docker login -u <username> -p <password>
 $ make image && make push
 ```
 
 ### Deploy
 
-All manifests required for deploying _kube-fledged_ are present inside kube-fledged/deploy. These steps deploy _kube-fledged_ into a separate namespace called "kube-fledged" with default configuration flags.
+All manifests required for deploying _kube-fledged_ are present inside 'kube-fledged/deploy'. These steps deploy _kube-fledged_ into a separate namespace called "kube-fledged" with default configuration flags.
 
 Edit "fledged-deployment.yaml":-
 
 - Set the value of KUBERNETES_SERVICE_HOST to the IP/hostname of api server of the cluster 
 - Set KUBERNETES_SERVICE_PORT to port number of api server
-- Set "image" to "<your docker hub username>/fledged:<your tag>"
+- Set "image" to "<your_docker_hub_username>/fledged:<your_tag>"
 
 ```
       - env:
@@ -60,26 +61,28 @@ Edit "fledged-deployment.yaml":-
           value: "<IP or hostname of api server>"
         - name: KUBERNETES_SERVICE_PORT
           value: "<port number of api server>"
-        image: <your docker hub username>/fledged:<your tag>
+        image: <your_docker_hub_username>/fledged:<your_tag>
 ```
 
-If you pushed the image to a private repository, add imagePullSecrets to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod)
+If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod)
 
 ```
       serviceAccountName: fledged
       imagePullSecrets:
-        - name: <your registry key>
+        - name: <your_registry_key>
 ```
 
 Deploy _kube-fledged_ to the cluster
+
 ```
 $ make deploy
 ```
 
-Verify if _kube-fledged_ is up and running
+Verify if _kube-fledged_ deployed successfully
+
 ```
 $ kubectl get pods -n kube-fledged -l app=fledged
-$ kubectl logs <pod name obtained from above command> -n kube-fledged
+$ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
 ```
 
 ## How to use
@@ -89,15 +92,14 @@ _kube-fledged_ provides APIs to perform CRUD operations on image cache.  These A
 ### Create image cache
 
 Refer to sample image cache manifest in "deploy/fledged-imagecache.yaml". Edit it as per your needs before creating image cache. If images are in private repositories requiring credentials to pull, add "imagePullSecrets" to the end.
+
 ```
-      "imagePullSecrets": [
-        {
-          "name": "regcred"
-        }
-      ]
+  imagePullSecrets:
+  - name: myregistrykey
 ```
 
 Create the image cache using kubectl. Verify successful creation
+
 ```
 $ kubectl create -f deploy/fledged-imagecache.yaml
 $ kubectl get imagecaches -n kube-fledged
@@ -106,6 +108,7 @@ $ kubectl get imagecaches -n kube-fledged
 ### View the status of image cache
 
 Use following command to view the status of image cache in "json" format.
+
 ```
 $ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 ```
@@ -113,6 +116,7 @@ $ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 ### Add/remove images in image cache
 
 Use kubectl edit command to add/remove images in image cache. The edit command opens the manifest in an editor. Edit your changes, save and exit.
+
 ```
 $ kubectl edit imagecaches imagecache1 -n kube-fledged
 $ kubectl get imagecaches imagecache1 -n kube-fledged -o json
@@ -121,6 +125,7 @@ $ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 ### Delete image cache
 
 An existing image cache can be deleted using following command.
+
 ```
 $ kubectl delete imagecaches imagecache1 -n kube-fledged
 ```
@@ -136,9 +141,9 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 ## Configuration Flags
 
-`--image-pull-deadline-duration:` Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed. e.g. "5m"
+`--image-pull-deadline-duration:` Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed. default "5m"
 
-`--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. e.g. "15m"
+`--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. default "15m"
 
 `--stderrthreshold:` Log level. set the value of this flag to INFO
 
