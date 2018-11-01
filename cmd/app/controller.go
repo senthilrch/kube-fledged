@@ -193,8 +193,18 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
 			return
 		}
+		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
+			glog.Warningf("Received image cache update for '%s' while it is under processing, so ignoring update.", oldImageCache.Name)
+			return
+		}
 	case images.ImageCacheDelete:
 		obj = old
+		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
+		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
+			glog.Warningf("Received image cache delete for '%s' while it is under processing, so ignoring delete.", oldImageCache.Name)
+			return
+		}
+
 	case images.ImageCacheRefresh:
 		obj = old
 	}
@@ -282,9 +292,12 @@ func (c *Controller) runRefreshWorker() {
 		return
 	}
 	for i := range imageCaches {
-		// Do not refresh if image cache is already under processing
-		if imageCaches[i].Status.Status != fledgedv1alpha1.ImageCacheActionStatusProcessing {
-			c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
+		// Do not refresh if status is not yet updated
+		if !reflect.DeepEqual(imageCaches[i].Status, fledgedv1alpha1.ImageCacheStatus{}) {
+			// Do not refresh if image cache is already under processing
+			if imageCaches[i].Status.Status != fledgedv1alpha1.ImageCacheActionStatusProcessing {
+				c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
+			}
 		}
 	}
 }
@@ -378,7 +391,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		}
 		// We add an empty image pull request to signal the image manager that all
 		// requests for this sync action have been placed in the imagepullqueue
-		c.imagepullqueue.AddRateLimited(images.ImagePullRequest{})
+		c.imagepullqueue.AddRateLimited(images.ImagePullRequest{Imagecache: imageCache})
 
 		//c.recorder.Event(imageCache, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 		//return nil

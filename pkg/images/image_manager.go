@@ -333,9 +333,8 @@ func (m *ImageManager) processNextWorkItem() bool {
 			runtime.HandleError(fmt.Errorf("Unexpected type in workqueue: %#v", obj))
 			return nil
 		}
-		//glog.Infof("ipr=%+v", ipr)
 
-		if (ipr == ImagePullRequest{}) {
+		if ipr.Image == "" && ipr.Node == "" {
 			m.imagepullqueue.Forget(obj)
 			if err := m.updateImageCacheStatus(); err != nil {
 				return err
