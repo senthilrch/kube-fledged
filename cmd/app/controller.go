@@ -22,6 +22,12 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
+	clientset "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
+	fledgedscheme "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/scheme"
+	informers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/fledged/v1alpha1"
+	listers "github.com/senthilrch/kube-fledged/pkg/client/listers/fledged/v1alpha1"
+	"github.com/senthilrch/kube-fledged/pkg/images"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,12 +43,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
-	fledgedv1alpha1 "k8s.io/kube-fledged/pkg/apis/fledged/v1alpha1"
-	clientset "k8s.io/kube-fledged/pkg/client/clientset/versioned"
-	fledgedscheme "k8s.io/kube-fledged/pkg/client/clientset/versioned/scheme"
-	informers "k8s.io/kube-fledged/pkg/client/informers/externalversions/fledged/v1alpha1"
-	listers "k8s.io/kube-fledged/pkg/client/listers/fledged/v1alpha1"
-	"k8s.io/kube-fledged/pkg/images"
 )
 
 const controllerAgentName = "fledged"

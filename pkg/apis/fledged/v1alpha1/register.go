@@ -21,7 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	fledged "k8s.io/kube-fledged/pkg/apis/fledged"
+	fledged "github.com/senthilrch/kube-fledged/pkg/apis/fledged"
 )
 
 // SchemeGroupVersion is group version used to register these objects

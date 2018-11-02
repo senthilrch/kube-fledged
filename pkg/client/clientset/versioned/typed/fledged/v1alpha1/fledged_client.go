@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
+	"github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/scheme"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer"
 	rest "k8s.io/client-go/rest"
-	v1alpha1 "k8s.io/kube-fledged/pkg/apis/fledged/v1alpha1"
-	"k8s.io/kube-fledged/pkg/client/clientset/versioned/scheme"
 )
 
 type FledgedV1alpha1Interface interface {

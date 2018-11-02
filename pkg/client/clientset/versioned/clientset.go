@@ -19,10 +19,10 @@ limitations under the License.
 package versioned
 
 import (
+	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/fledged/v1alpha1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
-	fledgedv1alpha1 "k8s.io/kube-fledged/pkg/client/clientset/versioned/typed/fledged/v1alpha1"
 )
 
 type Interface interface {

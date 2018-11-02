@@ -19,8 +19,8 @@ limitations under the License.
 package fledged
 
 import (
-	v1alpha1 "k8s.io/kube-fledged/pkg/client/informers/externalversions/fledged/v1alpha1"
-	internalinterfaces "k8s.io/kube-fledged/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/fledged/v1alpha1"
+	internalinterfaces "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/internalinterfaces"
 )
 
 // Interface provides access to each of this group's versions.
