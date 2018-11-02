@@ -1,0 +1,8 @@
+go_import_path: github.com/senthilrch/kube-fledged
+language: go
+go:
+  - 1.11.1
+script:
+- hack/verify-codegen.sh
+- hack/verify-boilerplate.sh
+- make image
