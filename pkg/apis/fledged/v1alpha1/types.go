@@ -79,6 +79,7 @@ const (
 	ImageCacheActionStatusSucceeded  ImageCacheActionStatus = "Succeeded"
 	ImageCacheActionStatusFailed     ImageCacheActionStatus = "Failed"
 	ImageCacheActionStatusUnknown    ImageCacheActionStatus = "Unknown"
+	ImageCacheActionStatusAbhorted   ImageCacheActionStatus = "Abhorted"
 )
 
 // List of constants for ImageCacheReason
@@ -91,6 +92,7 @@ const (
 	ImageCacheReasonImagePullFailedForSomeImages = "ImagePullFailedForSomeImages"
 	ImageCacheReasonImagePullFailedOnSomeNodes   = "ImagePullFailedOnSomeNodes"
 	ImageCacheReasonImagePullStatusUnknown       = "ImagePullStatusUnknown"
+	ImageCacheReasonImagePullAbhorted            = "ImagePullAbhorted"
 )
 
 // List of constants for ImageCacheMessage
@@ -103,4 +105,5 @@ const (
 	ImageCacheMessageImagePullFailedForSomeImages = "Image pull failed for some images. Please see \"failures\" section"
 	ImageCacheMessageImagePullFailedOnSomeNodes   = "Image pull failed on some nodes. Please see \"failures\" section"
 	ImageCacheMessageImagePullStatusUnknown       = "Unable to get the status of Image pull. Retry after some time or contact cluster administrator"
+	ImageCacheMessageImagePullAbhorted            = "Image cache processing abhorted. Image cache will get refreshed during next refresh cycle"
 )

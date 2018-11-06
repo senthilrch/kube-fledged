@@ -63,6 +63,5 @@ deploy:
 
 update:
 	kubectl scale deployment fledged --replicas=0 -n kube-fledged && sleep 5 && \
-	kubectl delete jobs -l app=imagecache -n kube-fledged && sleep 5 && \
 	kubectl scale deployment fledged --replicas=1 -n kube-fledged && sleep 5 && \
 	kubectl get pods -l app=fledged -n kube-fledged

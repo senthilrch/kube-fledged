@@ -130,6 +130,80 @@ func NewController(
 	return controller
 }
 
+// PreFlightChecks performs pre-flight checks and actions before the controller is started
+func (c *Controller) PreFlightChecks() error {
+	if err := c.danglingJobs(); err != nil {
+		return err
+	}
+	if err := c.danglingImageCaches(); err != nil {
+		return err
+	}
+	return nil
+}
+
+// danglingJobs finds and removes dangling or stuck jobs
+func (c *Controller) danglingJobs() error {
+	joblist, err := c.kubeclientset.BatchV1().Jobs(fledgedNameSpace).List(metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("Error listing jobs: %v", err)
+		return err
+	}
+
+	if joblist == nil || len(joblist.Items) == 0 {
+		glog.Info("No dangling or stuck jobs found...")
+		return nil
+	}
+	deletePropagation := metav1.DeletePropagationBackground
+	for _, job := range joblist.Items {
+		err := c.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
+			Delete(job.Name, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation})
+		if err != nil {
+			glog.Errorf("Error deleting job(%s): %v", job.Name, err)
+			return err
+		}
+		glog.Infof("Dangling Job(%s) deleted", job.Name)
+	}
+	return nil
+}
+
+// danglingImageCaches finds dangling or stuck image cache and marks them as abhorted. Such
+// image caches will get refreshed in the next cycle
+func (c *Controller) danglingImageCaches() error {
+	dangling := false
+	imagecachelist, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(fledgedNameSpace).List(metav1.ListOptions{})
+	if err != nil {
+		glog.Errorf("Error listing imagecaches: %v", err)
+		return err
+	}
+
+	if imagecachelist == nil || len(imagecachelist.Items) == 0 {
+		glog.Info("No dangling or stuck imagecaches found...")
+		return nil
+	}
+	status := &fledgedv1alpha1.ImageCacheStatus{
+		Failures: map[string][]fledgedv1alpha1.NodeReasonMessage{},
+		Status:   fledgedv1alpha1.ImageCacheActionStatusAbhorted,
+		Reason:   fledgedv1alpha1.ImageCacheReasonImagePullAbhorted,
+		Message:  fledgedv1alpha1.ImageCacheMessageImagePullAbhorted,
+	}
+	for _, imagecache := range imagecachelist.Items {
+		if imagecache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
+			err := c.updateImageCacheStatus(&imagecache, status)
+			if err != nil {
+				glog.Errorf("Error updating ImageCache(%s) status to '%s': %v", imagecache.Name, fledgedv1alpha1.ImageCacheActionStatusAbhorted, err)
+				return err
+			}
+			dangling = true
+			glog.Infof("Dangling Image cache(%s) status changed to '%s'", imagecache.Name, fledgedv1alpha1.ImageCacheActionStatusAbhorted)
+		}
+	}
+
+	if !dangling {
+		glog.Info("No dangling or stuck imagecaches found...")
+	}
+	return nil
+}
+
 // Run will set up the event handlers for types we are interested in, as well
 // as syncing informer caches and starting workers. It will block until stopCh
 // is closed, at which point it will shutdown the workqueue and wait for

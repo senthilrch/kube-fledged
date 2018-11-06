@@ -68,6 +68,12 @@ func main() {
 		fledgedInformerFactory.Fledged().V1alpha1().ImageCaches(),
 		imageCacheRefreshFrequency, imagePullDeadlineDuration)
 
+	glog.Info("Starting pre-flight checks")
+	if err = controller.PreFlightChecks(); err != nil {
+		glog.Fatalf("Error running pre-flight checks: %s", err.Error())
+	}
+	glog.Info("Pre-flight checks completed")
+
 	go kubeInformerFactory.Start(stopCh)
 	go fledgedInformerFactory.Start(stopCh)
 
