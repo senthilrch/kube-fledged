@@ -43,6 +43,17 @@ ifndef DOCKER_VERSION
   DOCKER_VERSION=18.06.1-ce
 endif
 
+HTTP_PROXY_CONFIG=
+ifdef HTTP_PROXY
+  HTTP_PROXY_CONFIG=--build-arg http_proxy=${HTTP_PROXY}
+endif
+
+HTTPS_PROXY_CONFIG=
+ifdef HTTPS_PROXY
+  HTTPS_PROXY_CONFIG=--build-arg https_proxy=${HTTPS_PROXY}
+endif
+
+
 ### BUILDING
 clean: clean-fledged clean-client
 
@@ -68,8 +79,8 @@ fledged-image: clean-fledged fledged
 
 client-image: clean-client
 	cd build && docker build -t $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME) \
-	-f Dockerfile.docker_client --build-arg http_proxy=${HTTP_PROXY} \
-	--build-arg https_proxy=${HTTPS_PROXY} --build-arg VERSION=$(DOCKER_VERSION) . && \
+	-f Dockerfile.docker_client  ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
+	--build-arg VERSION=${DOCKER_VERSION} . && 	\
 	docker save -o fledged-docker-client.tar $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME) && \
 	gzip fledged-docker-client.tar 
 
