@@ -19,9 +19,9 @@ limitations under the License.
 package fake
 
 import (
+	v1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/fledged/v1alpha1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
-	v1alpha1 "k8s.io/kube-fledged/pkg/client/clientset/versioned/typed/fledged/v1alpha1"
 )
 
 type FakeFledgedV1alpha1 struct {
