@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: clean fledged-image client-image push-images deploy update
+.PHONY: clean clean-fledged clean-client fledged-image client-image push-images deploy update
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
