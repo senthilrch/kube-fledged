@@ -37,9 +37,9 @@ endif
 
 ### BUILDING
 clean:
-	rm -f build/fledged* && \
-	rm -f dist/*.tar.gz || \
-	docker image rm $(FLEDGED_IMAGE_NAME)
+	-rm -f build/fledged*
+	-docker image rm $(FLEDGED_IMAGE_NAME)
+	-docker image rm $(docker image ls -f dangling=true -q)
 
 fledged:
 	CGO_ENABLED=0 go build -o build/fledged \
