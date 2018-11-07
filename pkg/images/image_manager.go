@@ -462,6 +462,11 @@ func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname strin
 					RestartPolicy: corev1.RestartPolicyNever,
 					//ActiveDeadlineSeconds: &activeDeadlineSeconds,
 					ImagePullSecrets: imagecache.Spec.ImagePullSecrets,
+					Tolerations: []corev1.Toleration{
+						{
+							Operator: corev1.TolerationOpExists,
+						},
+					},
 				},
 			},
 		},
