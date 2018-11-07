@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: clean image push deploy update
+.PHONY: clean fledged-image client-image push-images deploy update
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
@@ -35,23 +35,47 @@ ifndef FLEDGED_IMAGE_NAME
   FLEDGED_IMAGE_NAME=senthilrch/fledged:latest
 endif
 
+ifndef FLEDGED_DOCKER_CLIENT_IMAGE_NAME
+  FLEDGED_DOCKER_CLIENT_IMAGE_NAME=senthilrch/fledged-docker-client:latest
+endif
+
+ifndef DOCKER_VERSION
+  DOCKER_VERSION=18.06.1-ce
+endif
+
 ### BUILDING
-clean:
-	-rm -f build/fledged*
+clean: clean-fledged clean-client
+
+clean-fledged:
+	-rm -f build/fledged
+	-rm -f build/fledged.tar.gz
 	-docker image rm $(FLEDGED_IMAGE_NAME)
-	-docker image rm $(docker image ls -f dangling=true -q)
+	-docker image rm `docker image ls -f dangling=true -q`
+
+clean-client:
+	-rm -f build/fledged-docker-client.tar.gz
+	-docker image rm $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME)
+	-docker image rm `docker image ls -f dangling=true -q`
 
 fledged:
 	CGO_ENABLED=0 go build -o build/fledged \
 	  -ldflags '-s -w -extldflags "-static"' cmd/fledged.go
 
-image: clean fledged
+fledged-image: clean-fledged fledged
 	cd build && docker build -t $(FLEDGED_IMAGE_NAME) . && \
 	docker save -o fledged.tar $(FLEDGED_IMAGE_NAME) && \
 	gzip fledged.tar
 
-push:
-	docker push $(FLEDGED_IMAGE_NAME)
+client-image: clean-client
+	cd build && docker build -t $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME) \
+	-f Dockerfile.docker_client --build-arg http_proxy=${HTTP_PROXY} \
+	--build-arg https_proxy=${HTTPS_PROXY} --build-arg VERSION=$(DOCKER_VERSION) . && \
+	docker save -o fledged-docker-client.tar $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME) && \
+	gzip fledged-docker-client.tar 
+
+push-images:
+	-docker push $(FLEDGED_IMAGE_NAME)
+	-docker push $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME)
 
 deploy:
 	kubectl apply -f deploy/fledged-crd.yaml && sleep 2 && \
