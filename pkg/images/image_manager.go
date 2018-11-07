@@ -114,7 +114,7 @@ func NewImageManager(
 		workqueue:                 workqueue,
 		imagepullqueue:            imagepullqueue,
 		kubeclientset:             kubeclientset,
-		imagepullstatus:           map[string]ImagePullResult{},
+		imagepullstatus:           make(map[string]ImagePullResult),
 		kubeInformerFactory:       kubeInformerFactory,
 		podsLister:                podInformer.Lister(),
 		podsSynced:                podInformer.Informer().HasSynced,
@@ -275,7 +275,7 @@ func (m *ImageManager) updateImageCacheStatus() error {
 		Status:   &ipstatus,
 		ObjKey:   objKey,
 	})
-	m.imagepullstatus = map[string]ImagePullResult{}
+	m.imagepullstatus = make(map[string]ImagePullResult)
 	return nil
 }
 
