@@ -84,7 +84,7 @@ client-image: clean-client
 	docker save -o fledged-docker-client.tar $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME) && \
 	gzip fledged-docker-client.tar 
 
-push-images:
+push-image:
 	-docker push $(FLEDGED_IMAGE_NAME)
 	-docker push $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME)
 

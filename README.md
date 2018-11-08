@@ -29,15 +29,15 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
 Create the source code directories on local linux machine and setup $GOPATH
 
 ```
-$ mkdir -p $HOME/src && mkdir -p $HOME/src/k8s.io
+$ mkdir -p $HOME/src/github.com/senthilrch
 $ export GOPATH=$HOME
 ```
 
 Clone the repository
 
 ```
-$ git clone https://senthilrch@bitbucket.org/senthilrch/kube-fledged.git $HOME/src/k8s.io/kube-fledged
-$ cd $HOME/src/k8s.io/kube-fledged
+$ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
+$ cd $HOME/src/github.com/senthilrch/kube-fledged
 ```
 
 Build and push the docker image to registry (e.g. Docker hub)
@@ -45,7 +45,7 @@ Build and push the docker image to registry (e.g. Docker hub)
 ```
 $ export FLEDGED_IMAGE_NAME=<your_docker_hub_username>/fledged:<your_tag>
 $ docker login -u <username> -p <password>
-$ make image && make push
+$ make fledged-image && make push-image
 ```
 
 ### Deploy
