@@ -28,8 +28,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// newJob constructs a job manifest for pulling an image to a node
-func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string) (*batchv1.Job, error) {
+// newImagePullJob constructs a job manifest for pulling an image to a node
+func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string) (*batchv1.Job, error) {
 	if imagecache == nil {
 		glog.Error("imagecache pointer is nil")
 		return nil, fmt.Errorf("imagecache pointer is nil")
@@ -62,10 +62,8 @@ func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname strin
 			ActiveDeadlineSeconds: &activeDeadlineSeconds,
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
-					//GenerateName: imagecache.Name,
 					Namespace: imagecache.Namespace,
 					Labels:    labels,
-					//Finalizers:   []string{"imagecache"},
 				},
 				Spec: corev1.PodSpec{
 					NodeSelector: map[string]string{
@@ -107,8 +105,89 @@ func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname strin
 							},
 						},
 					},
-					RestartPolicy: corev1.RestartPolicyNever,
-					//ActiveDeadlineSeconds: &activeDeadlineSeconds,
+					RestartPolicy:    corev1.RestartPolicyNever,
+					ImagePullSecrets: imagecache.Spec.ImagePullSecrets,
+					Tolerations: []corev1.Toleration{
+						{
+							Operator: corev1.TolerationOpExists,
+						},
+					},
+				},
+			},
+		},
+	}
+	return job, nil
+}
+
+// newImageDeleteJob constructs a job manifest to delete an image from a node
+func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string, dockerclientimage string) (*batchv1.Job, error) {
+	if imagecache == nil {
+		glog.Error("imagecache pointer is nil")
+		return nil, fmt.Errorf("imagecache pointer is nil")
+	}
+
+	labels := map[string]string{
+		"app":        "imagecache",
+		"imagecache": imagecache.Name,
+		"controller": controllerAgentName,
+	}
+
+	hostpathtype := corev1.HostPathFile
+	backoffLimit := int32(0)
+	activeDeadlineSeconds := int64((time.Hour).Seconds())
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: imagecache.Name + "-",
+			Namespace:    imagecache.Namespace,
+			OwnerReferences: []metav1.OwnerReference{
+				*metav1.NewControllerRef(imagecache, schema.GroupVersionKind{
+					Group:   fledgedv1alpha1.SchemeGroupVersion.Group,
+					Version: fledgedv1alpha1.SchemeGroupVersion.Version,
+					Kind:    "ImageCache",
+				}),
+			},
+			Labels: labels,
+		},
+		Spec: batchv1.JobSpec{
+			BackoffLimit:          &backoffLimit,
+			ActiveDeadlineSeconds: &activeDeadlineSeconds,
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Namespace: imagecache.Namespace,
+					Labels:    labels,
+				},
+				Spec: corev1.PodSpec{
+					NodeSelector: map[string]string{
+						"kubernetes.io/hostname": hostname,
+					},
+					Containers: []corev1.Container{
+						{
+							Name:    "docker-client",
+							Image:   dockerclientimage,
+							Command: []string{"/usr/bin/docker"},
+							Args:    []string{"image", "rm", image, " > /dev/termination-log"},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "docker-sock",
+									MountPath: "/var/run/docker.sock",
+								},
+							},
+							ImagePullPolicy: corev1.PullIfNotPresent,
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "docker-sock",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/var/run/docker.sock",
+									Type: &hostpathtype,
+								},
+							},
+						},
+					},
+					RestartPolicy:    corev1.RestartPolicyNever,
 					ImagePullSecrets: imagecache.Spec.ImagePullSecrets,
 					Tolerations: []corev1.Toleration{
 						{

@@ -365,7 +365,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 // pullImage pulls the image to the node
 func (m *ImageManager) pullImage(ipr ImagePullRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
-	newjob, err := newJob(ipr.Imagecache, ipr.Image, ipr.Node)
+	newjob, err := newImagePullJob(ipr.Imagecache, ipr.Image, ipr.Node)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err
