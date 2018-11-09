@@ -27,7 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
@@ -376,100 +375,6 @@ func (m *ImageManager) pullImage(ipr ImagePullRequest) (*batchv1.Job, error) {
 	if err != nil {
 		glog.Errorf("Error creating job in node %s: %v", ipr.Node, err)
 		return nil, err
-	}
-	return job, nil
-}
-
-// newJob constructs a job manifest for pulling an image to a node
-func newJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string) (*batchv1.Job, error) {
-	if imagecache == nil {
-		glog.Error("imagecache pointer is nil")
-		return nil, fmt.Errorf("imagecache pointer is nil")
-	}
-
-	labels := map[string]string{
-		"app":        "imagecache",
-		"imagecache": imagecache.Name,
-		"controller": controllerAgentName,
-	}
-
-	backoffLimit := int32(0)
-	activeDeadlineSeconds := int64((time.Hour).Seconds())
-
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: imagecache.Name + "-",
-			Namespace:    imagecache.Namespace,
-			OwnerReferences: []metav1.OwnerReference{
-				*metav1.NewControllerRef(imagecache, schema.GroupVersionKind{
-					Group:   fledgedv1alpha1.SchemeGroupVersion.Group,
-					Version: fledgedv1alpha1.SchemeGroupVersion.Version,
-					Kind:    "ImageCache",
-				}),
-			},
-			Labels: labels,
-		},
-		Spec: batchv1.JobSpec{
-			BackoffLimit:          &backoffLimit,
-			ActiveDeadlineSeconds: &activeDeadlineSeconds,
-			Template: corev1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					//GenerateName: imagecache.Name,
-					Namespace: imagecache.Namespace,
-					Labels:    labels,
-					//Finalizers:   []string{"imagecache"},
-				},
-				Spec: corev1.PodSpec{
-					NodeSelector: map[string]string{
-						"kubernetes.io/hostname": hostname,
-					},
-					InitContainers: []corev1.Container{
-						{
-							Name:    "busybox",
-							Image:   "busybox:1.29.2",
-							Command: []string{"cp", "/bin/echo", "/tmp/bin"},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "tmp-bin",
-									MountPath: "/tmp/bin",
-								},
-							},
-							ImagePullPolicy: corev1.PullIfNotPresent,
-						},
-					},
-					Containers: []corev1.Container{
-						{
-							Name:    "imagepuller",
-							Image:   image,
-							Command: []string{"/tmp/bin/echo", "Image pulled successfully!"},
-							VolumeMounts: []corev1.VolumeMount{
-								{
-									Name:      "tmp-bin",
-									MountPath: "/tmp/bin",
-								},
-							},
-							ImagePullPolicy: corev1.PullIfNotPresent,
-						},
-					},
-					Volumes: []corev1.Volume{
-						{
-							Name: "tmp-bin",
-							VolumeSource: corev1.VolumeSource{
-								EmptyDir: &corev1.EmptyDirVolumeSource{},
-							},
-						},
-					},
-					RestartPolicy: corev1.RestartPolicyNever,
-					//ActiveDeadlineSeconds: &activeDeadlineSeconds,
-					ImagePullSecrets: imagecache.Spec.ImagePullSecrets,
-					Tolerations: []corev1.Toleration{
-						{
-							Operator: corev1.TolerationOpExists,
-						},
-					},
-				},
-			},
-		},
 	}
 	return job, nil
 }
