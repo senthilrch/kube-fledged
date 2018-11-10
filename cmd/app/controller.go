@@ -47,6 +47,7 @@ import (
 
 const controllerAgentName = "fledged"
 const fledgedNameSpace = "kube-fledged"
+const fledgedFinalizer = "fledged"
 
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a ImageCache is synced
@@ -408,6 +409,14 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 
+		// add Finalizer to ImageCache resource since we need to have control over when
+		// actual API resource is removed from etcd during delete action
+		err = c.addFinalizer(imageCache)
+		if err != nil {
+			glog.Errorf("Error adding finalizer to imagecache(%s): %v", imageCache.Name, err)
+			return err
+		}
+
 		cacheSpec := imageCache.Spec.CacheSpec
 		glog.V(4).Infof("cacheSpec: %+v", cacheSpec)
 		var nodes []*corev1.Node
@@ -523,6 +532,13 @@ func (c *Controller) updateImageCacheStatus(imageCache *fledgedv1alpha1.ImageCac
 	// we must use Update instead of UpdateStatus to update the Status block of the ImageCache resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
+	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
+	return err
+}
+
+func (c *Controller) addFinalizer(imageCache *fledgedv1alpha1.ImageCache) error {
+	imageCacheCopy := imageCache.DeepCopy()
+	imageCacheCopy.Finalizers = []string{fledgedFinalizer}
 	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
 	return err
 }
