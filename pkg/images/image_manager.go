@@ -169,115 +169,114 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 	return
 }
 
-func (m *ImageManager) updatePendingImagePullResults() error {
+func (m *ImageManager) updatePendingImagePullResults(imageCacheName string) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	for job, ipres := range m.imagepullstatus {
-		if ipres.Status == ImagePullResultStatusJobCreated {
-			/*
-				if ipres.ImagePullRequest.Imagecache == nil {
-					glog.Errorf("Error accessing image cache for job %s", job)
-					return fmt.Errorf("Error accessing image cache for job %s", job)
+		if ipres.ImagePullRequest.Imagecache.Name == imageCacheName {
+			if ipres.Status == ImagePullResultStatusJobCreated {
+				pods, err := m.podsLister.Pods(fledgedNameSpace).
+					List(labels.Set(map[string]string{"job-name": job}).AsSelector())
+				if err != nil {
+					glog.Errorf("Error listing Pods: %v", err)
+					return err
 				}
-			*/
-			pods, err := m.podsLister.Pods(fledgedNameSpace).
-				List(labels.Set(map[string]string{"job-name": job}).AsSelector())
-			if err != nil {
-				glog.Errorf("Error listing Pods: %v", err)
-				return err
-			}
-			if len(pods) == 0 {
-				glog.Errorf("No pods matched job %s", job)
-				return fmt.Errorf("No pods matched job %s", job)
-			}
-			if len(pods) > 1 {
-				glog.Errorf("More than one pod matched job %s", job)
-				return fmt.Errorf("More than one pod matched job %s", job)
-			}
-			ipres.Status = ImagePullResultStatusFailed
-			if pods[0].Status.Phase == corev1.PodPending {
-				if pods[0].Status.ContainerStatuses[0].State.Waiting != nil {
-					ipres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
+				if len(pods) == 0 {
+					glog.Errorf("No pods matched job %s", job)
+					return fmt.Errorf("No pods matched job %s", job)
 				}
-				if pods[0].Status.ContainerStatuses[0].State.Terminated != nil {
-					ipres.Reason = pods[0].Status.ContainerStatuses[0].State.Terminated.Reason
+				if len(pods) > 1 {
+					glog.Errorf("More than one pod matched job %s", job)
+					return fmt.Errorf("More than one pod matched job %s", job)
 				}
-			}
-			fieldSelector := fields.Set{
-				"involvedObject.kind":      "Pod",
-				"involvedObject.name":      pods[0].Name,
-				"involvedObject.namespace": fledgedNameSpace,
-				"reason":                   "Failed",
-			}.AsSelector().String()
+				ipres.Status = ImagePullResultStatusFailed
+				if pods[0].Status.Phase == corev1.PodPending {
+					if pods[0].Status.ContainerStatuses[0].State.Waiting != nil {
+						ipres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
+					}
+					if pods[0].Status.ContainerStatuses[0].State.Terminated != nil {
+						ipres.Reason = pods[0].Status.ContainerStatuses[0].State.Terminated.Reason
+					}
+				}
+				fieldSelector := fields.Set{
+					"involvedObject.kind":      "Pod",
+					"involvedObject.name":      pods[0].Name,
+					"involvedObject.namespace": fledgedNameSpace,
+					"reason":                   "Failed",
+				}.AsSelector().String()
 
-			eventlist, err := m.kubeclientset.CoreV1().Events(fledgedNameSpace).
-				List(metav1.ListOptions{FieldSelector: fieldSelector})
-			if err != nil {
-				glog.Errorf("Error listing events for pod (%s): %v", pods[0].Name, err)
-				return err
-			}
+				eventlist, err := m.kubeclientset.CoreV1().Events(fledgedNameSpace).
+					List(metav1.ListOptions{FieldSelector: fieldSelector})
+				if err != nil {
+					glog.Errorf("Error listing events for pod (%s): %v", pods[0].Name, err)
+					return err
+				}
 
-			for _, v := range eventlist.Items {
-				ipres.Message = ipres.Message + ":" + v.Message
-			}
+				for _, v := range eventlist.Items {
+					ipres.Message = ipres.Message + ":" + v.Message
+				}
 
-			m.imagepullstatus[job] = ipres
+				m.imagepullstatus[job] = ipres
+			}
 		}
 	}
 	glog.V(4).Infof("imagepullstatus map: %+v", m.imagepullstatus)
 	return nil
 }
 
-func (m *ImageManager) updateImageCacheStatus() {
+func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
 	wait.Poll(time.Second, m.imagePullDeadlineDuration,
 		func() (done bool, err error) {
 			m.lock.RLock()
 			defer m.lock.RUnlock()
 			done, err = true, nil
 			for _, ipres := range m.imagepullstatus {
-				if ipres.Status == ImagePullResultStatusJobCreated {
-					done, err = false, nil
-					return
+				if ipres.ImagePullRequest.Imagecache.Name == imageCacheName {
+					if ipres.Status == ImagePullResultStatusJobCreated {
+						done, err = false, nil
+						return
+					}
 				}
 			}
 			return
 		})
-	err := m.updatePendingImagePullResults()
+	err := m.updatePendingImagePullResults(imageCacheName)
 	if err != nil {
 		glog.Errorf("Error from updatePendingImagePullResults(): %v", err)
 		return
 	}
-
+	m.lock.Lock()
 	ipstatus := map[string]ImagePullResult{}
+	m.lock.Unlock()
 
 	deletePropagation := metav1.DeletePropagationBackground
-	m.lock.RLock()
+	var ipstatusLock sync.RWMutex
+	var imageCache *fledgedv1alpha1.ImageCache
+	m.lock.Lock()
 	for job, ipres := range m.imagepullstatus {
-		ipstatus[job] = ipres
-		// delete jobs
-		if err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
-			Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
-			glog.Errorf("Error deleting job %s: %v", job, err)
-			m.lock.RUnlock()
-			return
+		if ipres.ImagePullRequest.Imagecache.Name == imageCacheName {
+			ipstatusLock.Lock()
+			ipstatus[job] = ipres
+			ipstatusLock.Unlock()
+			imageCache = ipres.ImagePullRequest.Imagecache
+			delete(m.imagepullstatus, job)
+			// delete jobs
+			if err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
+				Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
+				glog.Errorf("Error deleting job %s: %v", job, err)
+				m.lock.Unlock()
+				return
+			}
 		}
 	}
-
-	imagecache := &fledgedv1alpha1.ImageCache{}
-	for _, ipres := range m.imagepullstatus {
-		if ipres.ImagePullRequest.Imagecache != nil {
-			imagecache = ipres.ImagePullRequest.Imagecache
-			break
-		}
-	}
-	m.lock.RUnlock()
-	if imagecache == nil {
+	m.lock.Unlock()
+	if imageCache == nil {
 		glog.Errorf("Unable to obtain reference to image cache")
 		return
 	}
-	objKey, err := cache.MetaNamespaceKeyFunc(imagecache)
+	objKey, err := cache.MetaNamespaceKeyFunc(imageCache)
 	if err != nil {
-		glog.Errorf("Error from cache.MetaNamespaceKeyFunc(imagecache): %v", err)
+		glog.Errorf("Error from cache.MetaNamespaceKeyFunc(imageCache): %v", err)
 		return
 	}
 	m.workqueue.AddRateLimited(WorkQueueKey{
@@ -285,9 +284,6 @@ func (m *ImageManager) updateImageCacheStatus() {
 		Status:   &ipstatus,
 		ObjKey:   objKey,
 	})
-	m.lock.Lock()
-	m.imagepullstatus = make(map[string]ImagePullResult)
-	m.lock.Unlock()
 	return
 }
 
@@ -348,7 +344,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 
 		if ipr.Image == "" && ipr.Node == "" {
 			m.imagepullqueue.Forget(obj)
-			go m.updateImageCacheStatus()
+			go m.updateImageCacheStatus(ipr.Imagecache.Name)
 			return nil
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
