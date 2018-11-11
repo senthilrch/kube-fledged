@@ -438,6 +438,12 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			status.Message = fledgedv1alpha1.ImageCacheMessageRefreshingCache
 		}
 
+		imageCache, err = c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
+		if err != nil {
+			glog.Errorf("Error getting imagecache(%s) from imageCachesLister: %v", name, err)
+			return err
+		}
+
 		if err = c.updateImageCacheStatus(imageCache, status); err != nil {
 			glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
 			return err
