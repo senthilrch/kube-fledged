@@ -265,6 +265,10 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		obj = new
 		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
 		newImageCache := new.(*fledgedv1alpha1.ImageCache)
+		if oldImageCache.DeletionTimestamp != newImageCache.DeletionTimestamp {
+			workType = images.ImageCacheDelete
+			break
+		}
 		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
 			return
 		}
@@ -411,10 +415,12 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
 		// add Finalizer to ImageCache resource since we need to have control over when
 		// actual API resource is removed from etcd during delete action
-		err = c.addFinalizer(imageCache)
-		if err != nil {
-			glog.Errorf("Error adding finalizer to imagecache(%s): %v", imageCache.Name, err)
-			return err
+		if wqKey.WorkType == images.ImageCacheCreate {
+			err = c.addFinalizer(imageCache)
+			if err != nil {
+				glog.Errorf("Error adding finalizer to imagecache(%s): %v", imageCache.Name, err)
+				return err
+			}
 		}
 
 		cacheSpec := imageCache.Spec.CacheSpec
@@ -520,8 +526,22 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 	case images.ImageCacheDelete:
-		//TODO: Use finalizer. delete all images in the nodes. Once deleted, remove the finalizer
-		//For now we leave the images in the nodes.
+		// Get the ImageCache resource with this namespace/name
+		imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
+		if err != nil {
+			// The ImageCache resource may no longer exist, in which case we stop
+			// processing.
+			if errors.IsNotFound(err) {
+				runtime.HandleError(fmt.Errorf("ImageCache '%s' in work queue no longer exists", wqKey.ObjKey))
+				return nil
+			}
+			return err
+		}
+		err = c.removeFinalizer(imageCache)
+		if err != nil {
+			glog.Infof("Error removing finalizer from imagecache(%s): %v", imageCache.Name, err)
+			return err
+		}
 	}
 	glog.Infof("Completed sync actions for image cache %s(%s)", name, wqKey.WorkType)
 	return nil
@@ -546,5 +566,18 @@ func (c *Controller) addFinalizer(imageCache *fledgedv1alpha1.ImageCache) error 
 	imageCacheCopy := imageCache.DeepCopy()
 	imageCacheCopy.Finalizers = []string{fledgedFinalizer}
 	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
+	if err == nil {
+		glog.Infof("Finalizer %s added to imagecache(%s)", fledgedFinalizer, imageCache.Name)
+	}
+	return err
+}
+
+func (c *Controller) removeFinalizer(imageCache *fledgedv1alpha1.ImageCache) error {
+	imageCacheCopy := imageCache.DeepCopy()
+	imageCacheCopy.Finalizers = []string{}
+	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
+	if err == nil {
+		glog.Infof("Finalizer %s removed from imagecache(%s)", fledgedFinalizer, imageCache.Name)
+	}
 	return err
 }
