@@ -18,6 +18,7 @@ package images
 
 import (
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/golang/glog"
@@ -59,6 +60,7 @@ type ImageManager struct {
 	podsLister                corelisters.PodLister
 	podsSynced                cache.InformerSynced
 	imagePullDeadlineDuration time.Duration
+	lock                      sync.RWMutex
 }
 
 // ImagePullRequest has image name and node name
@@ -142,8 +144,9 @@ func NewImageManager(
 
 func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 	glog.V(4).Infof("Pod %s changed status to %s", pod.Name, pod.Status.Phase)
+	m.lock.RLock()
 	ipres, ok := m.imagepullstatus[pod.Labels["job-name"]]
-
+	m.lock.RUnlock()
 	// Corresponding job might have expired and got deleted.
 	// ignore pod status change for such jobs
 	if !ok {
@@ -160,11 +163,15 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 		ipres.Message = ImagePullResultMessageImagePullFailed + " " + pod.Name
 		glog.Infof("Job %s failed (%s --> %s)", pod.Labels["job-name"], ipres.ImagePullRequest.Image, ipres.ImagePullRequest.Node)
 	}
+	m.lock.Lock()
 	m.imagepullstatus[pod.Labels["job-name"]] = ipres
+	m.lock.Unlock()
 	return
 }
 
 func (m *ImageManager) updatePendingImagePullResults() error {
+	m.lock.Lock()
+	defer m.lock.Unlock()
 	for job, ipres := range m.imagepullstatus {
 		if ipres.Status == ImagePullResultStatusJobCreated {
 			/*
@@ -221,10 +228,11 @@ func (m *ImageManager) updatePendingImagePullResults() error {
 	return nil
 }
 
-func (m *ImageManager) updateImageCacheStatus() error {
-	//time.Sleep(m.imagePullDeadlineDuration)
+func (m *ImageManager) updateImageCacheStatus() {
 	wait.Poll(time.Second, m.imagePullDeadlineDuration,
 		func() (done bool, err error) {
+			m.lock.RLock()
+			defer m.lock.RUnlock()
 			done, err = true, nil
 			for _, ipres := range m.imagepullstatus {
 				if ipres.Status == ImagePullResultStatusJobCreated {
@@ -236,19 +244,22 @@ func (m *ImageManager) updateImageCacheStatus() error {
 		})
 	err := m.updatePendingImagePullResults()
 	if err != nil {
-		return err
+		glog.Errorf("Error from updatePendingImagePullResults(): %v", err)
+		return
 	}
 
 	ipstatus := map[string]ImagePullResult{}
 
 	deletePropagation := metav1.DeletePropagationBackground
+	m.lock.RLock()
 	for job, ipres := range m.imagepullstatus {
 		ipstatus[job] = ipres
 		// delete jobs
 		if err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
 			Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
 			glog.Errorf("Error deleting job %s: %v", job, err)
-			return err
+			m.lock.RUnlock()
+			return
 		}
 	}
 
@@ -259,23 +270,25 @@ func (m *ImageManager) updateImageCacheStatus() error {
 			break
 		}
 	}
-
+	m.lock.RUnlock()
 	if imagecache == nil {
 		glog.Errorf("Unable to obtain reference to image cache")
-		return fmt.Errorf("Unable to obtain reference to image cache")
+		return
 	}
 	objKey, err := cache.MetaNamespaceKeyFunc(imagecache)
 	if err != nil {
 		glog.Errorf("Error from cache.MetaNamespaceKeyFunc(imagecache): %v", err)
-		return err
+		return
 	}
 	m.workqueue.AddRateLimited(WorkQueueKey{
 		WorkType: ImageCacheStatusUpdate,
 		Status:   &ipstatus,
 		ObjKey:   objKey,
 	})
+	m.lock.Lock()
 	m.imagepullstatus = make(map[string]ImagePullResult)
-	return nil
+	m.lock.Unlock()
+	return
 }
 
 // Run starts the Image Manager go routine
@@ -335,9 +348,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 
 		if ipr.Image == "" && ipr.Node == "" {
 			m.imagepullqueue.Forget(obj)
-			if err := m.updateImageCacheStatus(); err != nil {
-				return err
-			}
+			go m.updateImageCacheStatus()
 			return nil
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
@@ -348,7 +359,9 @@ func (m *ImageManager) processNextWorkItem() bool {
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
+		m.lock.Lock()
 		m.imagepullstatus[job.Name] = ImagePullResult{ImagePullRequest: ipr, Status: ImagePullResultStatusJobCreated}
+		m.lock.Unlock()
 		m.imagepullqueue.Forget(obj)
 		glog.Infof("Job %s created (%s --> %s)", job.Name, ipr.Image, ipr.Node)
 		return nil
