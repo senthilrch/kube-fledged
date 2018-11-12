@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: clean clean-fledged clean-client fledged-image client-image push-images deploy update
+.PHONY: clean clean-fledged clean-client fledged-image client-image push-images test deploy update
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
@@ -87,6 +87,10 @@ client-image: clean-client
 push-image:
 	-docker push $(FLEDGED_IMAGE_NAME)
 	-docker push $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME)
+
+test:
+	-rm -f coverage.out
+	bash hack/run-unit-tests.sh
 
 deploy:
 	kubectl apply -f deploy/fledged-crd.yaml && sleep 2 && \
