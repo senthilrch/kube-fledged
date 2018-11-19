@@ -288,15 +288,20 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
 }
 
 // Run starts the Image Manager go routine
-func (m *ImageManager) Run(stopCh <-chan struct{}) {
+func (m *ImageManager) Run(stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
 	glog.Info("Starting image manager")
 	go m.kubeInformerFactory.Start(stopCh)
+	// Wait for the caches to be synced before starting workers
+	glog.Info("Waiting for informer caches to sync")
+	if ok := cache.WaitForCacheSync(stopCh, m.podsSynced); !ok {
+		return fmt.Errorf("failed to wait for caches to sync")
+	}
 	go wait.Until(m.runWorker, time.Second, stopCh)
 	glog.Info("Started image manager")
 	<-stopCh
 	glog.Info("Shutting down image manager")
-
+	return nil
 }
 
 // runWorker is a long-running function that will continually call the

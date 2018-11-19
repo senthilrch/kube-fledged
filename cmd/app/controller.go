@@ -236,6 +236,9 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 
 	glog.Info("Started workers")
 	c.imageManager.Run(stopCh)
+	if err := c.imageManager.Run(stopCh); err != nil {
+		glog.Fatalf("Error running image manager: %s", err.Error())
+	}
 
 	<-stopCh
 	glog.Info("Shutting down workers")

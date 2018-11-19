@@ -34,7 +34,9 @@ const noResync time.Duration = time.Second * 0
 const imageCacheRefreshFrequency time.Duration = time.Second * 0
 const imagePullDeadlineDuration time.Duration = time.Second * 5
 
-func TestNewController(t *testing.T) {
+//var alwaysReady = func() bool { return true }
+
+func newController() *Controller {
 	fakekubeclientset := fakeclientset.NewSimpleClientset([]runtime.Object{}...)
 	fakefledgedclientset := fakefledgedclientset.NewSimpleClientset([]runtime.Object{}...)
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(fakekubeclientset, noResync)
@@ -44,10 +46,29 @@ func TestNewController(t *testing.T) {
 		kubeInformerFactory.Core().V1().Nodes(),
 		fledgedInformerFactory.Fledged().V1alpha1().ImageCaches(),
 		imageCacheRefreshFrequency, imagePullDeadlineDuration)
+
+	return controller
+}
+func TestNewController(t *testing.T) {
+	controller := newController()
 	t.Logf("New controller created successfully: %v", controller)
 
-	//stopCh := make(chan struct{})
-	//if err := controller.Run(1, stopCh); err != nil {
-	//	t.Errorf("Error running controller: %s", err.Error())
-	//}
+	/* 	stopCh := make(chan struct{})
+	   	go kubeInformerFactory.Start(stopCh)
+	   	go fledgedInformerFactory.Start(stopCh)
+
+	   	controller.nodesSynced = alwaysReady
+	   	controller.imageCachesSynced = alwaysReady
+	   	controller.imageManager.PodsSynced = alwaysReady
+	   	if err := controller.Run(1, stopCh); err != nil {
+	   		t.Errorf("Error running controller: %s", err.Error())
+	   	} */
+}
+
+func TestPreFlightChecks(t *testing.T) {
+	controller := newController()
+	err := controller.PreFlightChecks()
+	if err != nil {
+		t.Errorf("TestPreFlightChecks failed: %s", err.Error())
+	}
 }
