@@ -54,7 +54,7 @@ const (
 	SuccessSynced = "Synced"
 	// MessageResourceSynced is the message used for an Event fired when a ImageCache
 	// is synced successfully
-	MessageResourceSynced = "Foo synced successfully"
+	MessageResourceSynced = "ImageCache synced successfully"
 )
 
 // Controller is the controller for ImageCache resources
@@ -491,9 +491,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		// requests for this sync action have been placed in the imagepullqueue
 		c.imagepullqueue.AddRateLimited(images.ImagePullRequest{Imagecache: imageCache})
 
-		//c.recorder.Event(imageCache, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
-		//return nil
-
 	case images.ImageCacheStatusUpdate:
 		glog.Infof("wqKey.Status = %+v", wqKey.Status)
 		// Finally, we update the status block of the ImageCache resource to reflect the
@@ -528,6 +525,15 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			glog.Errorf("Error updating ImageCache status: %v", err)
 			return err
 		}
+
+		if status.Status == fledgedv1alpha1.ImageCacheActionStatusSucceeded {
+			c.recorder.Event(imageCache, corev1.EventTypeNormal, fledgedv1alpha1.ImageCacheReasonImagesPulledSuccessfully, fledgedv1alpha1.ImageCacheMessageImagesPulledSuccessfully)
+		}
+
+		if status.Status == fledgedv1alpha1.ImageCacheActionStatusFailed {
+			c.recorder.Event(imageCache, corev1.EventTypeWarning, fledgedv1alpha1.ImageCacheReasonImagePullFailedForSomeImages, fledgedv1alpha1.ImageCacheMessageImagePullFailedForSomeImages)
+		}
+
 	case images.ImageCacheDelete:
 		// Get the ImageCache resource with this namespace/name
 		imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
