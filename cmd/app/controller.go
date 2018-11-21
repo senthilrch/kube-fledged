@@ -90,7 +90,8 @@ func NewController(
 	nodeInformer coreinformers.NodeInformer,
 	imageCacheInformer informers.ImageCacheInformer,
 	imageCacheRefreshFrequency time.Duration,
-	imagePullDeadlineDuration time.Duration) *Controller {
+	imagePullDeadlineDuration time.Duration,
+	dockerClientImage string) *Controller {
 
 	utilruntime.Must(fledgedscheme.AddToScheme(scheme.Scheme))
 	glog.V(4).Info("Creating event broadcaster")
@@ -112,7 +113,7 @@ func NewController(
 		imageCacheRefreshFrequency: imageCacheRefreshFrequency,
 	}
 
-	imageManager := images.NewImageManager(controller.workqueue, controller.imagepullqueue, controller.kubeclientset, fledgedNameSpace, imagePullDeadlineDuration)
+	imageManager := images.NewImageManager(controller.workqueue, controller.imagepullqueue, controller.kubeclientset, fledgedNameSpace, imagePullDeadlineDuration, dockerClientImage)
 	controller.imageManager = imageManager
 
 	glog.Info("Setting up event handlers")
@@ -268,7 +269,11 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		obj = new
 		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
 		newImageCache := new.(*fledgedv1alpha1.ImageCache)
-		if oldImageCache.DeletionTimestamp != newImageCache.DeletionTimestamp {
+		if oldImageCache.DeletionTimestamp == nil && newImageCache.DeletionTimestamp != nil {
+			workType = images.ImageCachePurge
+			break
+		}
+		if oldImageCache.DeletionTimestamp != nil && newImageCache.DeletionTimestamp != nil && !oldImageCache.DeletionTimestamp.Equal(newImageCache.DeletionTimestamp) {
 			workType = images.ImageCacheDelete
 			break
 		}
@@ -280,12 +285,7 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 			return
 		}
 	case images.ImageCacheDelete:
-		obj = old
-		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
-		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
-			glog.Warningf("Received image cache delete for '%s' while it is under processing, so ignoring delete.", oldImageCache.Name)
-			return
-		}
+		return
 
 	case images.ImageCacheRefresh:
 		obj = old
@@ -402,7 +402,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 	glog.Infof("Starting to sync image cache %s(%s)", name, wqKey.WorkType)
 
 	switch wqKey.WorkType {
-	case images.ImageCacheCreate, images.ImageCacheUpdate, images.ImageCacheRefresh:
+	case images.ImageCacheCreate, images.ImageCacheUpdate, images.ImageCacheRefresh, images.ImageCachePurge:
 
 		// Get the ImageCache resource with this namespace/name
 		imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
@@ -447,6 +447,11 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			status.Message = fledgedv1alpha1.ImageCacheMessageRefreshingCache
 		}
 
+		if wqKey.WorkType == images.ImageCachePurge {
+			status.Reason = fledgedv1alpha1.ImageCacheReasonImageCachePurge
+			status.Message = fledgedv1alpha1.ImageCacheMessagePurgeCache
+		}
+
 		imageCache, err = c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
 			glog.Errorf("Error getting imagecache(%s) from imageCachesLister: %v", name, err)
@@ -481,6 +486,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 					ipr := images.ImagePullRequest{
 						Image:      i.Images[m],
 						Node:       n.Labels["kubernetes.io/hostname"],
+						WorkType:   wqKey.WorkType,
 						Imagecache: imageCache,
 					}
 					c.imagepullqueue.AddRateLimited(ipr)
@@ -489,7 +495,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		}
 		// We add an empty image pull request to signal the image manager that all
 		// requests for this sync action have been placed in the imagepullqueue
-		c.imagepullqueue.AddRateLimited(images.ImagePullRequest{Imagecache: imageCache})
+		c.imagepullqueue.AddRateLimited(images.ImagePullRequest{WorkType: wqKey.WorkType, Imagecache: imageCache})
 
 	case images.ImageCacheStatusUpdate:
 		glog.Infof("wqKey.Status = %+v", wqKey.Status)

@@ -60,13 +60,15 @@ type ImageManager struct {
 	podsLister                corelisters.PodLister
 	podsSynced                cache.InformerSynced
 	imagePullDeadlineDuration time.Duration
+	dockerClientImage         string
 	lock                      sync.RWMutex
 }
 
-// ImagePullRequest has image name and node name
+// ImagePullRequest has image name, node name, action and imagecache
 type ImagePullRequest struct {
 	Image      string
 	Node       string
+	WorkType   WorkType
 	Imagecache *fledgedv1alpha1.ImageCache
 }
 
@@ -88,6 +90,7 @@ const (
 	ImageCacheDelete       WorkType = "delete"
 	ImageCacheStatusUpdate WorkType = "statusupdate"
 	ImageCacheRefresh      WorkType = "refresh"
+	ImageCachePurge        WorkType = "purge"
 )
 
 // WorkQueueKey is an item in the sync handler's work queue
@@ -103,7 +106,8 @@ func NewImageManager(
 	imagepullqueue workqueue.RateLimitingInterface,
 	kubeclientset kubernetes.Interface,
 	namespace string,
-	imagePullDeadlineDuration time.Duration) *ImageManager {
+	imagePullDeadlineDuration time.Duration,
+	dockerClientImage string) *ImageManager {
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(
 		kubeclientset,
@@ -120,6 +124,7 @@ func NewImageManager(
 		podsLister:                podInformer.Lister(),
 		podsSynced:                podInformer.Informer().HasSynced,
 		imagePullDeadlineDuration: imagePullDeadlineDuration,
+		dockerClientImage:         dockerClientImage,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		//AddFunc: ,
@@ -249,7 +254,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
 	ipstatus := map[string]ImagePullResult{}
 	m.lock.Unlock()
 
-	deletePropagation := metav1.DeletePropagationBackground
+	//deletePropagation := metav1.DeletePropagationBackground
 	var ipstatusLock sync.RWMutex
 	var imageCache *fledgedv1alpha1.ImageCache
 	m.lock.Lock()
@@ -261,12 +266,13 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
 			imageCache = ipres.ImagePullRequest.Imagecache
 			delete(m.imagepullstatus, job)
 			// delete jobs
-			if err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
+			/*  if err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
 				Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
 				glog.Errorf("Error deleting job %s: %v", job, err)
 				m.lock.Unlock()
 				return
 			}
+			*/
 		}
 	}
 	m.lock.Unlock()
@@ -354,9 +360,18 @@ func (m *ImageManager) processNextWorkItem() bool {
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
 		// ImageCache resource to be synced.
-		job, err := m.pullImage(ipr)
-		if err != nil {
-			return fmt.Errorf("error pulling image '%s' to node '%s': %s", ipr.Image, ipr.Node, err.Error())
+		var job *batchv1.Job
+		var err error
+		if ipr.WorkType == ImageCachePurge {
+			job, err = m.deleteImage(ipr)
+			if err != nil {
+				return fmt.Errorf("error deleting image '%s' from node '%s': %s", ipr.Image, ipr.Node, err.Error())
+			}
+		} else {
+			job, err = m.pullImage(ipr)
+			if err != nil {
+				return fmt.Errorf("error pulling image '%s' to node '%s': %s", ipr.Image, ipr.Node, err.Error())
+			}
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
@@ -380,6 +395,23 @@ func (m *ImageManager) processNextWorkItem() bool {
 func (m *ImageManager) pullImage(ipr ImagePullRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
 	newjob, err := newImagePullJob(ipr.Imagecache, ipr.Image, ipr.Node)
+	if err != nil {
+		glog.Errorf("Error when constructing job manifest: %v", err)
+		return nil, err
+	}
+	// Create a Job to pull the image into the node
+	job, err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).Create(newjob)
+	if err != nil {
+		glog.Errorf("Error creating job in node %s: %v", ipr.Node, err)
+		return nil, err
+	}
+	return job, nil
+}
+
+// deleteImage deletes the image from the node
+func (m *ImageManager) deleteImage(ipr ImagePullRequest) (*batchv1.Job, error) {
+	// Construct the Job manifest
+	newjob, err := newImageDeleteJob(ipr.Imagecache, ipr.Image, ipr.Node, m.dockerClientImage)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err

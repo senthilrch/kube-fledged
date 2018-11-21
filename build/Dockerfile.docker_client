@@ -14,7 +14,7 @@
 
 FROM alpine
 
-RUN apk add --no-cache curl openssh-client
+RUN apk add --no-cache bash curl openssh-client
 
 ARG VERSION
 RUN curl -L -o /tmp/docker-$VERSION.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VERSION.tgz \
