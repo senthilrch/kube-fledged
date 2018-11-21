@@ -33,6 +33,7 @@ import (
 const noResync time.Duration = time.Second * 0
 const imageCacheRefreshFrequency time.Duration = time.Second * 0
 const imagePullDeadlineDuration time.Duration = time.Second * 5
+const dockerClientImage = "senthilrch/fledged-docker-client:latest"
 
 //var alwaysReady = func() bool { return true }
 
@@ -45,7 +46,7 @@ func newController() *Controller {
 	controller := NewController(fakekubeclientset, fakefledgedclientset,
 		kubeInformerFactory.Core().V1().Nodes(),
 		fledgedInformerFactory.Fledged().V1alpha1().ImageCaches(),
-		imageCacheRefreshFrequency, imagePullDeadlineDuration)
+		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage)
 
 	return controller
 }
