@@ -75,7 +75,7 @@ type Controller struct {
 	// time, and makes it easy to ensure we are never processing the same item
 	// simultaneously in two different workers.
 	workqueue      workqueue.RateLimitingInterface
-	imagepullqueue workqueue.RateLimitingInterface
+	imageworkqueue workqueue.RateLimitingInterface
 	imageManager   *images.ImageManager
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
@@ -108,12 +108,12 @@ func NewController(
 		imageCachesLister:          imageCacheInformer.Lister(),
 		imageCachesSynced:          imageCacheInformer.Informer().HasSynced,
 		workqueue:                  workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches"),
-		imagepullqueue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus"),
+		imageworkqueue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus"),
 		recorder:                   recorder,
 		imageCacheRefreshFrequency: imageCacheRefreshFrequency,
 	}
 
-	imageManager := images.NewImageManager(controller.workqueue, controller.imagepullqueue, controller.kubeclientset, fledgedNameSpace, imagePullDeadlineDuration, dockerClientImage)
+	imageManager := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, fledgedNameSpace, imagePullDeadlineDuration, dockerClientImage)
 	controller.imageManager = imageManager
 
 	glog.Info("Setting up event handlers")
@@ -213,7 +213,7 @@ func (c *Controller) danglingImageCaches() error {
 func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer runtime.HandleCrash()
 	defer c.workqueue.ShutDown()
-	defer c.imagepullqueue.ShutDown()
+	defer c.imageworkqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
 	glog.Info("Starting fledged controller")
@@ -483,19 +483,19 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
 			for _, n := range nodes {
 				for m := range i.Images {
-					ipr := images.ImagePullRequest{
+					ipr := images.ImageWorkRequest{
 						Image:      i.Images[m],
 						Node:       n.Labels["kubernetes.io/hostname"],
 						WorkType:   wqKey.WorkType,
 						Imagecache: imageCache,
 					}
-					c.imagepullqueue.AddRateLimited(ipr)
+					c.imageworkqueue.AddRateLimited(ipr)
 				}
 			}
 		}
 		// We add an empty image pull request to signal the image manager that all
-		// requests for this sync action have been placed in the imagepullqueue
-		c.imagepullqueue.AddRateLimited(images.ImagePullRequest{WorkType: wqKey.WorkType, Imagecache: imageCache})
+		// requests for this sync action have been placed in the imageworkqueue
+		c.imageworkqueue.AddRateLimited(images.ImageWorkRequest{WorkType: wqKey.WorkType, Imagecache: imageCache})
 
 	case images.ImageCacheStatusUpdate:
 		glog.Infof("wqKey.Status = %+v", wqKey.Status)
@@ -513,10 +513,10 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		status.Message = fledgedv1alpha1.ImageCacheMessageImagesPulledSuccessfully
 
 		for _, v := range *wqKey.Status {
-			if v.Status == images.ImagePullResultStatusFailed {
-				status.Failures[v.ImagePullRequest.Image] = append(
-					status.Failures[v.ImagePullRequest.Image], fledgedv1alpha1.NodeReasonMessage{
-						Node:    v.ImagePullRequest.Node,
+			if v.Status == images.ImageWorkResultStatusFailed {
+				status.Failures[v.ImageWorkRequest.Image] = append(
+					status.Failures[v.ImageWorkRequest.Image], fledgedv1alpha1.NodeReasonMessage{
+						Node:    v.ImageWorkRequest.Node,
 						Reason:  v.Reason,
 						Message: v.Message,
 					})
