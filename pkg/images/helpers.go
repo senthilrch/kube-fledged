@@ -166,7 +166,7 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, hos
 							Name:    "docker-client",
 							Image:   dockerclientimage,
 							Command: []string{"/bin/bash"},
-							Args:    []string{"-c", "exec /usr/bin/docker image rm " + image + " > /dev/termination-log 2>&1"},
+							Args:    []string{"-c", "exec /usr/bin/docker image rm -f " + image + " > /dev/termination-log 2>&1"},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "docker-sock",
