@@ -14,5 +14,5 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package images is responsible for pulling images into and removing images from image cache
+// Package images is responsible for pulling images into and removing images from worker nodes
 package images
