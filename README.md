@@ -41,12 +41,19 @@ $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/
 $ cd $HOME/src/github.com/senthilrch/kube-fledged
 ```
 
-Build and push the docker image to registry (e.g. Docker hub)
+Build and push the docker images to registry (e.g. Docker hub)
+
+_Note:- If you are behind a proxy set the following ENV variables before you proceed to build/push the images_
+```
+export HTTP_PROXY=http://proxy_ip_or_hostname:port
+export HTTPS_PROXY=https://proxy_ip_or_hostname:port
+```
 
 ```
 $ export FLEDGED_IMAGE_NAME=<your_docker_hub_username>/fledged:<your_tag>
+$ export FLEDGED_DOCKER_CLIENT_IMAGE_NAME=<your_docker_hub_username>/fledged-docker-client:<your_tag>
 $ docker login -u <username> -p <password>
-$ make fledged-image && make push-image
+$ make fledged-image && make client-image && make push-image
 ```
 
 ### Deploy
@@ -128,10 +135,22 @@ $ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 
 ### Delete image cache
 
-An existing image cache can be deleted using following command.
+Before you could delete the image cache, you need to purge the images in the cache using the following command. This will remove all cached images from the worker nodes.
 
 ```
-$ kubectl delete imagecaches imagecache1 -n kube-fledged
+$ kubectl delete imagecaches imagecache1 -n kube-fledged --wait=false
+```
+
+View the status of purging the image cache. If any failures, such images should be removed manually or you could decide to leave the images in the worker nodes.
+
+```
+kubectl get imagecaches imagecache1 -n kube-fledged -o json
+```
+
+Finally delete the image cache using following command.
+
+```
+$ kubectl delete imagecaches imagecache1 -n kube-fledged --now
 ```
 
 ## How it works
