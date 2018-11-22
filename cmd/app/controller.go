@@ -548,11 +548,11 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		}
 
 		if status.Status == fledgedv1alpha1.ImageCacheActionStatusSucceeded {
-			c.recorder.Event(imageCache, corev1.EventTypeNormal, fledgedv1alpha1.ImageCacheReasonImagesPulledSuccessfully, fledgedv1alpha1.ImageCacheMessageImagesPulledSuccessfully)
+			c.recorder.Event(imageCache, corev1.EventTypeNormal, status.Reason, status.Message)
 		}
 
 		if status.Status == fledgedv1alpha1.ImageCacheActionStatusFailed {
-			c.recorder.Event(imageCache, corev1.EventTypeWarning, fledgedv1alpha1.ImageCacheReasonImagePullFailedForSomeImages, fledgedv1alpha1.ImageCacheMessageImagePullFailedForSomeImages)
+			c.recorder.Event(imageCache, corev1.EventTypeWarning, status.Reason, status.Message)
 		}
 
 	case images.ImageCacheDelete:
