@@ -248,15 +248,16 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
 			}
 			return
 		})
+	glog.Info("wait.Poll exited successfully")
 	err := m.updatePendingImageWorkResults(imageCacheName)
 	if err != nil {
 		glog.Errorf("Error from updatePendingImageWorkResults(): %v", err)
 		return
 	}
-	m.lock.Lock()
+	glog.Info("m.updatePendingImageWorkResults exited successfully")
+	//m.lock.Lock()
 	iwstatus := map[string]ImageWorkResult{}
-	m.lock.Unlock()
-
+	//m.lock.Unlock()
 	deletePropagation := metav1.DeletePropagationBackground
 	var iwstatusLock sync.RWMutex
 	var imageCache *fledgedv1alpha1.ImageCache
@@ -266,6 +267,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
 			iwstatusLock.Lock()
 			iwstatus[job] = iwres
 			iwstatusLock.Unlock()
+			glog.Info("iwstatus[job] = iwres executed successfully")
 			imageCache = iwres.ImageWorkRequest.Imagecache
 			delete(m.imageworkstatus, job)
 			// delete jobs

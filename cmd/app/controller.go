@@ -508,11 +508,29 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 
-		status.Status = fledgedv1alpha1.ImageCacheActionStatusSucceeded
-		status.Reason = fledgedv1alpha1.ImageCacheReasonImagesPulledSuccessfully
-		status.Message = fledgedv1alpha1.ImageCacheMessageImagesPulledSuccessfully
-
+		failures := false
 		for _, v := range *wqKey.Status {
+			if v.Status == images.ImageWorkResultStatusSucceeded && !failures {
+				status.Status = fledgedv1alpha1.ImageCacheActionStatusSucceeded
+				if v.ImageWorkRequest.WorkType == images.ImageCachePurge {
+					status.Reason = fledgedv1alpha1.ImageCacheReasonImagesDeletedSuccessfully
+					status.Message = fledgedv1alpha1.ImageCacheMessageImagesDeletedSuccessfully
+				} else {
+					status.Reason = fledgedv1alpha1.ImageCacheReasonImagesPulledSuccessfully
+					status.Message = fledgedv1alpha1.ImageCacheMessageImagesPulledSuccessfully
+				}
+			}
+			if v.Status == images.ImageWorkResultStatusFailed && !failures {
+				failures = true
+				status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
+				if v.ImageWorkRequest.WorkType == images.ImageCachePurge {
+					status.Reason = fledgedv1alpha1.ImageCacheReasonImageDeleteFailedForSomeImages
+					status.Message = fledgedv1alpha1.ImageCacheMessageImageDeleteFailedForSomeImages
+				} else {
+					status.Reason = fledgedv1alpha1.ImageCacheReasonImagePullFailedForSomeImages
+					status.Message = fledgedv1alpha1.ImageCacheMessageImagePullFailedForSomeImages
+				}
+			}
 			if v.Status == images.ImageWorkResultStatusFailed {
 				status.Failures[v.ImageWorkRequest.Image] = append(
 					status.Failures[v.ImageWorkRequest.Image], fledgedv1alpha1.NodeReasonMessage{
@@ -520,9 +538,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 						Reason:  v.Reason,
 						Message: v.Message,
 					})
-				status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
-				status.Reason = fledgedv1alpha1.ImageCacheReasonImagePullFailedForSomeImages
-				status.Message = fledgedv1alpha1.ImageCacheMessageImagePullFailedForSomeImages
 			}
 		}
 
