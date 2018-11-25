@@ -19,6 +19,7 @@ package app
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -436,7 +437,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
 		// add Finalizer to ImageCache resource since we need to have control over when
 		// actual API resource is removed from etcd during delete action
-		if wqKey.WorkType == images.ImageCacheCreate {
+		if wqKey.WorkType == images.ImageCacheCreate || wqKey.WorkType == images.ImageCacheUpdate {
 			err = c.addFinalizer(imageCache)
 			if err != nil {
 				glog.Errorf("Error adding finalizer to imagecache(%s): %v", imageCache.Name, err)
@@ -611,6 +612,9 @@ func (c *Controller) updateImageCacheStatus(imageCache *fledgedv1alpha1.ImageCac
 }
 
 func (c *Controller) addFinalizer(imageCache *fledgedv1alpha1.ImageCache) error {
+	if len(imageCache.Finalizers) != 0 && strings.Contains(strings.Join(imageCache.Finalizers, ":"), fledgedFinalizer) {
+		return nil
+	}
 	imageCacheCopy := imageCache.DeepCopy()
 	imageCacheCopy.Finalizers = []string{fledgedFinalizer}
 	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
