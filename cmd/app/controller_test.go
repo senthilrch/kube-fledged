@@ -35,27 +35,31 @@ import (
 	core "k8s.io/client-go/testing"
 )
 
-//const controllerAgentName = "fledged"
-//const fledgedNameSpace = "kube-fledged"
-//const fledgedFinalizer = "fledged"
-const noResync time.Duration = time.Second * 0
-const imageCacheRefreshFrequency time.Duration = time.Second * 0
-const imagePullDeadlineDuration time.Duration = time.Second * 5
-const dockerClientImage = "senthilrch/fledged-docker-client:latest"
+// noResyncPeriodFunc returns 0 for resyncPeriod in case resyncing is not needed.
+func noResyncPeriodFunc() time.Duration {
+	return 0
+}
 
-//var alwaysReady = func() bool { return true }
+func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clientset.Interface) *Controller {
+	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclientset, noResyncPeriodFunc())
+	fledgedInformerFactory := fledgedinformers.NewSharedInformerFactory(fledgedclientset, noResyncPeriodFunc())
+	kubeInformer := kubeInformerFactory.Core().V1().Nodes()
+	fledgedInformer := fledgedInformerFactory.Fledged().V1alpha1().ImageCaches()
+	imageCacheRefreshFrequency := time.Second * 0
+	imagePullDeadlineDuration := time.Second * 5
+	dockerClientImage := "senthilrch/fledged-docker-client:latest"
 
-func newController(kubeclientset kubernetes.Interface, fledgedclientset clientset.Interface) *Controller {
-	//fakekubeclientset := fakeclientset.NewSimpleClientset([]runtime.Object{}...)
-	//fakefledgedclientset := fakefledgedclientset.NewSimpleClientset([]runtime.Object{}...)
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclientset, noResync)
-	fledgedInformerFactory := fledgedinformers.NewSharedInformerFactory(fledgedclientset, noResync)
+	/* 	startInformers := true
+	   	if startInformers {
+	   		stopCh := make(chan struct{})
+	   		defer close(stopCh)
+	   		kubeInformerFactory.Start(stopCh)
+	   		fledgedInformerFactory.Start(stopCh)
+	   	} */
 
-	controller := NewController(kubeclientset, fledgedclientset,
-		kubeInformerFactory.Core().V1().Nodes(),
-		fledgedInformerFactory.Fledged().V1alpha1().ImageCaches(),
+	controller := NewController(kubeclientset, fledgedclientset, kubeInformer, fledgedInformer,
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage)
-
+	controller.nodesSynced = func() bool { return true }
 	return controller
 }
 
@@ -64,7 +68,7 @@ func TestPreFlightChecks(t *testing.T) {
 	var fakefledgedclientset *fledgedclientsetfake.Clientset
 	joblist := &batchv1.JobList{}
 	joblist.Items = []batchv1.Job{
-		batchv1.Job{
+		{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "foo",
 			},
@@ -74,7 +78,7 @@ func TestPreFlightChecks(t *testing.T) {
 	//Test #1: No dangling jobs
 	fakekubeclientset = &fakeclientset.Clientset{}
 	fakefledgedclientset = &fledgedclientsetfake.Clientset{}
-	controller := newController(fakekubeclientset, fakefledgedclientset)
+	controller := newTestController(fakekubeclientset, fakefledgedclientset)
 	err := controller.PreFlightChecks()
 	if err != nil {
 		t.Errorf("TestPreFlightChecks failed: %s", err.Error())
@@ -90,7 +94,7 @@ func TestPreFlightChecks(t *testing.T) {
 		return true, nil, nil
 	})
 
-	controller = newController(fakekubeclientset, fakefledgedclientset)
+	controller = newTestController(fakekubeclientset, fakefledgedclientset)
 	err = controller.PreFlightChecks()
 	if err != nil {
 		t.Errorf("TestPreFlightChecks failed: %s", err.Error())
@@ -103,7 +107,7 @@ func TestPreFlightChecks(t *testing.T) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
 
-	controller = newController(fakekubeclientset, fakefledgedclientset)
+	controller = newTestController(fakekubeclientset, fakefledgedclientset)
 	err = controller.PreFlightChecks()
 	if err == nil {
 		t.Errorf("TestPreFlightChecks failed: %s", fmt.Errorf("error"))
@@ -120,7 +124,7 @@ func TestPreFlightChecks(t *testing.T) {
 		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
 	})
 
-	controller = newController(fakekubeclientset, fakefledgedclientset)
+	controller = newTestController(fakekubeclientset, fakefledgedclientset)
 	err = controller.PreFlightChecks()
 	if err == nil {
 		t.Errorf("TestPreFlightChecks failed: %s", fmt.Errorf("error"))
