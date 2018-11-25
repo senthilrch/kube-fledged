@@ -50,8 +50,14 @@ func validateCacheSpec(c *Controller, imageCache *fledgedv1alpha1.ImageCache) er
 		}
 		glog.V(4).Infof("No. of nodes in %+v is %d", i.NodeSelector, len(nodes))
 		if len(nodes) == 0 {
-			glog.Errorf("NodeSelector %+v did not match any nodes.", i.NodeSelector)
-			return fmt.Errorf("NodeSelector %+v did not match any nodes", i.NodeSelector)
+			glog.Errorf("NodeSelector %s did not match any nodes.", labels.Set(i.NodeSelector).String())
+			return fmt.Errorf("NodeSelector %s did not match any nodes", labels.Set(i.NodeSelector).String())
+		}
+
+		if len(i.Images) == 0 {
+			glog.Error("No images specified within image list")
+			return fmt.Errorf("No images specified within image list")
+
 		}
 
 		for m := range i.Images {
