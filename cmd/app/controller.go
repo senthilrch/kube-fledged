@@ -382,7 +382,10 @@ func (c *Controller) runRefreshWorker() {
 				// Do not refresh image caches for which cache spec validation failed
 				if !(imageCaches[i].Status.Status == fledgedv1alpha1.ImageCacheActionStatusFailed &&
 					imageCaches[i].Status.Reason == fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed) {
-					c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
+					// Do not refresh image caches marked for deletion
+					if imageCaches[i].DeletionTimestamp == nil {
+						c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
+					}
 				}
 			}
 		}
