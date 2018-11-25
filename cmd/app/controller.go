@@ -19,6 +19,7 @@ package app
 import (
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -269,13 +270,6 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		obj = new
 		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
 		newImageCache := new.(*fledgedv1alpha1.ImageCache)
-		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
-			return
-		}
-		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
-			glog.Errorf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
-			return
-		}
 		if oldImageCache.DeletionTimestamp == nil && newImageCache.DeletionTimestamp != nil {
 			workType = images.ImageCachePurge
 			break
@@ -283,6 +277,13 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		if oldImageCache.DeletionTimestamp != nil && newImageCache.DeletionTimestamp != nil && !oldImageCache.DeletionTimestamp.Equal(newImageCache.DeletionTimestamp) {
 			workType = images.ImageCacheDelete
 			break
+		}
+		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
+			return
+		}
+		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
+			glog.Errorf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
+			return
 		}
 	case images.ImageCacheDelete:
 		return
@@ -378,7 +379,14 @@ func (c *Controller) runRefreshWorker() {
 		if !reflect.DeepEqual(imageCaches[i].Status, fledgedv1alpha1.ImageCacheStatus{}) {
 			// Do not refresh if image cache is already under processing
 			if imageCaches[i].Status.Status != fledgedv1alpha1.ImageCacheActionStatusProcessing {
-				c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
+				// Do not refresh image caches for which cache spec validation failed
+				if !(imageCaches[i].Status.Status == fledgedv1alpha1.ImageCacheActionStatusFailed &&
+					imageCaches[i].Status.Reason == fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed) {
+					// Do not refresh image caches marked for deletion
+					if imageCaches[i].DeletionTimestamp == nil {
+						c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
+					}
+				}
 			}
 		}
 	}
@@ -416,9 +424,23 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 
+		err = validateCacheSpec(c, imageCache)
+		if err != nil {
+			status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
+			status.Reason = fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed
+			status.Message = err.Error()
+
+			if err = c.updateImageCacheStatus(imageCache, status); err != nil {
+				glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
+				return err
+			}
+
+			return err
+		}
+
 		// add Finalizer to ImageCache resource since we need to have control over when
 		// actual API resource is removed from etcd during delete action
-		if wqKey.WorkType == images.ImageCacheCreate {
+		if wqKey.WorkType == images.ImageCacheCreate || wqKey.WorkType == images.ImageCacheUpdate {
 			err = c.addFinalizer(imageCache)
 			if err != nil {
 				glog.Errorf("Error adding finalizer to imagecache(%s): %v", imageCache.Name, err)
@@ -454,7 +476,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
 		imageCache, err = c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
-			glog.Errorf("Error getting imagecache(%s) from imageCachesLister: %v", name, err)
+			glog.Errorf("Error getting imagecache(%s) from api server: %v", name, err)
 			return err
 		}
 
@@ -593,6 +615,9 @@ func (c *Controller) updateImageCacheStatus(imageCache *fledgedv1alpha1.ImageCac
 }
 
 func (c *Controller) addFinalizer(imageCache *fledgedv1alpha1.ImageCache) error {
+	if len(imageCache.Finalizers) != 0 && strings.Contains(strings.Join(imageCache.Finalizers, ":"), fledgedFinalizer) {
+		return nil
+	}
 	imageCacheCopy := imageCache.DeepCopy()
 	imageCacheCopy.Finalizers = []string{fledgedFinalizer}
 	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
