@@ -452,9 +452,29 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			status.Message = fledgedv1alpha1.ImageCacheMessagePurgeCache
 		}
 
+		err = validateCacheSpec(c, imageCache)
+		if err != nil {
+			status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
+			status.Reason = fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed
+			status.Message = err.Error()
+
+			imageCache, err = c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				glog.Errorf("Error getting imagecache(%s) from api server: %v", name, err)
+				return err
+			}
+
+			if err = c.updateImageCacheStatus(imageCache, status); err != nil {
+				glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
+				return err
+			}
+
+			return err
+		}
+
 		imageCache, err = c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
 		if err != nil {
-			glog.Errorf("Error getting imagecache(%s) from imageCachesLister: %v", name, err)
+			glog.Errorf("Error getting imagecache(%s) from api server: %v", name, err)
 			return err
 		}
 

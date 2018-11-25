@@ -96,6 +96,7 @@ const (
 	ImageCacheReasonImagePullFailedOnSomeNodes     = "ImagePullFailedOnSomeNodes"
 	ImageCacheReasonImagePullStatusUnknown         = "ImagePullStatusUnknown"
 	ImageCacheReasonImagePullAbhorted              = "ImagePullAbhorted"
+	ImageCacheReasonCacheSpecValidationFailed      = "CacheSpecValidationFailed"
 )
 
 // List of constants for ImageCacheMessage
