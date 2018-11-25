@@ -37,6 +37,21 @@ func validateCacheSpec(c *Controller, imageCache *fledgedv1alpha1.ImageCache) er
 	var err error
 
 	for _, i := range cacheSpec {
+		if len(i.Images) == 0 {
+			glog.Error("No images specified within image list")
+			return fmt.Errorf("No images specified within image list")
+
+		}
+
+		for m := range i.Images {
+			for p := 0; p < m; p++ {
+				if i.Images[p] == i.Images[m] {
+					glog.Errorf("Duplicate image names within image list: %s", i.Images[m])
+					return fmt.Errorf("Duplicate image names within image list: %s", i.Images[m])
+				}
+			}
+		}
+
 		if len(i.NodeSelector) > 0 {
 			if nodes, err = c.nodesLister.List(labels.Set(i.NodeSelector).AsSelector()); err != nil {
 				glog.Errorf("Error listing nodes using nodeselector %+v: %v", i.NodeSelector, err)
@@ -53,22 +68,6 @@ func validateCacheSpec(c *Controller, imageCache *fledgedv1alpha1.ImageCache) er
 			glog.Errorf("NodeSelector %s did not match any nodes.", labels.Set(i.NodeSelector).String())
 			return fmt.Errorf("NodeSelector %s did not match any nodes", labels.Set(i.NodeSelector).String())
 		}
-
-		if len(i.Images) == 0 {
-			glog.Error("No images specified within image list")
-			return fmt.Errorf("No images specified within image list")
-
-		}
-
-		for m := range i.Images {
-			for p := 0; p < m; p++ {
-				if i.Images[p] == i.Images[m] {
-					glog.Errorf("Duplicate image names within image list: %s", i.Images[m])
-					return fmt.Errorf("Duplicate image names within image list: %s", i.Images[m])
-				}
-			}
-		}
 	}
-
 	return nil
 }
