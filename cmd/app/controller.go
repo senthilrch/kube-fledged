@@ -378,7 +378,11 @@ func (c *Controller) runRefreshWorker() {
 		if !reflect.DeepEqual(imageCaches[i].Status, fledgedv1alpha1.ImageCacheStatus{}) {
 			// Do not refresh if image cache is already under processing
 			if imageCaches[i].Status.Status != fledgedv1alpha1.ImageCacheActionStatusProcessing {
-				c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
+				// Do not refresh image caches for which cache spec validation failed
+				if !(imageCaches[i].Status.Status == fledgedv1alpha1.ImageCacheActionStatusFailed &&
+					imageCaches[i].Status.Reason == fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed) {
+					c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
+				}
 			}
 		}
 	}
@@ -416,6 +420,20 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 
+		err = validateCacheSpec(c, imageCache)
+		if err != nil {
+			status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
+			status.Reason = fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed
+			status.Message = err.Error()
+
+			if err = c.updateImageCacheStatus(imageCache, status); err != nil {
+				glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
+				return err
+			}
+
+			return err
+		}
+
 		// add Finalizer to ImageCache resource since we need to have control over when
 		// actual API resource is removed from etcd during delete action
 		if wqKey.WorkType == images.ImageCacheCreate {
@@ -450,26 +468,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		if wqKey.WorkType == images.ImageCachePurge {
 			status.Reason = fledgedv1alpha1.ImageCacheReasonImageCachePurge
 			status.Message = fledgedv1alpha1.ImageCacheMessagePurgeCache
-		}
-
-		err = validateCacheSpec(c, imageCache)
-		if err != nil {
-			status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
-			status.Reason = fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed
-			status.Message = err.Error()
-
-			imageCache, err = c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
-			if err != nil {
-				glog.Errorf("Error getting imagecache(%s) from api server: %v", name, err)
-				return err
-			}
-
-			if err = c.updateImageCacheStatus(imageCache, status); err != nil {
-				glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
-				return err
-			}
-
-			return err
 		}
 
 		imageCache, err = c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
