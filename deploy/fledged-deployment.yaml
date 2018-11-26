@@ -28,8 +28,6 @@ spec:
         - "--docker-client-image=senthilrch/fledged-docker-client:latest"
         imagePullPolicy: Always
         name: fledged
-      nodeSelector:
-        kubernetes.io/hostname: worker1.k8s.cis.com
       serviceAccountName: fledged
 
 
