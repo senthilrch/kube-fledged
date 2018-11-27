@@ -377,19 +377,23 @@ func (c *Controller) runRefreshWorker() {
 	}
 	for i := range imageCaches {
 		// Do not refresh if status is not yet updated
-		if !reflect.DeepEqual(imageCaches[i].Status, fledgedv1alpha1.ImageCacheStatus{}) {
-			// Do not refresh if image cache is already under processing
-			if imageCaches[i].Status.Status != fledgedv1alpha1.ImageCacheActionStatusProcessing {
-				// Do not refresh image caches for which cache spec validation failed
-				if !(imageCaches[i].Status.Status == fledgedv1alpha1.ImageCacheActionStatusFailed &&
-					imageCaches[i].Status.Reason == fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed) {
-					// Do not refresh image caches marked for deletion
-					if imageCaches[i].DeletionTimestamp == nil {
-						c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
-					}
-				}
-			}
+		if reflect.DeepEqual(imageCaches[i].Status, fledgedv1alpha1.ImageCacheStatus{}) {
+			continue
 		}
+		// Do not refresh if image cache is already under processing
+		if imageCaches[i].Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
+			continue
+		}
+		// Do not refresh image cache if cache spec validation failed
+		if imageCaches[i].Status.Status == fledgedv1alpha1.ImageCacheActionStatusFailed &&
+			imageCaches[i].Status.Reason == fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed {
+			continue
+		}
+		// Do not refresh image cache marked for deletion
+		if imageCaches[i].DeletionTimestamp != nil {
+			continue
+		}
+		c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
 	}
 }
 
