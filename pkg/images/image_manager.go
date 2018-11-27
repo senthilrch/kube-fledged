@@ -59,6 +59,7 @@ type ImageManager struct {
 	podsSynced                cache.InformerSynced
 	imagePullDeadlineDuration time.Duration
 	dockerClientImage         string
+	imagePullPolicy           string
 	lock                      sync.RWMutex
 }
 
@@ -105,7 +106,7 @@ func NewImageManager(
 	kubeclientset kubernetes.Interface,
 	namespace string,
 	imagePullDeadlineDuration time.Duration,
-	dockerClientImage string) *ImageManager {
+	dockerClientImage, imagePullPolicy string) *ImageManager {
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(
 		kubeclientset,
@@ -123,6 +124,7 @@ func NewImageManager(
 		podsSynced:                podInformer.Informer().HasSynced,
 		imagePullDeadlineDuration: imagePullDeadlineDuration,
 		dockerClientImage:         dockerClientImage,
+		imagePullPolicy:           imagePullPolicy,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		//AddFunc: ,
@@ -397,7 +399,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 // pullImage pulls the image to the node
 func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
-	newjob, err := newImagePullJob(iwr.Imagecache, iwr.Image, iwr.Node)
+	newjob, err := newImagePullJob(iwr.Imagecache, iwr.Image, iwr.Node, m.imagePullPolicy)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err
