@@ -18,6 +18,7 @@ package images
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -29,10 +30,19 @@ import (
 )
 
 // newImagePullJob constructs a job manifest for pulling an image to a node
-func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string) (*batchv1.Job, error) {
+func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string, imagePullPolicy string) (*batchv1.Job, error) {
+	var pullPolicy corev1.PullPolicy = corev1.PullIfNotPresent
+
 	if imagecache == nil {
 		glog.Error("imagecache pointer is nil")
 		return nil, fmt.Errorf("imagecache pointer is nil")
+	}
+	if imagePullPolicy == string(corev1.PullAlways) {
+		pullPolicy = corev1.PullAlways
+	} else if imagePullPolicy == "" {
+		if latestimage := strings.Contains(image, ":latest"); latestimage {
+			pullPolicy = corev1.PullAlways
+		}
 	}
 
 	labels := map[string]string{
@@ -94,7 +104,7 @@ func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostn
 									MountPath: "/tmp/bin",
 								},
 							},
-							ImagePullPolicy: corev1.PullIfNotPresent,
+							ImagePullPolicy: pullPolicy,
 						},
 					},
 					Volumes: []corev1.Volume{

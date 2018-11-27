@@ -26,6 +26,7 @@ spec:
         - "--image-pull-deadline-duration=5m"
         - "--image-cache-refresh-frequency=0s"
         - "--docker-client-image=senthilrch/fledged-docker-client:v0.1.3"
+        - "--image-pull-policy=IfNotPresent"
         imagePullPolicy: Always
         name: fledged
       serviceAccountName: fledged

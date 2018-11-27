@@ -38,6 +38,7 @@ var (
 	imageCacheRefreshFrequency time.Duration
 	imagePullDeadlineDuration  time.Duration
 	dockerClientImage          string
+	imagePullPolicy            string
 )
 
 func main() {
@@ -67,7 +68,7 @@ func main() {
 	controller := app.NewController(kubeClient, fledgedClient,
 		kubeInformerFactory.Core().V1().Nodes(),
 		fledgedInformerFactory.Fledged().V1alpha1().ImageCaches(),
-		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage)
+		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
 
 	glog.Info("Starting pre-flight checks")
 	if err = controller.PreFlightChecks(); err != nil {
@@ -89,4 +90,5 @@ func init() {
 	flag.DurationVar(&imagePullDeadlineDuration, "image-pull-deadline-duration", time.Minute*5, "Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed")
 	flag.DurationVar(&imageCacheRefreshFrequency, "image-cache-refresh-frequency", time.Minute*15, "The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to 0s will disable refresh")
 	flag.StringVar(&dockerClientImage, "docker-client-image", "senthilrch/fledged-docker-client:latest", "The image name of the docker client. the docker client is used when deleting images during purging the cache")
+	flag.StringVar(&imagePullPolicy, "image-pull-policy", "", "Image pull policy default value is IfNotPresent. Possible values are IfNotPresent and Always")
 }
