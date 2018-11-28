@@ -94,9 +94,10 @@ const (
 
 // WorkQueueKey is an item in the sync handler's work queue
 type WorkQueueKey struct {
-	WorkType WorkType
-	ObjKey   string
-	Status   *map[string]ImageWorkResult
+	WorkType      WorkType
+	ObjKey        string
+	Status        *map[string]ImageWorkResult
+	OldImageCache *fledgedv1alpha1.ImageCache
 }
 
 // NewImageManager returns a new image manager object
