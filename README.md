@@ -173,6 +173,8 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 `--docker-client-image:` The image name of the docker client. the docker client is used when deleting images during purging the cache".
 
+`--image-pull-policy:` Image pull policy for pulling images into the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Default value for Images with ':latest' tag is 'Always'
+
 `--stderrthreshold:` Log level. set the value of this flag to INFO
 
 ## Supported Platforms
