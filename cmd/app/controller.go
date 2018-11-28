@@ -354,6 +354,7 @@ func (c *Controller) processNextWorkItem() bool {
 		// Run the syncHandler, passing it the namespace/name string of the
 		// ImageCache resource to be synced.
 		if err := c.syncHandler(key); err != nil {
+			glog.Errorf("error syncing imagecache: %v", err.Error())
 			return fmt.Errorf("error syncing imagecache: %v", err.Error())
 		}
 		// Finally, if no error occurs we Forget this item so it does not
@@ -456,8 +457,8 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 				glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
 				return err
 			}
-
-			return err
+			glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonOldImageCacheNotFound, fledgedv1alpha1.ImageCacheMessageOldImageCacheNotFound)
+			return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonOldImageCacheNotFound, fledgedv1alpha1.ImageCacheMessageOldImageCacheNotFound)
 		}
 
 		if wqKey.WorkType == images.ImageCacheUpdate {
@@ -470,8 +471,8 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 					glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
 					return err
 				}
-
-				return err
+				glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in no. of image lists")
+				return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in no. of image lists")
 			}
 
 			for i := range wqKey.OldImageCache.Spec.CacheSpec {
@@ -484,8 +485,8 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 						glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
 						return err
 					}
-
-					return err
+					glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in node selector")
+					return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in node selector")
 				}
 			}
 		}
