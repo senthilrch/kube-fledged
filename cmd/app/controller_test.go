@@ -73,21 +73,45 @@ func TestPreFlightChecks(t *testing.T) {
 		jobDeleteError        error
 		imageCacheList        *fledgedv1alpha1.ImageCacheList
 		imageCacheListError   error
-		imageCacheDeleteError error
+		imageCacheUpdateError error
 		expectErr             bool
 		errorString           string
 	}{
 		{
-			name: "#1: No dangling jobs",
-			//imageCache:    nil,
+			name:                  "#1: No dangling jobs. No imagecaches",
+			jobList:               &batchv1.JobList{Items: []batchv1.Job{}},
+			jobListError:          nil,
+			jobDeleteError:        nil,
+			imageCacheList:        &fledgedv1alpha1.ImageCacheList{Items: []fledgedv1alpha1.ImageCache{}},
+			imageCacheListError:   nil,
+			imageCacheUpdateError: nil,
+			expectErr:             false,
+			errorString:           "",
+		},
+		{
+			name:           "#2: No dangling jobs. No dangling imagecaches",
 			jobList:        &batchv1.JobList{Items: []batchv1.Job{}},
 			jobListError:   nil,
 			jobDeleteError: nil,
-			expectErr:      false,
-			errorString:    "",
+			imageCacheList: &fledgedv1alpha1.ImageCacheList{
+				Items: []fledgedv1alpha1.ImageCache{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "foo",
+						},
+						Status: fledgedv1alpha1.ImageCacheStatus{
+							Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
+						},
+					},
+				},
+			},
+			imageCacheListError:   nil,
+			imageCacheUpdateError: nil,
+			expectErr:             false,
+			errorString:           "",
 		},
 		{
-			name: "#2: One dangling job. Successful list and delete",
+			name: "#3: One dangling job. One dangling image cache. Successful list and delete",
 			//imageCache:    nil,
 			jobList: &batchv1.JobList{
 				Items: []batchv1.Job{
@@ -100,12 +124,25 @@ func TestPreFlightChecks(t *testing.T) {
 			},
 			jobListError:   nil,
 			jobDeleteError: nil,
-			expectErr:      false,
-			errorString:    "",
+			imageCacheList: &fledgedv1alpha1.ImageCacheList{
+				Items: []fledgedv1alpha1.ImageCache{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "foo",
+						},
+						Status: fledgedv1alpha1.ImageCacheStatus{
+							Status: fledgedv1alpha1.ImageCacheActionStatusProcessing,
+						},
+					},
+				},
+			},
+			imageCacheListError:   nil,
+			imageCacheUpdateError: nil,
+			expectErr:             false,
+			errorString:           "",
 		},
 		{
-			name: "#3: Unsuccessful listing of jobs",
-			//imageCache:    nil,
+			name:           "#4: Unsuccessful listing of jobs",
 			jobList:        nil,
 			jobListError:   fmt.Errorf("fake error"),
 			jobDeleteError: nil,
@@ -113,8 +150,18 @@ func TestPreFlightChecks(t *testing.T) {
 			errorString:    "Internal error occurred: fake error",
 		},
 		{
-			name: "#4: One dangling job. successful list. unsuccessful delete",
-			//imageCache:    nil,
+			name:                  "#5: Unsuccessful listing of imagecaches",
+			jobList:               &batchv1.JobList{Items: []batchv1.Job{}},
+			jobListError:          nil,
+			jobDeleteError:        nil,
+			imageCacheList:        nil,
+			imageCacheListError:   fmt.Errorf("fake error"),
+			imageCacheUpdateError: nil,
+			expectErr:             true,
+			errorString:           "Internal error occurred: fake error",
+		},
+		{
+			name: "#6: One dangling job. Successful list. Unsuccessful delete",
 			jobList: &batchv1.JobList{
 				Items: []batchv1.Job{
 					{
@@ -129,12 +176,32 @@ func TestPreFlightChecks(t *testing.T) {
 			expectErr:      true,
 			errorString:    "Internal error occurred: fake error",
 		},
+		{
+			name:           "#7: One dangling image cache. Successful list. Unsuccessful delete",
+			jobList:        &batchv1.JobList{Items: []batchv1.Job{}},
+			jobListError:   nil,
+			jobDeleteError: nil,
+			imageCacheList: &fledgedv1alpha1.ImageCacheList{
+				Items: []fledgedv1alpha1.ImageCache{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "foo",
+						},
+						Status: fledgedv1alpha1.ImageCacheStatus{
+							Status: fledgedv1alpha1.ImageCacheActionStatusProcessing,
+						},
+					},
+				},
+			},
+			imageCacheListError:   nil,
+			imageCacheUpdateError: fmt.Errorf("fake error"),
+			expectErr:             true,
+			errorString:           "Internal error occurred: fake error",
+		},
 	}
 	for _, test := range tests {
 		fakekubeclientset := &fakeclientset.Clientset{}
 		fakefledgedclientset := &fledgedclientsetfake.Clientset{}
-		//if test.jobList != nil {
-		//var listError *apierrors.StatusError = nil
 		if test.jobListError != nil {
 			listError := apierrors.NewInternalError(test.jobListError)
 			fakekubeclientset.AddReactor("list", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
@@ -155,7 +222,27 @@ func TestPreFlightChecks(t *testing.T) {
 				return true, nil, nil
 			})
 		}
-		//}
+
+		if test.imageCacheListError != nil {
+			listError := apierrors.NewInternalError(test.imageCacheListError)
+			fakefledgedclientset.AddReactor("list", "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, nil, listError
+			})
+		} else {
+			fakefledgedclientset.AddReactor("list", "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, test.imageCacheList, nil
+			})
+		}
+		if test.imageCacheUpdateError != nil {
+			updateError := apierrors.NewInternalError(test.imageCacheUpdateError)
+			fakefledgedclientset.AddReactor("update", "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, nil, updateError
+			})
+		} else {
+			fakefledgedclientset.AddReactor("update", "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, nil, nil
+			})
+		}
 
 		controller := newTestController(fakekubeclientset, fakefledgedclientset)
 
@@ -170,4 +257,5 @@ func TestPreFlightChecks(t *testing.T) {
 			}
 		}
 	}
+	t.Logf("%d tests passed", len(tests))
 }
