@@ -17,11 +17,12 @@ limitations under the License.
 package app
 
 import (
-	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
 	clientset "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
 	fledgedclientsetfake "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/fake"
 	fledgedinformers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions"
@@ -65,69 +66,108 @@ func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clie
 }
 
 func TestPreFlightChecks(t *testing.T) {
-	var fakekubeclientset *fakeclientset.Clientset
-	var fakefledgedclientset *fledgedclientsetfake.Clientset
-	joblist := &batchv1.JobList{}
-	joblist.Items = []batchv1.Job{
+	tests := []struct {
+		name                  string
+		jobList               *batchv1.JobList
+		jobListError          error
+		jobDeleteError        error
+		imageCacheList        *fledgedv1alpha1.ImageCacheList
+		imageCacheListError   error
+		imageCacheDeleteError error
+		expectErr             bool
+		errorString           string
+	}{
 		{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "foo",
+			name: "#1: No dangling jobs",
+			//imageCache:    nil,
+			jobList:        &batchv1.JobList{Items: []batchv1.Job{}},
+			jobListError:   nil,
+			jobDeleteError: nil,
+			expectErr:      false,
+			errorString:    "",
+		},
+		{
+			name: "#2: One dangling job. Successful list and delete",
+			//imageCache:    nil,
+			jobList: &batchv1.JobList{
+				Items: []batchv1.Job{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "foo",
+						},
+					},
+				},
 			},
+			jobListError:   nil,
+			jobDeleteError: nil,
+			expectErr:      false,
+			errorString:    "",
+		},
+		{
+			name: "#3: Unsuccessful listing of jobs",
+			//imageCache:    nil,
+			jobList:        nil,
+			jobListError:   fmt.Errorf("fake error"),
+			jobDeleteError: nil,
+			expectErr:      true,
+			errorString:    "Internal error occurred: fake error",
+		},
+		{
+			name: "#4: One dangling job. successful list. unsuccessful delete",
+			//imageCache:    nil,
+			jobList: &batchv1.JobList{
+				Items: []batchv1.Job{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "foo",
+						},
+					},
+				},
+			},
+			jobListError:   nil,
+			jobDeleteError: fmt.Errorf("fake error"),
+			expectErr:      true,
+			errorString:    "Internal error occurred: fake error",
 		},
 	}
+	for _, test := range tests {
+		fakekubeclientset := &fakeclientset.Clientset{}
+		fakefledgedclientset := &fledgedclientsetfake.Clientset{}
+		//if test.jobList != nil {
+		//var listError *apierrors.StatusError = nil
+		if test.jobListError != nil {
+			listError := apierrors.NewInternalError(test.jobListError)
+			fakekubeclientset.AddReactor("list", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, nil, listError
+			})
+		} else {
+			fakekubeclientset.AddReactor("list", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, test.jobList, nil
+			})
+		}
+		if test.jobDeleteError != nil {
+			deleteError := apierrors.NewInternalError(test.jobDeleteError)
+			fakekubeclientset.AddReactor("delete", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, nil, deleteError
+			})
+		} else {
+			fakekubeclientset.AddReactor("delete", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, nil, nil
+			})
+		}
+		//}
 
-	//Test #1: No dangling jobs
-	fakekubeclientset = &fakeclientset.Clientset{}
-	fakefledgedclientset = &fledgedclientsetfake.Clientset{}
-	controller := newTestController(fakekubeclientset, fakefledgedclientset)
-	err := controller.PreFlightChecks()
-	if err != nil {
-		t.Errorf("TestPreFlightChecks failed: %s", err.Error())
-	}
+		controller := newTestController(fakekubeclientset, fakefledgedclientset)
 
-	//Test #2: 1 dangling job. successful list. successful delete
-	fakekubeclientset = &fakeclientset.Clientset{}
-	fakefledgedclientset = &fledgedclientsetfake.Clientset{}
-	fakekubeclientset.AddReactor("list", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
-		return true, joblist, nil
-	})
-	fakekubeclientset.AddReactor("delete", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
-		return true, nil, nil
-	})
-
-	controller = newTestController(fakekubeclientset, fakefledgedclientset)
-	err = controller.PreFlightChecks()
-	if err != nil {
-		t.Errorf("TestPreFlightChecks failed: %s", err.Error())
-	}
-
-	//Test #3: unsuccessful list
-	fakekubeclientset = &fakeclientset.Clientset{}
-	fakefledgedclientset = &fledgedclientsetfake.Clientset{}
-	fakekubeclientset.AddReactor("list", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
-		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
-	})
-
-	controller = newTestController(fakekubeclientset, fakefledgedclientset)
-	err = controller.PreFlightChecks()
-	if err == nil {
-		t.Errorf("TestPreFlightChecks failed: %s", fmt.Errorf("error"))
-	}
-
-	//Test #4: 1 dangling job. successful list. unsuccessful delete
-	fakekubeclientset = &fakeclientset.Clientset{}
-	fakefledgedclientset = &fledgedclientsetfake.Clientset{}
-	fakekubeclientset.AddReactor("list", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
-		return true, joblist, nil
-	})
-
-	fakekubeclientset.AddReactor("delete", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
-		return true, nil, apierrors.NewInternalError(errors.New("API server down"))
-	})
-
-	controller = newTestController(fakekubeclientset, fakefledgedclientset)
-	err = controller.PreFlightChecks()
-	if err == nil {
-		t.Errorf("TestPreFlightChecks failed: %s", fmt.Errorf("error"))
+		err := controller.PreFlightChecks()
+		if test.expectErr {
+			if !(err != nil && strings.HasPrefix(err.Error(), test.errorString)) {
+				t.Errorf("Test: %s failed", test.name)
+			}
+		} else {
+			if err != nil {
+				t.Errorf("Test: %s failed. err received = %s", test.name, err.Error())
+			}
+		}
 	}
 }
