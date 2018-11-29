@@ -79,7 +79,7 @@ const (
 	ImageCacheActionStatusSucceeded  ImageCacheActionStatus = "Succeeded"
 	ImageCacheActionStatusFailed     ImageCacheActionStatus = "Failed"
 	ImageCacheActionStatusUnknown    ImageCacheActionStatus = "Unknown"
-	ImageCacheActionStatusAbhorted   ImageCacheActionStatus = "Abhorted"
+	ImageCacheActionStatusAborted    ImageCacheActionStatus = "Aborted"
 )
 
 // List of constants for ImageCacheReason
@@ -95,8 +95,10 @@ const (
 	ImageCacheReasonImageDeleteFailedForSomeImages = "ImageDeleteFailedForSomeImages"
 	ImageCacheReasonImagePullFailedOnSomeNodes     = "ImagePullFailedOnSomeNodes"
 	ImageCacheReasonImagePullStatusUnknown         = "ImagePullStatusUnknown"
-	ImageCacheReasonImagePullAbhorted              = "ImagePullAbhorted"
+	ImageCacheReasonImagePullAborted               = "ImagePullAborted"
 	ImageCacheReasonCacheSpecValidationFailed      = "CacheSpecValidationFailed"
+	ImageCacheReasonOldImageCacheNotFound          = "OldImageCacheNotFound"
+	ImageCacheReasonNotSupportedUpdates            = "NotSupportedUpdates"
 )
 
 // List of constants for ImageCacheMessage
@@ -112,5 +114,7 @@ const (
 	ImageCacheMessageImageDeleteFailedForSomeImages = "Image deletion failed for some images. Please see \"failures\" section"
 	ImageCacheMessageImagePullFailedOnSomeNodes     = "Image pull failed on some nodes. Please see \"failures\" section"
 	ImageCacheMessageImagePullStatusUnknown         = "Unable to get the status of Image pull. Retry after some time or contact cluster administrator"
-	ImageCacheMessageImagePullAbhorted              = "Image cache processing abhorted. Image cache will get refreshed during next refresh cycle"
+	ImageCacheMessageImagePullAborted               = "Image cache processing aborted. Image cache will get refreshed during next refresh cycle"
+	ImageCacheMessageOldImageCacheNotFound          = "Unable to fetch the previous version of Image cache spec before update action."
+	ImageCacheMessageNotSupportedUpdates            = "The updates performed to image cache spec is not supported. Only addition or removal of images in a image list is supported."
 )

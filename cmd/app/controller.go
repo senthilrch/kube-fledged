@@ -186,19 +186,19 @@ func (c *Controller) danglingImageCaches() error {
 	}
 	status := &fledgedv1alpha1.ImageCacheStatus{
 		Failures: map[string][]fledgedv1alpha1.NodeReasonMessage{},
-		Status:   fledgedv1alpha1.ImageCacheActionStatusAbhorted,
-		Reason:   fledgedv1alpha1.ImageCacheReasonImagePullAbhorted,
-		Message:  fledgedv1alpha1.ImageCacheMessageImagePullAbhorted,
+		Status:   fledgedv1alpha1.ImageCacheActionStatusAborted,
+		Reason:   fledgedv1alpha1.ImageCacheReasonImagePullAborted,
+		Message:  fledgedv1alpha1.ImageCacheMessageImagePullAborted,
 	}
 	for _, imagecache := range imagecachelist.Items {
 		if imagecache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
 			err := c.updateImageCacheStatus(&imagecache, status)
 			if err != nil {
-				glog.Errorf("Error updating ImageCache(%s) status to '%s': %v", imagecache.Name, fledgedv1alpha1.ImageCacheActionStatusAbhorted, err)
+				glog.Errorf("Error updating ImageCache(%s) status to '%s': %v", imagecache.Name, fledgedv1alpha1.ImageCacheActionStatusAborted, err)
 				return err
 			}
 			dangling = true
-			glog.Infof("Dangling Image cache(%s) status changed to '%s'", imagecache.Name, fledgedv1alpha1.ImageCacheActionStatusAbhorted)
+			glog.Infof("Dangling Image cache(%s) status changed to '%s'", imagecache.Name, fledgedv1alpha1.ImageCacheActionStatusAborted)
 		}
 	}
 
@@ -256,7 +256,7 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 	var key string
 	var err error
 	var obj interface{}
-	var wqKey images.WorkQueueKey
+	wqKey := images.WorkQueueKey{}
 
 	switch workType {
 	case images.ImageCacheCreate:
@@ -299,6 +299,10 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 	}
 	wqKey.WorkType = workType
 	wqKey.ObjKey = key
+	if workType == images.ImageCacheUpdate {
+		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
+		wqKey.OldImageCache = oldImageCache
+	}
 
 	c.workqueue.AddRateLimited(wqKey)
 
@@ -350,6 +354,7 @@ func (c *Controller) processNextWorkItem() bool {
 		// Run the syncHandler, passing it the namespace/name string of the
 		// ImageCache resource to be synced.
 		if err := c.syncHandler(key); err != nil {
+			glog.Errorf("error syncing imagecache: %v", err.Error())
 			return fmt.Errorf("error syncing imagecache: %v", err.Error())
 		}
 		// Finally, if no error occurs we Forget this item so it does not
@@ -443,6 +448,49 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 
+		if wqKey.WorkType == images.ImageCacheUpdate && wqKey.OldImageCache == nil {
+			status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
+			status.Reason = fledgedv1alpha1.ImageCacheReasonOldImageCacheNotFound
+			status.Message = fledgedv1alpha1.ImageCacheMessageOldImageCacheNotFound
+
+			if err = c.updateImageCacheStatus(imageCache, status); err != nil {
+				glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
+				return err
+			}
+			glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonOldImageCacheNotFound, fledgedv1alpha1.ImageCacheMessageOldImageCacheNotFound)
+			return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonOldImageCacheNotFound, fledgedv1alpha1.ImageCacheMessageOldImageCacheNotFound)
+		}
+
+		if wqKey.WorkType == images.ImageCacheUpdate {
+			if len(wqKey.OldImageCache.Spec.CacheSpec) != len(imageCache.Spec.CacheSpec) {
+				status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
+				status.Reason = fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates
+				status.Message = fledgedv1alpha1.ImageCacheMessageNotSupportedUpdates
+
+				if err = c.updateImageCacheStatus(imageCache, status); err != nil {
+					glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
+					return err
+				}
+				glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in no. of image lists")
+				return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in no. of image lists")
+			}
+
+			for i := range wqKey.OldImageCache.Spec.CacheSpec {
+				if !reflect.DeepEqual(wqKey.OldImageCache.Spec.CacheSpec[i].NodeSelector, imageCache.Spec.CacheSpec[i].NodeSelector) {
+					status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
+					status.Reason = fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates
+					status.Message = fledgedv1alpha1.ImageCacheMessageNotSupportedUpdates
+
+					if err = c.updateImageCacheStatus(imageCache, status); err != nil {
+						glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
+						return err
+					}
+					glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in node selector")
+					return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in node selector")
+				}
+			}
+		}
+
 		// add Finalizer to ImageCache resource since we need to have control over when
 		// actual API resource is removed from etcd during delete action
 		if wqKey.WorkType == images.ImageCacheCreate || wqKey.WorkType == images.ImageCacheUpdate {
@@ -490,7 +538,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 
-		for _, i := range cacheSpec {
+		for k, i := range cacheSpec {
 			if len(i.NodeSelector) > 0 {
 				if nodes, err = c.nodesLister.List(labels.Set(i.NodeSelector).AsSelector()); err != nil {
 					glog.Errorf("Error listing nodes using nodeselector %+v: %v", i.NodeSelector, err)
@@ -518,8 +566,29 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 					}
 					c.imageworkqueue.AddRateLimited(ipr)
 				}
+				if wqKey.WorkType == images.ImageCacheUpdate {
+					for _, oldimage := range wqKey.OldImageCache.Spec.CacheSpec[k].Images {
+						matched := false
+						for _, newimage := range i.Images {
+							if oldimage == newimage {
+								matched = true
+								break
+							}
+						}
+						if !matched {
+							ipr := images.ImageWorkRequest{
+								Image:      oldimage,
+								Node:       n.Labels["kubernetes.io/hostname"],
+								WorkType:   images.ImageCachePurge,
+								Imagecache: imageCache,
+							}
+							c.imageworkqueue.AddRateLimited(ipr)
+						}
+					}
+				}
 			}
 		}
+
 		// We add an empty image pull request to signal the image manager that all
 		// requests for this sync action have been placed in the imageworkqueue
 		c.imageworkqueue.AddRateLimited(images.ImageWorkRequest{WorkType: wqKey.WorkType, Imagecache: imageCache})

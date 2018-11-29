@@ -94,9 +94,10 @@ const (
 
 // WorkQueueKey is an item in the sync handler's work queue
 type WorkQueueKey struct {
-	WorkType WorkType
-	ObjKey   string
-	Status   *map[string]ImageWorkResult
+	WorkType      WorkType
+	ObjKey        string
+	Status        *map[string]ImageWorkResult
+	OldImageCache *fledgedv1alpha1.ImageCache
 }
 
 // NewImageManager returns a new image manager object
@@ -160,7 +161,11 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 
 	if pod.Status.Phase == corev1.PodSucceeded {
 		iwres.Status = ImageWorkResultStatusSucceeded
-		glog.Infof("Job %s succeeded (%s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+		if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
+			glog.Infof("Job %s succeeded (delete: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+		} else {
+			glog.Infof("Job %s succeeded (pull: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+		}
 	}
 	if pod.Status.Phase == corev1.PodFailed {
 		iwres.Status = ImageWorkResultStatusFailed
@@ -168,7 +173,11 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 			iwres.Reason = pod.Status.ContainerStatuses[0].State.Terminated.Reason
 			iwres.Message = pod.Status.ContainerStatuses[0].State.Terminated.Message
 		}
-		glog.Infof("Job %s failed (%s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+		if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
+			glog.Infof("Job %s failed (delete: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+		} else {
+			glog.Infof("Job %s failed (pull: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+		}
 	}
 	m.lock.Lock()
 	m.imageworkstatus[pod.Labels["job-name"]] = iwres
@@ -197,6 +206,11 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 					return fmt.Errorf("More than one pod matched job %s", job)
 				}
 				iwres.Status = ImageWorkResultStatusFailed
+				if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
+					glog.Infof("Job %s expired (delete: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+				} else {
+					glog.Infof("Job %s expired (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+				}
 				if pods[0].Status.Phase == corev1.PodPending {
 					if pods[0].Status.ContainerStatuses[0].State.Waiting != nil {
 						iwres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
@@ -372,11 +386,13 @@ func (m *ImageManager) processNextWorkItem() bool {
 			if err != nil {
 				return fmt.Errorf("error deleting image '%s' from node '%s': %s", iwr.Image, iwr.Node, err.Error())
 			}
+			glog.Infof("Job %s created (delete: %s --> %s)", job.Name, iwr.Image, iwr.Node)
 		} else {
 			job, err = m.pullImage(iwr)
 			if err != nil {
 				return fmt.Errorf("error pulling image '%s' to node '%s': %s", iwr.Image, iwr.Node, err.Error())
 			}
+			glog.Infof("Job %s created (pull: %s --> %s)", job.Name, iwr.Image, iwr.Node)
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
@@ -384,7 +400,6 @@ func (m *ImageManager) processNextWorkItem() bool {
 		m.imageworkstatus[job.Name] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusJobCreated}
 		m.lock.Unlock()
 		m.imageworkqueue.Forget(obj)
-		glog.Infof("Job %s created (%s --> %s)", job.Name, iwr.Image, iwr.Node)
 		return nil
 	}(obj)
 
