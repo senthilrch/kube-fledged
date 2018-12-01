@@ -174,8 +174,9 @@ func TestValidateCacheSpec(t *testing.T) {
 		}
 
 		if test.nodeList != nil && len(test.nodeList.Items) > 0 {
-			node := test.nodeList.Items[0]
-			nodeInformer.Informer().GetIndexer().Add(&node)
+			for _, node := range test.nodeList.Items {
+				nodeInformer.Informer().GetIndexer().Add(&node)
+			}
 		}
 
 		err := validateCacheSpec(controller, test.imageCache)

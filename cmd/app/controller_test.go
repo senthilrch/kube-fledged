@@ -262,3 +262,157 @@ func TestPreFlightChecks(t *testing.T) {
 	}
 	t.Logf("%d tests passed", len(tests))
 }
+
+func TestRunRefreshWorker(t *testing.T) {
+	now := metav1.Now()
+	tests := []struct {
+		name                string
+		imageCacheList      *fledgedv1alpha1.ImageCacheList
+		imageCacheListError error
+		workqueueItems      int
+	}{
+		{
+			name: "#1: Do not refresh if status is not yet updated",
+			imageCacheList: &fledgedv1alpha1.ImageCacheList{
+				Items: []fledgedv1alpha1.ImageCache{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "foo",
+							Namespace: "kube-fledged",
+						},
+					},
+				},
+			},
+			imageCacheListError: nil,
+			workqueueItems:      0,
+		},
+		{
+			name: "#2: Do not refresh if image cache is already under processing",
+			imageCacheList: &fledgedv1alpha1.ImageCacheList{
+				Items: []fledgedv1alpha1.ImageCache{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "foo",
+							Namespace: "kube-fledged",
+						},
+						Status: fledgedv1alpha1.ImageCacheStatus{
+							Status: fledgedv1alpha1.ImageCacheActionStatusProcessing,
+						},
+					},
+				},
+			},
+			imageCacheListError: nil,
+			workqueueItems:      0,
+		},
+		{
+			name: "#3: Do not refresh image cache if cache spec validation failed",
+			imageCacheList: &fledgedv1alpha1.ImageCacheList{
+				Items: []fledgedv1alpha1.ImageCache{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "foo",
+							Namespace: "kube-fledged",
+						},
+						Status: fledgedv1alpha1.ImageCacheStatus{
+							Status: fledgedv1alpha1.ImageCacheActionStatusFailed,
+							Reason: fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed,
+						},
+					},
+				},
+			},
+			imageCacheListError: nil,
+			workqueueItems:      0,
+		},
+		{
+			name: "#4: Do not refresh image cache marked for deletion",
+			imageCacheList: &fledgedv1alpha1.ImageCacheList{
+				Items: []fledgedv1alpha1.ImageCache{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:              "foo",
+							Namespace:         "kube-fledged",
+							DeletionTimestamp: &now,
+						},
+						Status: fledgedv1alpha1.ImageCacheStatus{
+							Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
+						},
+					},
+				},
+			},
+			imageCacheListError: nil,
+			workqueueItems:      0,
+		},
+		{
+			name: "#5: Successfully queued 1 imagecache for refresh",
+			imageCacheList: &fledgedv1alpha1.ImageCacheList{
+				Items: []fledgedv1alpha1.ImageCache{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "foo",
+							Namespace: "kube-fledged",
+						},
+						Status: fledgedv1alpha1.ImageCacheStatus{
+							Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
+						},
+					},
+				},
+			},
+			imageCacheListError: nil,
+			workqueueItems:      1,
+		},
+		{
+			name: "#6: Successfully queued 2 imagecaches for refresh",
+			imageCacheList: &fledgedv1alpha1.ImageCacheList{
+				Items: []fledgedv1alpha1.ImageCache{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "foo",
+							Namespace: "kube-fledged",
+						},
+						Status: fledgedv1alpha1.ImageCacheStatus{
+							Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
+						},
+					},
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "bar",
+							Namespace: "kube-fledged",
+						},
+						Status: fledgedv1alpha1.ImageCacheStatus{
+							Status: fledgedv1alpha1.ImageCacheActionStatusFailed,
+						},
+					},
+				},
+			},
+			imageCacheListError: nil,
+			workqueueItems:      2,
+		},
+		{
+			name:                "#7: No imagecaches to refresh",
+			imageCacheList:      nil,
+			imageCacheListError: nil,
+			workqueueItems:      0,
+		},
+	}
+
+	for _, test := range tests {
+		if test.workqueueItems > 0 {
+			//TODO: How to check if workqueue contains the added item?
+			continue
+		}
+		fakekubeclientset := &fakeclientset.Clientset{}
+		fakefledgedclientset := &fledgedclientsetfake.Clientset{}
+
+		controller, _, imagecacheInformer := newTestController(fakekubeclientset, fakefledgedclientset)
+		if test.imageCacheList != nil && len(test.imageCacheList.Items) > 0 {
+			for _, imagecache := range test.imageCacheList.Items {
+				imagecacheInformer.Informer().GetIndexer().Add(&imagecache)
+			}
+		}
+		controller.runRefreshWorker()
+		if test.workqueueItems == controller.workqueue.Len() {
+		} else {
+			t.Errorf("Test: %s failed: expected %d, actual %d", test.name, test.workqueueItems, controller.workqueue.Len())
+		}
+	}
+}
