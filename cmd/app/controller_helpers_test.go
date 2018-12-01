@@ -24,6 +24,7 @@ import (
 	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
 	fledgedclientsetfake "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/fake"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 )
 
@@ -117,7 +118,7 @@ func TestValidateCacheSpec(t *testing.T) {
 			errorString:   "Error listing nodes using nodeselector labels.Everything()",
 		},
 		{
-			name: "NodeSelector %s did not match any nodes",
+			name: "NodeSelector did not match any nodes",
 			imageCache: &fledgedv1alpha1.ImageCache{
 				Spec: fledgedv1alpha1.ImageCacheSpec{
 					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
@@ -131,7 +132,7 @@ func TestValidateCacheSpec(t *testing.T) {
 			nodeList:      &corev1.NodeList{},
 			nodeListError: nil,
 			expectErr:     true,
-			errorString:   "NodeSelector %s did not match any nodes",
+			errorString:   "NodeSelector foo=bar did not match any nodes",
 		},
 		{
 			name: "Successful validation",
@@ -145,7 +146,16 @@ func TestValidateCacheSpec(t *testing.T) {
 					},
 				},
 			},
-			nodeList:      &corev1.NodeList{Items: []corev1.Node{}},
+			nodeList: &corev1.NodeList{
+				Items: []corev1.Node{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:   "fakenode",
+							Labels: map[string]string{"foo": "bar"},
+						},
+					},
+				},
+			},
 			nodeListError: nil,
 			expectErr:     false,
 			errorString:   "",
@@ -156,19 +166,25 @@ func TestValidateCacheSpec(t *testing.T) {
 		fakekubeclientset := &fakeclientset.Clientset{}
 		fakefledgedclientset := &fledgedclientsetfake.Clientset{}
 
-		if test.nodeList != nil || test.nodeListError != nil {
-			/* fakekubeclientset.AddReactor("list", "nodes", func(action core.Action) (handled bool, ret runtime.Object, err error) {
-				return true, test.nodeList, apierrors.NewInternalError(test.nodeListError)
-			}) */
+		controller, nodeInformer, _ := newTestController(fakekubeclientset, fakefledgedclientset)
+
+		if test.nodeListError != nil {
+			//TODO: How to return a fake error from node Lister?
 			continue
 		}
-		controller := newTestController(fakekubeclientset, fakefledgedclientset)
+
+		if test.nodeList != nil && len(test.nodeList.Items) > 0 {
+			node := test.nodeList.Items[0]
+			nodeInformer.Informer().GetIndexer().Add(&node)
+		}
 
 		err := validateCacheSpec(controller, test.imageCache)
-		if !(test.expectErr == true && err != nil && strings.HasPrefix(err.Error(), test.errorString)) {
-			t.Errorf("Test: %s failed", test.name)
-		}
-		if !test.expectErr && err != nil {
+		if test.expectErr {
+			if err != nil && strings.HasPrefix(err.Error(), test.errorString) {
+			} else {
+				t.Errorf("Test: %s failed", test.name)
+			}
+		} else if err != nil {
 			t.Errorf("Test: %s failed. err received = %s", test.name, err.Error())
 		}
 	}

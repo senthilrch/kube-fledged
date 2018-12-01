@@ -25,12 +25,14 @@ import (
 	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
 	clientset "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
 	fledgedclientsetfake "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/fake"
-	fledgedinformers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions"
+	informers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions"
+	fledgedinformers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/fledged/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	kubeinformers "k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
@@ -41,11 +43,11 @@ func noResyncPeriodFunc() time.Duration {
 	return 0
 }
 
-func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clientset.Interface) *Controller {
+func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clientset.Interface) (*Controller, coreinformers.NodeInformer, fledgedinformers.ImageCacheInformer) {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclientset, noResyncPeriodFunc())
-	fledgedInformerFactory := fledgedinformers.NewSharedInformerFactory(fledgedclientset, noResyncPeriodFunc())
-	kubeInformer := kubeInformerFactory.Core().V1().Nodes()
-	fledgedInformer := fledgedInformerFactory.Fledged().V1alpha1().ImageCaches()
+	fledgedInformerFactory := informers.NewSharedInformerFactory(fledgedclientset, noResyncPeriodFunc())
+	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
+	imagecacheInformer := fledgedInformerFactory.Fledged().V1alpha1().ImageCaches()
 	imageCacheRefreshFrequency := time.Second * 0
 	imagePullDeadlineDuration := time.Second * 5
 	dockerClientImage := "senthilrch/fledged-docker-client:latest"
@@ -59,10 +61,11 @@ func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clie
 	   		fledgedInformerFactory.Start(stopCh)
 	   	} */
 
-	controller := NewController(kubeclientset, fledgedclientset, kubeInformer, fledgedInformer,
+	controller := NewController(kubeclientset, fledgedclientset, nodeInformer, imagecacheInformer,
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
 	controller.nodesSynced = func() bool { return true }
-	return controller
+	controller.imageCachesSynced = func() bool { return true }
+	return controller, nodeInformer, imagecacheInformer
 }
 
 func TestPreFlightChecks(t *testing.T) {
@@ -244,7 +247,7 @@ func TestPreFlightChecks(t *testing.T) {
 			})
 		}
 
-		controller := newTestController(fakekubeclientset, fakefledgedclientset)
+		controller, _, _ := newTestController(fakekubeclientset, fakefledgedclientset)
 
 		err := controller.PreFlightChecks()
 		if test.expectErr {
