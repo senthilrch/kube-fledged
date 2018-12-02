@@ -413,8 +413,8 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 	// Convert the namespace/name string into a distinct namespace and name
 	namespace, name, err := cache.SplitMetaNamespaceKey(wqKey.ObjKey)
 	if err != nil {
-		runtime.HandleError(fmt.Errorf("invalid resource key: %s", wqKey.ObjKey))
-		return nil
+		glog.Errorf("Error from cache.SplitMetaNamespaceKey(): %v", err)
+		return err
 	}
 
 	glog.Infof("Starting to sync image cache %s(%s)", name, wqKey.WorkType)
@@ -427,10 +427,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		if err != nil {
 			// The ImageCache resource may no longer exist, in which case we stop
 			// processing.
-			if errors.IsNotFound(err) {
-				runtime.HandleError(fmt.Errorf("ImageCache '%s' in work queue no longer exists", wqKey.ObjKey))
-				return nil
-			}
+			glog.Errorf("Error getting imagecache(%s): %v", name, err)
 			return err
 		}
 
@@ -440,7 +437,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			status.Reason = fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed
 			status.Message = err.Error()
 
-			if err = c.updateImageCacheStatus(imageCache, status); err != nil {
+			if err := c.updateImageCacheStatus(imageCache, status); err != nil {
 				glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
 				return err
 			}
@@ -453,7 +450,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			status.Reason = fledgedv1alpha1.ImageCacheReasonOldImageCacheNotFound
 			status.Message = fledgedv1alpha1.ImageCacheMessageOldImageCacheNotFound
 
-			if err = c.updateImageCacheStatus(imageCache, status); err != nil {
+			if err := c.updateImageCacheStatus(imageCache, status); err != nil {
 				glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
 				return err
 			}

@@ -27,7 +27,9 @@ import (
 	fledgedclientsetfake "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/fake"
 	informers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions"
 	fledgedinformers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/fledged/v1alpha1"
+	"github.com/senthilrch/kube-fledged/pkg/images"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -537,6 +539,383 @@ func TestAddRemoveFinalizers(t *testing.T) {
 			t.Errorf("Test: %s failed. err received = %s", test.name, err.Error())
 		}
 
+	}
+	t.Logf("%d tests passed", len(tests))
+}
+
+func TestSyncHandler(t *testing.T) {
+	type ActionReaction struct {
+		action   string
+		reaction string
+	}
+	now := metav1.Now()
+	defaultImageCache := fledgedv1alpha1.ImageCache{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "kube-fledged",
+		},
+		Spec: fledgedv1alpha1.ImageCacheSpec{
+			CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+				{
+					Images: []string{"foo"},
+				},
+			},
+		},
+	}
+	defaultNodeList := &corev1.NodeList{
+		Items: []corev1.Node{
+			{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:   "fakenode",
+					Labels: map[string]string{"foo": "bar"},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name              string
+		imageCache        fledgedv1alpha1.ImageCache
+		wqKey             images.WorkQueueKey
+		nodeList          *corev1.NodeList
+		expectedActions   []ActionReaction
+		expectErr         bool
+		expectedErrString string
+	}{
+		{
+			name: "#1: Invalid imagecache resource key",
+			wqKey: images.WorkQueueKey{
+				ObjKey: "foo/bar/car",
+			},
+			expectErr:         true,
+			expectedErrString: "unexpected key format",
+		},
+		{
+			name: "#2: Create - Invalid imagecache spec (no images specified)",
+			imageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "kube-fledged",
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{},
+						},
+					},
+				},
+			},
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheCreate,
+			},
+			expectedActions:   []ActionReaction{{action: "update", reaction: ""}},
+			expectErr:         true,
+			expectedErrString: "No images specified within image list",
+		},
+		{
+			name:       "#3: Update - Old imagecache pointer is nil",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:        "kube-fledged/foo",
+				WorkType:      images.ImageCacheUpdate,
+				OldImageCache: nil,
+			},
+			nodeList:          defaultNodeList,
+			expectedActions:   []ActionReaction{{action: "update", reaction: ""}},
+			expectErr:         true,
+			expectedErrString: "OldImageCacheNotFound",
+		},
+		{
+			name:       "#4: Update - No. of imagelists not equal",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheUpdate,
+				OldImageCache: &fledgedv1alpha1.ImageCache{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo",
+						Namespace: "kube-fledged",
+					},
+					Spec: fledgedv1alpha1.ImageCacheSpec{
+						CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+							{
+								Images: []string{"foo"},
+							},
+							{
+								Images: []string{"bar"},
+							},
+						},
+					},
+				},
+			},
+			nodeList:          defaultNodeList,
+			expectedActions:   []ActionReaction{{action: "update", reaction: ""}},
+			expectErr:         true,
+			expectedErrString: "NotSupportedUpdates",
+		},
+		{
+			name:       "#5: Update - Change in NodeSelectors",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheUpdate,
+				OldImageCache: &fledgedv1alpha1.ImageCache{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo",
+						Namespace: "kube-fledged",
+					},
+					Spec: fledgedv1alpha1.ImageCacheSpec{
+						CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+							{
+								Images:       []string{"foo"},
+								NodeSelector: map[string]string{"foo": "bar"},
+							},
+						},
+					},
+				},
+			},
+			nodeList:          defaultNodeList,
+			expectedActions:   []ActionReaction{{action: "update", reaction: ""}},
+			expectErr:         true,
+			expectedErrString: "NotSupportedUpdates",
+		},
+		{
+			name:       "#6: Create - Error in adding finalizer",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheCreate,
+			},
+			nodeList:          defaultNodeList,
+			expectedActions:   []ActionReaction{{action: "update", reaction: "fake error"}},
+			expectErr:         true,
+			expectedErrString: "Internal error occurred: fake error",
+		},
+		{
+			name:       "#7: Refresh - Update status to processing",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheRefresh,
+			},
+			nodeList: defaultNodeList,
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: "fake error"},
+			},
+			expectErr:         true,
+			expectedErrString: "Internal error occurred: fake error",
+		},
+		{
+			name:       "#8: Purge - Update status to processing",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCachePurge,
+			},
+			nodeList: defaultNodeList,
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: "fake error"},
+			},
+			expectErr:         true,
+			expectedErrString: "Internal error occurred: fake error",
+		},
+		{
+			name:       "#9: Create - Successfully firing imagepull requests",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheCreate,
+			},
+			nodeList: defaultNodeList,
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: ""},
+			},
+			expectErr:         false,
+			expectedErrString: "",
+		},
+		{
+			name:       "#10: Update - Successfully firing imagepull & imagedelete requests",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheUpdate,
+				OldImageCache: &fledgedv1alpha1.ImageCache{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo",
+						Namespace: "kube-fledged",
+					},
+					Spec: fledgedv1alpha1.ImageCacheSpec{
+						CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+							{
+								Images: []string{"foo", "bar"},
+							},
+						},
+					},
+				},
+			},
+			nodeList: defaultNodeList,
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: ""},
+			},
+			expectErr:         false,
+			expectedErrString: "",
+		},
+		{
+			name:       "#11: StatusUpdate - ImagesPulledSuccessfully",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheStatusUpdate,
+				Status: &map[string]images.ImageWorkResult{
+					"job1": {
+						Status: images.ImageWorkResultStatusSucceeded,
+						ImageWorkRequest: images.ImageWorkRequest{
+							WorkType: images.ImageCacheCreate,
+						},
+					},
+				},
+			},
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: ""},
+			},
+			expectErr:         false,
+			expectedErrString: "",
+		},
+		{
+			name:       "#12: StatusUpdate - ImagesDeletedSuccessfully",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheStatusUpdate,
+				Status: &map[string]images.ImageWorkResult{
+					"job1": {
+						Status: images.ImageWorkResultStatusSucceeded,
+						ImageWorkRequest: images.ImageWorkRequest{
+							WorkType: images.ImageCachePurge,
+						},
+					},
+				},
+			},
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: ""},
+			},
+			expectErr:         false,
+			expectedErrString: "",
+		},
+		{
+			name:       "#13: StatusUpdate - ImagePullFailedForSomeImages",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheStatusUpdate,
+				Status: &map[string]images.ImageWorkResult{
+					"job1": {
+						Status: images.ImageWorkResultStatusFailed,
+						ImageWorkRequest: images.ImageWorkRequest{
+							WorkType: images.ImageCacheCreate,
+						},
+					},
+				},
+			},
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: ""},
+			},
+			expectErr:         false,
+			expectedErrString: "",
+		},
+		{
+			name:       "#14: StatusUpdate - ImageDeleteFailedForSomeImages",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheStatusUpdate,
+				Status: &map[string]images.ImageWorkResult{
+					"job1": {
+						Status: images.ImageWorkResultStatusFailed,
+						ImageWorkRequest: images.ImageWorkRequest{
+							WorkType: images.ImageCachePurge,
+						},
+					},
+				},
+			},
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: ""},
+			},
+			expectErr:         false,
+			expectedErrString: "",
+		},
+		{
+			name: "#15: Delete - Remove Finalizer",
+			imageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "foo",
+					Namespace:         "kube-fledged",
+					DeletionTimestamp: &now,
+					Finalizers:        []string{"fledged"},
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+			},
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheDelete,
+			},
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: ""},
+			},
+			expectErr:         false,
+			expectedErrString: "",
+		},
+	}
+
+	for _, test := range tests {
+		fakekubeclientset := &fakeclientset.Clientset{}
+		fakefledgedclientset := &fledgedclientsetfake.Clientset{}
+		for _, ar := range test.expectedActions {
+			if ar.reaction != "" {
+				apiError := apierrors.NewInternalError(fmt.Errorf(ar.reaction))
+				fakefledgedclientset.AddReactor(ar.action, "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+					return true, nil, apiError
+				})
+			}
+			fakefledgedclientset.AddReactor(ar.action, "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return false, &test.imageCache, nil
+			})
+		}
+
+		controller, nodeInformer, imagecacheInformer := newTestController(fakekubeclientset, fakefledgedclientset)
+		if test.nodeList != nil && len(test.nodeList.Items) > 0 {
+			for _, node := range test.nodeList.Items {
+				nodeInformer.Informer().GetIndexer().Add(&node)
+			}
+		}
+		imagecacheInformer.Informer().GetIndexer().Add(&test.imageCache)
+		err := controller.syncHandler(test.wqKey)
+		if test.expectErr {
+			if err == nil {
+				t.Errorf("Test: %s failed: expectedError=%s, actualError=nil", test.name, test.expectedErrString)
+			}
+			if err != nil && !strings.HasPrefix(err.Error(), test.expectedErrString) {
+				t.Errorf("Test: %s failed: expectedError=%s, actualError=%s", test.name, test.expectedErrString, err.Error())
+			}
+		} else if err != nil {
+			t.Errorf("Test: %s failed. expectedError=nil, actualError=%s", test.name, err.Error())
+		}
 	}
 	t.Logf("%d tests passed", len(tests))
 }
