@@ -47,10 +47,12 @@ type ImageCacheSpec struct {
 
 // ImageCacheStatus is the status for a ImageCache resource
 type ImageCacheStatus struct {
-	Status   ImageCacheActionStatus         `json:"status"`
-	Reason   string                         `json:"reason"`
-	Message  string                         `json:"message"`
-	Failures map[string][]NodeReasonMessage `json:"failures,omitempty"`
+	Status         ImageCacheActionStatus         `json:"status"`
+	Reason         string                         `json:"reason"`
+	Message        string                         `json:"message"`
+	Failures       map[string][]NodeReasonMessage `json:"failures,omitempty"`
+	StartTime      *metav1.Time                   `json:"startTime,omitempty"`
+	CompletionTime *metav1.Time                   `json:"completionTime,omitempty"`
 }
 
 // NodeReasonMessage has failure reason and message for a node
