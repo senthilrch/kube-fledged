@@ -252,7 +252,7 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 // enqueueImageCache takes a ImageCache resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
 // passed resources of any type other than ImageCache.
-func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interface{}) {
+func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interface{}) bool {
 	var key string
 	var err error
 	var obj interface{}
@@ -265,7 +265,7 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		// If the ImageCache resource already has a status field, it means it's already
 		// synced, so do not queue it for processing
 		if !reflect.DeepEqual(newImageCache.Status, fledgedv1alpha1.ImageCacheStatus{}) {
-			return
+			return false
 		}
 	case images.ImageCacheUpdate:
 		obj = new
@@ -280,14 +280,14 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 			break
 		}
 		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
-			return
+			return false
 		}
 		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
 			glog.Errorf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
-			return
+			return false
 		}
 	case images.ImageCacheDelete:
-		return
+		return false
 
 	case images.ImageCacheRefresh:
 		obj = old
@@ -295,7 +295,7 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
 		runtime.HandleError(err)
-		return
+		return false
 	}
 	wqKey.WorkType = workType
 	wqKey.ObjKey = key
@@ -305,8 +305,8 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 	}
 
 	c.workqueue.AddRateLimited(wqKey)
-
 	glog.V(4).Infof("enqueueImageCache::ImageCache resource queued for work type %s", workType)
+	return true
 }
 
 // runWorker is a long-running function that will continually call the
