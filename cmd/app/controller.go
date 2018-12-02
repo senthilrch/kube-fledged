@@ -422,6 +422,8 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 	switch wqKey.WorkType {
 	case images.ImageCacheCreate, images.ImageCacheUpdate, images.ImageCacheRefresh, images.ImageCachePurge:
 
+		startTime := metav1.Now()
+		status.StartTime = &startTime
 		// Get the ImageCache resource with this namespace/name
 		imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
 		if err != nil {
@@ -601,6 +603,10 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 
+		if imageCache.Status.StartTime != nil {
+			status.StartTime = imageCache.Status.StartTime
+		}
+
 		failures := false
 		for _, v := range *wqKey.Status {
 			if v.Status == images.ImageWorkResultStatusSucceeded && !failures {
@@ -677,6 +683,10 @@ func (c *Controller) updateImageCacheStatus(imageCache *fledgedv1alpha1.ImageCac
 	// Or create a copy manually for better performance
 	imageCacheCopy := imageCache.DeepCopy()
 	imageCacheCopy.Status = *status
+	if imageCacheCopy.Status.Status != fledgedv1alpha1.ImageCacheActionStatusProcessing {
+		completionTime := metav1.Now()
+		imageCacheCopy.Status.CompletionTime = &completionTime
+	}
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the ImageCache resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
