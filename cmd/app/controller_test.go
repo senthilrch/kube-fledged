@@ -949,3 +949,186 @@ func TestSyncHandler(t *testing.T) {
 	}
 	t.Logf("%d tests passed", len(tests))
 }
+
+func TestEnqueueImageCache(t *testing.T) {
+	now := metav1.Now()
+	nowplus5s := metav1.NewTime(time.Now().Add(time.Second * 5))
+	defaultImageCache := fledgedv1alpha1.ImageCache{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "kube-fledged",
+		},
+		Spec: fledgedv1alpha1.ImageCacheSpec{
+			CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+				{
+					Images: []string{"foo"},
+				},
+			},
+		},
+	}
+	tests := []struct {
+		name           string
+		workType       images.WorkType
+		oldImageCache  fledgedv1alpha1.ImageCache
+		newImageCache  fledgedv1alpha1.ImageCache
+		expectedResult bool
+	}{
+		{
+			name:           "#1: Create - Imagecache queued successfully",
+			workType:       images.ImageCacheCreate,
+			newImageCache:  defaultImageCache,
+			expectedResult: true,
+		},
+		{
+			name:     "#2: Create - Imagecache with Status field, so no queueing",
+			workType: images.ImageCacheCreate,
+			newImageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "kube-fledged",
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+				Status: fledgedv1alpha1.ImageCacheStatus{
+					Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
+				},
+			},
+			expectedResult: false,
+		},
+		{
+			name:          "#3: Update - Imagecache purge. Successful queueing",
+			workType:      images.ImageCacheUpdate,
+			oldImageCache: defaultImageCache,
+			newImageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "foo",
+					Namespace:         "kube-fledged",
+					DeletionTimestamp: &now,
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+				Status: fledgedv1alpha1.ImageCacheStatus{
+					Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
+				},
+			},
+			expectedResult: true,
+		},
+		{
+			name:     "#4: Update - Imagecache delete. Successful queueing",
+			workType: images.ImageCacheUpdate,
+			oldImageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "foo",
+					Namespace:         "kube-fledged",
+					DeletionTimestamp: &now,
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+				Status: fledgedv1alpha1.ImageCacheStatus{
+					Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
+				},
+			},
+			newImageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "foo",
+					Namespace:         "kube-fledged",
+					DeletionTimestamp: &nowplus5s,
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+				Status: fledgedv1alpha1.ImageCacheStatus{
+					Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
+				},
+			},
+			expectedResult: true,
+		},
+		{
+			name:           "#5: Update - No change in Spec. Unsuccessful queueing",
+			workType:       images.ImageCacheUpdate,
+			oldImageCache:  defaultImageCache,
+			newImageCache:  defaultImageCache,
+			expectedResult: false,
+		},
+		{
+			name:     "#6: Update - Status processing. Unsuccessful queueing",
+			workType: images.ImageCacheUpdate,
+			oldImageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "kube-fledged",
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+				Status: fledgedv1alpha1.ImageCacheStatus{
+					Status: fledgedv1alpha1.ImageCacheActionStatusProcessing,
+				},
+			},
+			expectedResult: false,
+		},
+		{
+			name:          "#7: Update - Successful queueing",
+			workType:      images.ImageCacheUpdate,
+			oldImageCache: defaultImageCache,
+			newImageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "kube-fledged",
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo", "bar"},
+						},
+					},
+				},
+			},
+			expectedResult: true,
+		},
+		{
+			name:           "#7: Delete - Unsuccessful queueing",
+			workType:       images.ImageCacheDelete,
+			expectedResult: false,
+		},
+		{
+			name:           "#8: Refresh - Successful queueing",
+			workType:       images.ImageCacheRefresh,
+			oldImageCache:  defaultImageCache,
+			expectedResult: true,
+		},
+	}
+
+	for _, test := range tests {
+		fakekubeclientset := &fakeclientset.Clientset{}
+		fakefledgedclientset := &fledgedclientsetfake.Clientset{}
+		controller, _, _ := newTestController(fakekubeclientset, fakefledgedclientset)
+		result := controller.enqueueImageCache(test.workType, &test.oldImageCache, &test.newImageCache)
+		if result != test.expectedResult {
+			t.Errorf("Test %s failed: expected=%t, actual=%t", test.name, test.expectedResult, result)
+		}
+	}
+}
