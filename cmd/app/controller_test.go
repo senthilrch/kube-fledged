@@ -766,8 +766,23 @@ func TestSyncHandler(t *testing.T) {
 			expectedErrString: "",
 		},
 		{
-			name:       "#11: StatusUpdate - ImagesPulledSuccessfully",
-			imageCache: defaultImageCache,
+			name: "#11: StatusUpdate - ImagesPulledSuccessfully",
+			imageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "kube-fledged",
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+				Status: fledgedv1alpha1.ImageCacheStatus{
+					StartTime: &now,
+				},
+			},
 			wqKey: images.WorkQueueKey{
 				ObjKey:   "kube-fledged/foo",
 				WorkType: images.ImageCacheStatusUpdate,
@@ -788,8 +803,23 @@ func TestSyncHandler(t *testing.T) {
 			expectedErrString: "",
 		},
 		{
-			name:       "#12: StatusUpdate - ImagesDeletedSuccessfully",
-			imageCache: defaultImageCache,
+			name: "#12: StatusUpdate - ImagesDeletedSuccessfully",
+			imageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "kube-fledged",
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+				Status: fledgedv1alpha1.ImageCacheStatus{
+					StartTime: &now,
+				},
+			},
 			wqKey: images.WorkQueueKey{
 				ObjKey:   "kube-fledged/foo",
 				WorkType: images.ImageCacheStatusUpdate,
@@ -894,7 +924,7 @@ func TestSyncHandler(t *testing.T) {
 				})
 			}
 			fakefledgedclientset.AddReactor(ar.action, "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
-				return false, &test.imageCache, nil
+				return true, &test.imageCache, nil
 			})
 		}
 
