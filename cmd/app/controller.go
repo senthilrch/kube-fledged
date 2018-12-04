@@ -115,7 +115,7 @@ func NewController(
 		imageCacheRefreshFrequency: imageCacheRefreshFrequency,
 	}
 
-	imageManager := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, fledgedNameSpace, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
+	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, fledgedNameSpace, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
 	controller.imageManager = imageManager
 
 	glog.Info("Setting up event handlers")

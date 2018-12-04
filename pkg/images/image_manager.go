@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	kubeinformers "k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -107,7 +108,7 @@ func NewImageManager(
 	kubeclientset kubernetes.Interface,
 	namespace string,
 	imagePullDeadlineDuration time.Duration,
-	dockerClientImage, imagePullPolicy string) *ImageManager {
+	dockerClientImage, imagePullPolicy string) (*ImageManager, coreinformers.PodInformer) {
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(
 		kubeclientset,
@@ -145,7 +146,7 @@ func NewImageManager(
 		},
 		//DeleteFunc: ,
 	})
-	return imagemanager
+	return imagemanager, podInformer
 }
 
 func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
@@ -248,7 +249,7 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 	return nil
 }
 
-func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
+func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<- error) {
 	wait.Poll(time.Second, m.imagePullDeadlineDuration,
 		func() (done bool, err error) {
 			m.lock.RLock()
@@ -268,6 +269,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
 	err := m.updatePendingImageWorkResults(imageCacheName)
 	if err != nil {
 		glog.Errorf("Error from updatePendingImageWorkResults(): %v", err)
+		errCh <- err
 		return
 	}
 	glog.V(4).Info("m.updatePendingImageWorkResults exited successfully")
@@ -290,6 +292,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
 				Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
 				glog.Errorf("Error deleting job %s: %v", job, err)
 				m.lock.Unlock()
+				errCh <- err
 				return
 			}
 		}
@@ -297,11 +300,13 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
 	m.lock.Unlock()
 	if imageCache == nil {
 		glog.Errorf("Unable to obtain reference to image cache")
+		errCh <- fmt.Errorf("Unable to obtain reference to image cache")
 		return
 	}
 	objKey, err := cache.MetaNamespaceKeyFunc(imageCache)
 	if err != nil {
 		glog.Errorf("Error from cache.MetaNamespaceKeyFunc(imageCache): %v", err)
+		errCh <- err
 		return
 	}
 	m.workqueue.AddRateLimited(WorkQueueKey{
@@ -309,6 +314,8 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string) {
 		Status:   &iwstatus,
 		ObjKey:   objKey,
 	})
+
+	errCh <- nil
 	return
 }
 
@@ -374,7 +381,8 @@ func (m *ImageManager) processNextWorkItem() bool {
 
 		if iwr.Image == "" && iwr.Node == "" {
 			m.imageworkqueue.Forget(obj)
-			go m.updateImageCacheStatus(iwr.Imagecache.Name)
+			errCh := make(chan error)
+			go m.updateImageCacheStatus(iwr.Imagecache.Name, errCh)
 			return nil
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
