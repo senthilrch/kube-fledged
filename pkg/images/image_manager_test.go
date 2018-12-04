@@ -18,6 +18,7 @@ package images
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -28,24 +29,25 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
 	fakeclientset "k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/util/workqueue"
 )
 
-func newTestImageManager(kubeclientset kubernetes.Interface) *ImageManager {
-	imagePullDeadlineDuration := time.Second * 5
+func newTestImageManager(kubeclientset kubernetes.Interface) (*ImageManager, coreinformers.PodInformer) {
+	imagePullDeadlineDuration := time.Second
 	dockerClientImage := "senthilrch/fledged-docker-client:latest"
 	imagePullPolicy := "IfNotPresent"
 	imagecacheworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches")
 	imageworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus")
 
-	imagemanager := NewImageManager(imagecacheworkqueue, imageworkqueue, kubeclientset, fledgedNameSpace,
+	imagemanager, podInformer := NewImageManager(imagecacheworkqueue, imageworkqueue, kubeclientset, fledgedNameSpace,
 		imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
 	imagemanager.podsSynced = func() bool { return true }
 
-	return imagemanager
+	return imagemanager, podInformer
 }
 
 func TestPullDeleteImage(t *testing.T) {
@@ -155,7 +157,7 @@ func TestPullDeleteImage(t *testing.T) {
 			})
 		}
 
-		imagemanager := newTestImageManager(fakekubeclientset)
+		imagemanager, _ := newTestImageManager(fakekubeclientset)
 		var err error
 		if test.action == "pullimage" {
 			_, err = imagemanager.pullImage(test.iwr)
@@ -253,7 +255,7 @@ func TestHandlePodStatusChange(t *testing.T) {
 	}
 	for _, test := range tests {
 		fakekubeclientset := &fakeclientset.Clientset{}
-		imagemanager := newTestImageManager(fakekubeclientset)
+		imagemanager, _ := newTestImageManager(fakekubeclientset)
 		imagemanager.imageworkstatus[test.pod.Labels["job-name"]] = ImageWorkResult{
 			Status: ImageWorkResultStatusJobCreated,
 			ImageWorkRequest: ImageWorkRequest{
@@ -271,6 +273,285 @@ func TestHandlePodStatusChange(t *testing.T) {
 			if !(imagemanager.imageworkstatus[test.pod.Labels["job-name"]].Status == ImageWorkResultStatusFailed) {
 				t.Errorf("Test: %s failed: expectedWorkResult=%s, actualWorkResult=%s", test.name, ImageWorkResultStatusFailed, imagemanager.imageworkstatus[test.pod.Labels["job-name"]].Status)
 			}
+		}
+	}
+}
+
+func TestUpdateImageCacheStatus(t *testing.T) {
+	imageCacheName := "fakeimagecache"
+	tests := []struct {
+		name                string
+		imageworkstatus     map[string]ImageWorkResult
+		pods                []corev1.Pod
+		eventListErr        bool
+		jobDeleteErr        bool
+		expectError         bool
+		expectedErrorString string
+	}{
+		{
+			name: "#1: Successful",
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: imageCacheName,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusSucceeded,
+				},
+			},
+			pods:        []corev1.Pod{},
+			expectError: false,
+		},
+		{
+			name: "#2: Create - Successful",
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: imageCacheName,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusJobCreated,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								State: corev1.ContainerState{
+									Waiting: &corev1.ContainerStateWaiting{
+										Reason:  "fakereason",
+										Message: "fakemessage",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "#3: Purge - Successful",
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						WorkType: ImageCachePurge,
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: imageCacheName,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusJobCreated,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								State: corev1.ContainerState{
+									Waiting: &corev1.ContainerStateWaiting{
+										Reason:  "fakereason",
+										Message: "fakemessage",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "#4: Purge - Successful",
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						WorkType: ImageCachePurge,
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: imageCacheName,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusJobCreated,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								State: corev1.ContainerState{
+									Terminated: &corev1.ContainerStateTerminated{
+										Reason:  "fakereason",
+										Message: "fakemessage",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "#5: Purge - Unsuccessful",
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						WorkType: ImageCachePurge,
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: imageCacheName,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusJobCreated,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+					},
+				},
+			},
+			expectError:         true,
+			expectedErrorString: "No pods matched job",
+		},
+		{
+			name: "#6: Purge - Unsuccessful",
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						WorkType: ImageCachePurge,
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: imageCacheName,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusJobCreated,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod1",
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod2",
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+				},
+			},
+			expectError:         true,
+			expectedErrorString: "More than one pod matched job",
+		},
+		{
+			name: "#7: Create - Unsuccessful",
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: imageCacheName,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusSucceeded,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								State: corev1.ContainerState{
+									Waiting: &corev1.ContainerStateWaiting{
+										Reason:  "fakereason",
+										Message: "fakemessage",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			jobDeleteErr:        true,
+			expectError:         true,
+			expectedErrorString: "Internal error occurred: fake error",
+		},
+	}
+
+	for _, test := range tests {
+		fakekubeclientset := &fakeclientset.Clientset{}
+		if test.eventListErr {
+			fakekubeclientset.AddReactor("list", "events", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, nil, apierrors.NewInternalError(fmt.Errorf("fake error"))
+			})
+		}
+		if test.jobDeleteErr {
+			fakekubeclientset.AddReactor("delete", "jobs", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, nil, apierrors.NewInternalError(fmt.Errorf("fake error"))
+			})
+		}
+		imagemanager, podInformer := newTestImageManager(fakekubeclientset)
+		for _, pod := range test.pods {
+			if !reflect.DeepEqual(pod, corev1.Pod{}) {
+				podInformer.Informer().GetIndexer().Add(&pod)
+			}
+		}
+		imagemanager.imageworkstatus = test.imageworkstatus
+		errCh := make(chan error)
+		go imagemanager.updateImageCacheStatus(imageCacheName, errCh)
+		err := <-errCh
+		if err != nil {
+			t.Logf("err=%s", err.Error())
+		}
+		if test.expectError {
+			if err == nil {
+				t.Errorf("Test: %s failed: expectedError=%s, actualError=nil", test.name, test.expectedErrorString)
+			}
+			if err != nil && !strings.HasPrefix(err.Error(), test.expectedErrorString) {
+				t.Errorf("Test: %s failed: expectedError=%s, actualError=%s", test.name, test.expectedErrorString, err.Error())
+			}
+		} else if err != nil {
+			t.Errorf("Test: %s failed. expectedError=nil, actualError=%s", test.name, err.Error())
 		}
 	}
 }
