@@ -37,7 +37,7 @@ import (
 )
 
 func newTestImageManager(kubeclientset kubernetes.Interface) (*ImageManager, coreinformers.PodInformer) {
-	imagePullDeadlineDuration := time.Second
+	imagePullDeadlineDuration := time.Millisecond * 10
 	dockerClientImage := "senthilrch/fledged-docker-client:latest"
 	imagePullPolicy := "IfNotPresent"
 	imagecacheworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches")
@@ -543,6 +543,189 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 		if err != nil {
 			t.Logf("err=%s", err.Error())
 		}
+		if test.expectError {
+			if err == nil {
+				t.Errorf("Test: %s failed: expectedError=%s, actualError=nil", test.name, test.expectedErrorString)
+			}
+			if err != nil && !strings.HasPrefix(err.Error(), test.expectedErrorString) {
+				t.Errorf("Test: %s failed: expectedError=%s, actualError=%s", test.name, test.expectedErrorString, err.Error())
+			}
+		} else if err != nil {
+			t.Errorf("Test: %s failed. expectedError=nil, actualError=%s", test.name, err.Error())
+		}
+	}
+}
+
+func TestProcessNextWorkItem(t *testing.T) {
+	defaultImageCache := fledgedv1alpha1.ImageCache{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "kube-fledged",
+		},
+		Spec: fledgedv1alpha1.ImageCacheSpec{
+			CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+				{
+					Images: []string{"foo"},
+				},
+			},
+		},
+	}
+	tests := []struct {
+		name                string
+		iwr                 ImageWorkRequest
+		imageworkstatus     map[string]ImageWorkResult
+		pods                []corev1.Pod
+		expectError         bool
+		expectedErrorString string
+	}{
+		{
+			name: "#1: Create - Successful",
+			iwr: ImageWorkRequest{
+				Image:      "fakeimage",
+				Node:       "fakenode",
+				WorkType:   ImageCacheCreate,
+				Imagecache: &defaultImageCache,
+			},
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: defaultImageCache.Name,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusSucceeded,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								State: corev1.ContainerState{
+									Terminated: &corev1.ContainerStateTerminated{
+										Reason:  "fakereason",
+										Message: "fakemessage",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "#2: Purge - Successful",
+			iwr: ImageWorkRequest{
+				Image:      "fakeimage",
+				Node:       "fakenode",
+				WorkType:   ImageCachePurge,
+				Imagecache: &defaultImageCache,
+			},
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: defaultImageCache.Name,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusSucceeded,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								State: corev1.ContainerState{
+									Terminated: &corev1.ContainerStateTerminated{
+										Reason:  "fakereason",
+										Message: "fakemessage",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "#3: Statusupdate - Successful",
+			iwr: ImageWorkRequest{
+				WorkType:   ImageCacheCreate,
+				Imagecache: &defaultImageCache,
+			},
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: defaultImageCache.Name,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusSucceeded,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								State: corev1.ContainerState{
+									Terminated: &corev1.ContainerStateTerminated{
+										Reason:  "fakereason",
+										Message: "fakemessage",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name:                "#4: Create - Unsuccessful",
+			expectError:         false,
+			expectedErrorString: "Unexpected type in workqueue",
+		},
+	}
+	for _, test := range tests {
+		fakekubeclientset := &fakeclientset.Clientset{}
+		imagemanager, podInformer := newTestImageManager(fakekubeclientset)
+		for _, pod := range test.pods {
+			if !reflect.DeepEqual(pod, corev1.Pod{}) {
+				podInformer.Informer().GetIndexer().Add(&pod)
+			}
+		}
+		imagemanager.imageworkstatus = test.imageworkstatus
+		if test.expectedErrorString == "Unexpected type in workqueue" {
+			imagemanager.imageworkqueue.Add(struct{}{})
+		}
+		imagemanager.imageworkqueue.Add(test.iwr)
+		imagemanager.processNextWorkItem()
+		var err error
 		if test.expectError {
 			if err == nil {
 				t.Errorf("Test: %s failed: expectedError=%s, actualError=nil", test.name, test.expectedErrorString)
