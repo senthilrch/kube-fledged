@@ -24,6 +24,7 @@ import (
 
 	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -171,6 +172,105 @@ func TestPullDeleteImage(t *testing.T) {
 			}
 		} else if err != nil {
 			t.Errorf("Test: %s failed. expectedError=nil, actualError=%s", test.name, err.Error())
+		}
+	}
+}
+
+func TestHandlePodStatusChange(t *testing.T) {
+	tests := []struct {
+		name     string
+		worktype WorkType
+		pod      corev1.Pod
+	}{
+		{
+			name:     "#1: Create - Pod succeeded",
+			worktype: ImageCacheCreate,
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"job-name": "fakejob"},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodSucceeded,
+				},
+			},
+		},
+		{
+			name:     "#2: Purge - Pod succeeded",
+			worktype: ImageCachePurge,
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"job-name": "fakejob"},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodSucceeded,
+				},
+			},
+		},
+		{
+			name:     "#3: Create - Pod failed",
+			worktype: ImageCacheCreate,
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"job-name": "fakejob"},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{
+									Reason:  "fakereason",
+									Message: "fakemessage",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "#4: Purge - Pod failed",
+			worktype: ImageCachePurge,
+			pod: corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{"job-name": "fakejob"},
+				},
+				Status: corev1.PodStatus{
+					Phase: corev1.PodFailed,
+					ContainerStatuses: []corev1.ContainerStatus{
+						{
+							State: corev1.ContainerState{
+								Terminated: &corev1.ContainerStateTerminated{
+									Reason:  "fakereason",
+									Message: "fakemessage",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		fakekubeclientset := &fakeclientset.Clientset{}
+		imagemanager := newTestImageManager(fakekubeclientset)
+		imagemanager.imageworkstatus[test.pod.Labels["job-name"]] = ImageWorkResult{
+			Status: ImageWorkResultStatusJobCreated,
+			ImageWorkRequest: ImageWorkRequest{
+				WorkType: test.worktype,
+			},
+		}
+		imagemanager.handlePodStatusChange(&test.pod)
+
+		if test.pod.Status.Phase == corev1.PodSucceeded {
+			if !(imagemanager.imageworkstatus[test.pod.Labels["job-name"]].Status == ImageWorkResultStatusSucceeded) {
+				t.Errorf("Test: %s failed: expectedWorkResult=%s, actualWorkResult=%s", test.name, ImageWorkResultStatusSucceeded, imagemanager.imageworkstatus[test.pod.Labels["job-name"]].Status)
+			}
+		}
+		if test.pod.Status.Phase == corev1.PodFailed {
+			if !(imagemanager.imageworkstatus[test.pod.Labels["job-name"]].Status == ImageWorkResultStatusFailed) {
+				t.Errorf("Test: %s failed: expectedWorkResult=%s, actualWorkResult=%s", test.name, ImageWorkResultStatusFailed, imagemanager.imageworkstatus[test.pod.Labels["job-name"]].Status)
+			}
 		}
 	}
 }
