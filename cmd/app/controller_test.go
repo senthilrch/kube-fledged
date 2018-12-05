@@ -1132,3 +1132,119 @@ func TestEnqueueImageCache(t *testing.T) {
 		}
 	}
 }
+
+func TestProcessNextWorkItem(t *testing.T) {
+	type ActionReaction struct {
+		action   string
+		reaction string
+	}
+	defaultImageCache := fledgedv1alpha1.ImageCache{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "foo",
+			Namespace: "kube-fledged",
+		},
+		Spec: fledgedv1alpha1.ImageCacheSpec{
+			CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+				{
+					Images: []string{"foo"},
+				},
+			},
+		},
+	}
+
+	tests := []struct {
+		name              string
+		imageCache        fledgedv1alpha1.ImageCache
+		wqKey             images.WorkQueueKey
+		expectedActions   []ActionReaction
+		expectErr         bool
+		expectedErrString string
+	}{
+		{
+			name:       "#1: StatusUpdate - ImageDeleteFailedForSomeImages",
+			imageCache: defaultImageCache,
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheStatusUpdate,
+				Status: &map[string]images.ImageWorkResult{
+					"job1": {
+						Status: images.ImageWorkResultStatusFailed,
+						ImageWorkRequest: images.ImageWorkRequest{
+							WorkType: images.ImageCachePurge,
+						},
+					},
+				},
+			},
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: ""},
+			},
+			expectErr:         false,
+			expectedErrString: "",
+		},
+		{
+			name: "#2: Create - Invalid imagecache spec (no images specified)",
+			imageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "kube-fledged",
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{},
+						},
+					},
+				},
+			},
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheCreate,
+			},
+			expectedActions:   []ActionReaction{{action: "update", reaction: ""}},
+			expectErr:         false,
+			expectedErrString: "No images specified within image list",
+		},
+		{
+			name:              "#3: Unexpected type in workqueue",
+			expectErr:         false,
+			expectedErrString: "Unexpected type in workqueue",
+		},
+	}
+
+	for _, test := range tests {
+		fakekubeclientset := &fakeclientset.Clientset{}
+		fakefledgedclientset := &fledgedclientsetfake.Clientset{}
+		for _, ar := range test.expectedActions {
+			if ar.reaction != "" {
+				apiError := apierrors.NewInternalError(fmt.Errorf(ar.reaction))
+				fakefledgedclientset.AddReactor(ar.action, "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+					return true, nil, apiError
+				})
+			}
+			fakefledgedclientset.AddReactor(ar.action, "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
+				return true, &test.imageCache, nil
+			})
+		}
+
+		controller, _, imagecacheInformer := newTestController(fakekubeclientset, fakefledgedclientset)
+		imagecacheInformer.Informer().GetIndexer().Add(&test.imageCache)
+		if test.expectedErrString == "Unexpected type in workqueue" {
+			controller.workqueue.Add(struct{}{})
+		}
+		controller.workqueue.Add(test.wqKey)
+		controller.processNextWorkItem()
+		var err error
+		if test.expectErr {
+			if err == nil {
+				t.Errorf("Test: %s failed: expectedError=%s, actualError=nil", test.name, test.expectedErrString)
+			}
+			if err != nil && !strings.HasPrefix(err.Error(), test.expectedErrString) {
+				t.Errorf("Test: %s failed: expectedError=%s, actualError=%s", test.name, test.expectedErrString, err.Error())
+			}
+		} else if err != nil {
+			t.Errorf("Test: %s failed. expectedError=nil, actualError=%s", test.name, err.Error())
+		}
+	}
+	t.Logf("%d tests passed", len(tests))
+}
