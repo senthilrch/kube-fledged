@@ -22,7 +22,7 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
 
 ### Prerequisites
 
-- A functioning kubernetes cluster (v1.12 or above). It could be a simple development cluster like minikube or a large production cluster.
+- A functioning kubernetes cluster (v1.7 or above). It could be a simple development cluster like minikube or a large production cluster.
 - All master and worker nodes with docker engine installed, and having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
 - make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
 
@@ -61,6 +61,8 @@ $ make fledged-image && make client-image && make push-image
 
 ### Deploy
 
+_Note:- You need to have 'cluster-admin' privileges to deploy_
+
 All manifests required for deploying _kube-fledged_ are present inside 'kube-fledged/deploy'. These steps deploy _kube-fledged_ into a separate namespace called "kube-fledged" with default configuration flags.
 
 Edit "fledged-deployment.yaml":-
@@ -97,6 +99,7 @@ Verify if _kube-fledged_ deployed successfully
 ```
 $ kubectl get pods -n kube-fledged -l app=fledged
 $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
+$ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
 ```
 
 ## How to use
