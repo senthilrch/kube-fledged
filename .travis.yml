@@ -4,10 +4,12 @@ go:
 install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
+  - go get -u github.com/golang/lint/golint
 script:
 - hack/verify-codegen.sh
 - hack/verify-boilerplate.sh
 - hack/verify-gofmt.sh
+- hack/verify-golint.sh
 - make fledged-image
 - make client-image
 - make test
