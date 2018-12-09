@@ -1,2 +1,2 @@
-cmd
-hack/boilerplate/test
+pkg/apis/fledged
+pkg/apis/fledged/v1alpha1

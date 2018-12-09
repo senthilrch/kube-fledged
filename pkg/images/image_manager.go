@@ -42,8 +42,11 @@ const controllerAgentName = "fledged"
 const fledgedNameSpace = "kube-fledged"
 
 const (
-	ImageWorkResultStatusSucceeded  = "succeeded"
-	ImageWorkResultStatusFailed     = "failed"
+	// ImageWorkResultStatusSucceeded means image pull/delete succeeded
+	ImageWorkResultStatusSucceeded = "succeeded"
+	// ImageWorkResultStatusFailed means image pull/delete failed
+	ImageWorkResultStatusFailed = "failed"
+	// ImageWorkResultStatusJobCreated means job for image pull/delete created
 	ImageWorkResultStatusJobCreated = "jobcreated"
 	//ImageWorkResultReasonImagePullFailed  = "imagepullfailed"
 	//ImageWorkResultMessageImagePullFailed = "failed to pull image to node. for details, please check events of pod"
