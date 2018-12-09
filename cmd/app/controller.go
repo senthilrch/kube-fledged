@@ -607,15 +607,15 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			status.StartTime = imageCache.Status.StartTime
 		}
 
+		status.Reason = imageCache.Status.Reason
+
 		failures := false
 		for _, v := range *wqKey.Status {
 			if v.Status == images.ImageWorkResultStatusSucceeded && !failures {
 				status.Status = fledgedv1alpha1.ImageCacheActionStatusSucceeded
 				if v.ImageWorkRequest.WorkType == images.ImageCachePurge {
-					status.Reason = fledgedv1alpha1.ImageCacheReasonImagesDeletedSuccessfully
 					status.Message = fledgedv1alpha1.ImageCacheMessageImagesDeletedSuccessfully
 				} else {
-					status.Reason = fledgedv1alpha1.ImageCacheReasonImagesPulledSuccessfully
 					status.Message = fledgedv1alpha1.ImageCacheMessageImagesPulledSuccessfully
 				}
 			}
@@ -623,10 +623,8 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 				failures = true
 				status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
 				if v.ImageWorkRequest.WorkType == images.ImageCachePurge {
-					status.Reason = fledgedv1alpha1.ImageCacheReasonImageDeleteFailedForSomeImages
 					status.Message = fledgedv1alpha1.ImageCacheMessageImageDeleteFailedForSomeImages
 				} else {
-					status.Reason = fledgedv1alpha1.ImageCacheReasonImagePullFailedForSomeImages
 					status.Message = fledgedv1alpha1.ImageCacheMessageImagePullFailedForSomeImages
 				}
 			}
