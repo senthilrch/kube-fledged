@@ -10,6 +10,7 @@ script:
 - hack/verify-boilerplate.sh
 - hack/verify-gofmt.sh
 - hack/verify-golint.sh
+- hack/verify-govet.sh
 - make fledged-image
 - make client-image
 - make test
