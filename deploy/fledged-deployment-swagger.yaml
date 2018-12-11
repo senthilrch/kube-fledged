@@ -1,0 +1,34 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: fledged
+  namespace: kube-fledged
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: fledged
+  template:
+    metadata:
+      labels:
+        app: fledged
+    spec:
+      containers:
+      - env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: 127.0.0.1
+        - name: KUBERNETES_SERVICE_PORT
+          value: "8050"
+        image: senthilrch/fledged:latest
+        command: ["/opt/bin/fledged"]
+        args:
+        - "--stderrthreshold=INFO"
+        - "--image-pull-deadline-duration=5m"
+        - "--image-cache-refresh-frequency=15m"
+        - "--docker-client-image=senthilrch/fledged-docker-client:v0.1.3"
+        - "--image-pull-policy=IfNotPresent"
+        imagePullPolicy: Always
+        name: fledged
+      serviceAccountName: fledged
+
+
