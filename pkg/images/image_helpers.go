@@ -40,7 +40,7 @@ func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostn
 	if imagePullPolicy == string(corev1.PullAlways) {
 		pullPolicy = corev1.PullAlways
 	} else if imagePullPolicy == "" {
-		if latestimage := strings.Contains(image, ":latest"); latestimage {
+		if latestimage := strings.Contains(image, ":latest") || !strings.Contains(image, ":"); latestimage {
 			pullPolicy = corev1.PullAlways
 		}
 	}
