@@ -652,7 +652,7 @@ func TestSyncHandler(t *testing.T) {
 			nodeList:          defaultNodeList,
 			expectedActions:   []ActionReaction{{action: "update", reaction: ""}},
 			expectErr:         true,
-			expectedErrString: "NotSupportedUpdates",
+			expectedErrString: "CacheSpecValidationFailed",
 		},
 		{
 			name:       "#5: Update - Change in NodeSelectors",
@@ -678,7 +678,7 @@ func TestSyncHandler(t *testing.T) {
 			nodeList:          defaultNodeList,
 			expectedActions:   []ActionReaction{{action: "update", reaction: ""}},
 			expectErr:         true,
-			expectedErrString: "NotSupportedUpdates",
+			expectedErrString: "CacheSpecValidationFailed",
 		},
 		{
 			name:       "#6: Create - Error in adding finalizer",
@@ -1119,6 +1119,28 @@ func TestEnqueueImageCache(t *testing.T) {
 			workType:       images.ImageCacheRefresh,
 			oldImageCache:  defaultImageCache,
 			expectedResult: true,
+		},
+		{
+			name:          "#9: Update - CacheSpec restoration",
+			workType:      images.ImageCacheUpdate,
+			oldImageCache: defaultImageCache,
+			newImageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "kube-fledged",
+					Annotations: map[string]string{
+						fledgedCacheSpecValidationKey: "failed",
+					},
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo", "bar"},
+						},
+					},
+				},
+			},
+			expectedResult: false,
 		},
 	}
 
