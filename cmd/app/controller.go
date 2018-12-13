@@ -49,6 +49,7 @@ import (
 const controllerAgentName = "fledged"
 const fledgedNameSpace = "kube-fledged"
 const fledgedFinalizer = "fledged"
+const fledgedCacheSpecValidationKey = "fledged.k8s.io/cachespecvalidation"
 
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a ImageCache is synced
@@ -286,6 +287,16 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 			glog.Errorf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
 			return false
 		}
+		if !reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
+			if validation, ok := newImageCache.Annotations[fledgedCacheSpecValidationKey]; ok {
+				if validation == "failed" {
+					if err := c.removeAnnotation(newImageCache); err != nil {
+						glog.Errorf("Error removing Annotation %s from imagecache(%s): %v", fledgedCacheSpecValidationKey, newImageCache.Name, err)
+					}
+					return false
+				}
+			}
+		}
 	case images.ImageCacheDelete:
 		return false
 
@@ -463,29 +474,29 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		if wqKey.WorkType == images.ImageCacheUpdate {
 			if len(wqKey.OldImageCache.Spec.CacheSpec) != len(imageCache.Spec.CacheSpec) {
 				status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
-				status.Reason = fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates
+				status.Reason = fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed
 				status.Message = fledgedv1alpha1.ImageCacheMessageNotSupportedUpdates
 
-				if err = c.updateImageCacheStatus(imageCache, status); err != nil {
-					glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
+				if err = c.updateImageCacheSpecAndStatus(imageCache, wqKey.OldImageCache.Spec, status); err != nil {
+					glog.Errorf("Error updating imagecache spec and status to %s: %v", status.Status, err)
 					return err
 				}
-				glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in no. of image lists")
-				return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in no. of image lists")
+				glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed, "Mismatch in no. of image lists")
+				return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed, "Mismatch in no. of image lists")
 			}
 
 			for i := range wqKey.OldImageCache.Spec.CacheSpec {
 				if !reflect.DeepEqual(wqKey.OldImageCache.Spec.CacheSpec[i].NodeSelector, imageCache.Spec.CacheSpec[i].NodeSelector) {
 					status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
-					status.Reason = fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates
+					status.Reason = fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed
 					status.Message = fledgedv1alpha1.ImageCacheMessageNotSupportedUpdates
 
-					if err = c.updateImageCacheStatus(imageCache, status); err != nil {
-						glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
+					if err = c.updateImageCacheSpecAndStatus(imageCache, wqKey.OldImageCache.Spec, status); err != nil {
+						glog.Errorf("Error updating imagecache spec and status to %s: %v", status.Status, err)
 						return err
 					}
-					glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in node selector")
-					return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonNotSupportedUpdates, "Mismatch in node selector")
+					glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed, "Mismatch in node selector")
+					return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed, "Mismatch in node selector")
 				}
 			}
 		}
@@ -693,6 +704,32 @@ func (c *Controller) updateImageCacheStatus(imageCache *fledgedv1alpha1.ImageCac
 	return err
 }
 
+func (c *Controller) updateImageCacheSpecAndStatus(imageCache *fledgedv1alpha1.ImageCache, spec fledgedv1alpha1.ImageCacheSpec, status *fledgedv1alpha1.ImageCacheStatus) error {
+	// NEVER modify objects from the store. It's a read-only, local cache.
+	// You can use DeepCopy() to make a deep copy of original object and modify this copy
+	// Or create a copy manually for better performance
+	imageCacheCopy := imageCache.DeepCopy()
+	imageCacheCopy.Spec = spec
+	imageCacheCopy.Status = *status
+
+	if status.Status == fledgedv1alpha1.ImageCacheActionStatusFailed &&
+		status.Reason == fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed {
+		imageCacheCopy.Annotations = make(map[string]string)
+		imageCacheCopy.Annotations[fledgedCacheSpecValidationKey] = "failed"
+	}
+
+	if imageCacheCopy.Status.Status != fledgedv1alpha1.ImageCacheActionStatusProcessing {
+		completionTime := metav1.Now()
+		imageCacheCopy.Status.CompletionTime = &completionTime
+	}
+	// If the CustomResourceSubresources feature gate is not enabled,
+	// we must use Update instead of UpdateStatus to update the Status block of the ImageCache resource.
+	// UpdateStatus will not allow changes to the Spec of the resource,
+	// which is ideal for ensuring nothing other than resource status has been updated.
+	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
+	return err
+}
+
 func (c *Controller) addFinalizer(imageCache *fledgedv1alpha1.ImageCache) error {
 	if len(imageCache.Finalizers) != 0 && strings.Contains(strings.Join(imageCache.Finalizers, ":"), fledgedFinalizer) {
 		return nil
@@ -712,6 +749,16 @@ func (c *Controller) removeFinalizer(imageCache *fledgedv1alpha1.ImageCache) err
 	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
 	if err == nil {
 		glog.Infof("Finalizer %s removed from imagecache(%s)", fledgedFinalizer, imageCache.Name)
+	}
+	return err
+}
+
+func (c *Controller) removeAnnotation(imageCache *fledgedv1alpha1.ImageCache) error {
+	imageCacheCopy := imageCache.DeepCopy()
+	delete(imageCacheCopy.Annotations, fledgedCacheSpecValidationKey)
+	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
+	if err == nil {
+		glog.Infof("Annotation %s removed from imagecache(%s)", fledgedCacheSpecValidationKey, imageCache.Name)
 	}
 	return err
 }
