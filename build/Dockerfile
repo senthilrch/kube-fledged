@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM alpine
+FROM alpine:3.7
 LABEL maintainer="senthilrch <senthilrch@gmail.com>"
 
 COPY fledged /opt/bin/fledged
