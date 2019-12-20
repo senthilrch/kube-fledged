@@ -74,7 +74,7 @@ Edit "fledged-deployment.yaml":-
 ```
       - env:
         - name: KUBERNETES_SERVICE_HOST
-          value: "<IP or hostname of api server>"
+          value: "<IP address of api server>"
         - name: KUBERNETES_SERVICE_PORT
           value: "<port number of api server>"
         image: <your_docker_hub_username>/fledged:<your_tag>
