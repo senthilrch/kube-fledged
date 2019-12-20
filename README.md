@@ -80,7 +80,7 @@ Edit "fledged-deployment.yaml":-
         image: <your_docker_hub_username>/fledged:<your_tag>
 ```
 
-If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod)
+If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod). The secret <your_registry_key> should be created in "kube-fledged" namespace.
 
 ```
       serviceAccountName: fledged
