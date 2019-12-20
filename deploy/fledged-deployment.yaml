@@ -16,16 +16,16 @@ spec:
       containers:
       - env:
         - name: KUBERNETES_SERVICE_HOST
-          value: 192.168.44.50
+          value: 10.128.0.29
         - name: KUBERNETES_SERVICE_PORT
           value: "6443"
-        image: senthilrch/fledged:v0.2.0
+        image: senthilrch/fledged:v0.3.0
         command: ["/opt/bin/fledged"]
         args:
         - "--stderrthreshold=INFO"
         - "--image-pull-deadline-duration=5m"
         - "--image-cache-refresh-frequency=15m"
-        - "--docker-client-image=senthilrch/fledged-docker-client:v0.2.0"
+        - "--docker-client-image=senthilrch/fledged-docker-client:v0.3.0"
         - "--image-pull-policy=IfNotPresent"
         imagePullPolicy: Always
         name: fledged
