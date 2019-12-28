@@ -19,7 +19,6 @@ package app
 import (
 	"fmt"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -30,7 +29,6 @@ import (
 	listers "github.com/senthilrch/kube-fledged/pkg/client/listers/fledged/v1alpha1"
 	"github.com/senthilrch/kube-fledged/pkg/images"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/runtime"
@@ -50,6 +48,7 @@ const controllerAgentName = "fledged"
 const fledgedNameSpace = "kube-fledged"
 const fledgedFinalizer = "fledged"
 const fledgedCacheSpecValidationKey = "fledged.k8s.io/cachespecvalidation"
+const imageCachePurgeAnnotationKey = "fledged.k8s.io/purge-imagecache"
 
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a ImageCache is synced
@@ -272,13 +271,12 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		obj = new
 		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
 		newImageCache := new.(*fledgedv1alpha1.ImageCache)
-		if oldImageCache.DeletionTimestamp == nil && newImageCache.DeletionTimestamp != nil {
-			workType = images.ImageCachePurge
-			break
-		}
-		if oldImageCache.DeletionTimestamp != nil && newImageCache.DeletionTimestamp != nil && !oldImageCache.DeletionTimestamp.Equal(newImageCache.DeletionTimestamp) {
-			workType = images.ImageCacheDelete
-			break
+
+		if _, exists := newImageCache.Annotations[imageCachePurgeAnnotationKey]; exists {
+			if _, exists := oldImageCache.Annotations[imageCachePurgeAnnotationKey]; !exists {
+				workType = images.ImageCachePurge
+				break
+			}
 		}
 		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
 			return false
@@ -501,16 +499,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			}
 		}
 
-		// add Finalizer to ImageCache resource since we need to have control over when
-		// actual API resource is removed from etcd during delete action
-		if wqKey.WorkType == images.ImageCacheCreate || wqKey.WorkType == images.ImageCacheUpdate {
-			err = c.addFinalizer(imageCache)
-			if err != nil {
-				glog.Errorf("Error adding finalizer to imagecache(%s): %v", imageCache.Name, err)
-				return err
-			}
-		}
-
 		cacheSpec := imageCache.Spec.CacheSpec
 		glog.V(4).Infof("cacheSpec: %+v", cacheSpec)
 		var nodes []*corev1.Node
@@ -664,22 +652,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		}
 
 	case images.ImageCacheDelete:
-		// Get the ImageCache resource with this namespace/name
-		imageCache, err := c.imageCachesLister.ImageCaches(namespace).Get(name)
-		if err != nil {
-			// The ImageCache resource may no longer exist, in which case we stop
-			// processing.
-			if errors.IsNotFound(err) {
-				runtime.HandleError(fmt.Errorf("ImageCache '%s' in work queue no longer exists", wqKey.ObjKey))
-				return nil
-			}
-			return err
-		}
-		err = c.removeFinalizer(imageCache)
-		if err != nil {
-			glog.Infof("Error removing finalizer from imagecache(%s): %v", imageCache.Name, err)
-			return err
-		}
+		break
 	}
 	glog.Infof("Completed sync actions for image cache %s(%s)", name, wqKey.WorkType)
 	return nil
@@ -727,29 +700,6 @@ func (c *Controller) updateImageCacheSpecAndStatus(imageCache *fledgedv1alpha1.I
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
 	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
-	return err
-}
-
-func (c *Controller) addFinalizer(imageCache *fledgedv1alpha1.ImageCache) error {
-	if len(imageCache.Finalizers) != 0 && strings.Contains(strings.Join(imageCache.Finalizers, ":"), fledgedFinalizer) {
-		return nil
-	}
-	imageCacheCopy := imageCache.DeepCopy()
-	imageCacheCopy.Finalizers = []string{fledgedFinalizer}
-	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
-	if err == nil {
-		glog.Infof("Finalizer %s added to imagecache(%s)", fledgedFinalizer, imageCache.Name)
-	}
-	return err
-}
-
-func (c *Controller) removeFinalizer(imageCache *fledgedv1alpha1.ImageCache) error {
-	imageCacheCopy := imageCache.DeepCopy()
-	imageCacheCopy.Finalizers = []string{}
-	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
-	if err == nil {
-		glog.Infof("Finalizer %s removed from imagecache(%s)", fledgedFinalizer, imageCache.Name)
-	}
 	return err
 }
 
