@@ -43,6 +43,10 @@ ifndef DOCKER_VERSION
   DOCKER_VERSION=19.03.5
 endif
 
+ifndef CRICTL_VERSION
+  CRICTL_VERSION=v1.17.0
+endif
+
 HTTP_PROXY_CONFIG=
 ifdef HTTP_PROXY
   HTTP_PROXY_CONFIG=--build-arg http_proxy=${HTTP_PROXY}
@@ -80,7 +84,7 @@ fledged-image: clean-fledged fledged
 client-image: clean-client
 	cd build && docker build -t $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME) \
 	-f Dockerfile.docker_client  ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
-	--build-arg VERSION=${DOCKER_VERSION} . && 	\
+	--build-arg DOCKER_VERSION=${DOCKER_VERSION} --build-arg CRICTL_VERSION=${CRICTL_VERSION} . && 	\
 	docker save -o fledged-docker-client.tar $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME) && \
 	gzip fledged-docker-client.tar 
 

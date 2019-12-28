@@ -16,9 +16,15 @@ FROM alpine:3.10
 
 RUN apk add --no-cache bash curl openssh-client
 
-ARG VERSION
-RUN curl -L -o /tmp/docker-$VERSION.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$VERSION.tgz \
-    && tar -xz -C /tmp -f /tmp/docker-$VERSION.tgz \
-    && mv /tmp/docker/docker /usr/bin \
-    && rm -rf /tmp/docker-$VERSION.tgz /tmp/docker
+ARG DOCKER_VERSION
+ARG CRICTL_VERSION
 
+RUN curl -L -o /tmp/docker-$DOCKER_VERSION.tgz https://download.docker.com/linux/static/stable/x86_64/docker-$DOCKER_VERSION.tgz \
+    && tar -xz -C /tmp -f /tmp/docker-$DOCKER_VERSION.tgz \
+    && mv /tmp/docker/docker /usr/bin \
+    && rm -rf /tmp/docker-$DOCKER_VERSION.tgz /tmp/docker
+
+RUN curl -L -o /tmp/crictl-$CRICTL_VERSION.tgz https://github.com/kubernetes-sigs/cri-tools/releases/download/$CRICTL_VERSION/crictl-$CRICTL_VERSION-linux-amd64.tar.gz \
+    && tar -xz -C /tmp -f /tmp/crictl-$CRICTL_VERSION.tgz \
+    && mv /tmp/crictl /usr/bin \
+    && rm -rf /tmp/crictl-$CRICTL_VERSION.tgz /tmp/crictl
