@@ -272,28 +272,27 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
 		newImageCache := new.(*fledgedv1alpha1.ImageCache)
 
+		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
+			glog.Errorf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
+			return false
+		}
 		if _, exists := newImageCache.Annotations[imageCachePurgeAnnotationKey]; exists {
 			if _, exists := oldImageCache.Annotations[imageCachePurgeAnnotationKey]; !exists {
 				workType = images.ImageCachePurge
 				break
 			}
 		}
-		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
-			return false
-		}
-		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
-			glog.Errorf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
-			return false
-		}
 		if !reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
 			if validation, ok := newImageCache.Annotations[fledgedCacheSpecValidationKey]; ok {
 				if validation == "failed" {
-					if err := c.removeAnnotation(newImageCache); err != nil {
+					if err := c.removeAnnotation(newImageCache, fledgedCacheSpecValidationKey); err != nil {
 						glog.Errorf("Error removing Annotation %s from imagecache(%s): %v", fledgedCacheSpecValidationKey, newImageCache.Name, err)
 					}
 					return false
 				}
 			}
+		} else {
+			return false
 		}
 	case images.ImageCacheDelete:
 		return false
@@ -643,6 +642,18 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 
+		if imageCache.Status.Reason == fledgedv1alpha1.ImageCacheReasonImageCachePurge {
+			imageCache, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
+			if err != nil {
+				glog.Errorf("Error getting image cache %s: %v", name, err)
+				return err
+			}
+			if err := c.removeAnnotation(imageCache, imageCachePurgeAnnotationKey); err != nil {
+				glog.Errorf("Error removing Annotation %s from imagecache(%s): %v", imageCachePurgeAnnotationKey, imageCache.Name, err)
+				return err
+			}
+		}
+
 		if status.Status == fledgedv1alpha1.ImageCacheActionStatusSucceeded {
 			c.recorder.Event(imageCache, corev1.EventTypeNormal, status.Reason, status.Message)
 		}
@@ -703,9 +714,9 @@ func (c *Controller) updateImageCacheSpecAndStatus(imageCache *fledgedv1alpha1.I
 	return err
 }
 
-func (c *Controller) removeAnnotation(imageCache *fledgedv1alpha1.ImageCache) error {
+func (c *Controller) removeAnnotation(imageCache *fledgedv1alpha1.ImageCache, annotationKey string) error {
 	imageCacheCopy := imageCache.DeepCopy()
-	delete(imageCacheCopy.Annotations, fledgedCacheSpecValidationKey)
+	delete(imageCacheCopy.Annotations, annotationKey)
 	_, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
 	if err == nil {
 		glog.Infof("Annotation %s removed from imagecache(%s)", fledgedCacheSpecValidationKey, imageCache.Name)
