@@ -827,8 +827,8 @@ func TestSyncHandler(t *testing.T) {
 }
 
 func TestEnqueueImageCache(t *testing.T) {
-	now := metav1.Now()
-	nowplus5s := metav1.NewTime(time.Now().Add(time.Second * 5))
+	//now := metav1.Now()
+	//nowplus5s := metav1.NewTime(time.Now().Add(time.Second * 5))
 	defaultImageCache := fledgedv1alpha1.ImageCache{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
@@ -882,9 +882,9 @@ func TestEnqueueImageCache(t *testing.T) {
 			oldImageCache: defaultImageCache,
 			newImageCache: fledgedv1alpha1.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:              "foo",
-					Namespace:         "kube-fledged",
-					DeletionTimestamp: &now,
+					Name:        "foo",
+					Namespace:   "kube-fledged",
+					Annotations: map[string]string{imageCachePurgeAnnotationKey: ""},
 				},
 				Spec: fledgedv1alpha1.ImageCacheSpec{
 					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
@@ -900,53 +900,14 @@ func TestEnqueueImageCache(t *testing.T) {
 			expectedResult: true,
 		},
 		{
-			name:     "#4: Update - Imagecache delete. Successful queueing",
-			workType: images.ImageCacheUpdate,
-			oldImageCache: fledgedv1alpha1.ImageCache{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "foo",
-					Namespace:         "kube-fledged",
-					DeletionTimestamp: &now,
-				},
-				Spec: fledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
-						{
-							Images: []string{"foo"},
-						},
-					},
-				},
-				Status: fledgedv1alpha1.ImageCacheStatus{
-					Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
-				},
-			},
-			newImageCache: fledgedv1alpha1.ImageCache{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "foo",
-					Namespace:         "kube-fledged",
-					DeletionTimestamp: &nowplus5s,
-				},
-				Spec: fledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
-						{
-							Images: []string{"foo"},
-						},
-					},
-				},
-				Status: fledgedv1alpha1.ImageCacheStatus{
-					Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
-				},
-			},
-			expectedResult: true,
-		},
-		{
-			name:           "#5: Update - No change in Spec. Unsuccessful queueing",
+			name:           "#4: Update - No change in Spec. Unsuccessful queueing",
 			workType:       images.ImageCacheUpdate,
 			oldImageCache:  defaultImageCache,
 			newImageCache:  defaultImageCache,
 			expectedResult: false,
 		},
 		{
-			name:     "#6: Update - Status processing. Unsuccessful queueing",
+			name:     "#5: Update - Status processing. Unsuccessful queueing",
 			workType: images.ImageCacheUpdate,
 			oldImageCache: fledgedv1alpha1.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
@@ -967,7 +928,7 @@ func TestEnqueueImageCache(t *testing.T) {
 			expectedResult: false,
 		},
 		{
-			name:          "#7: Update - Successful queueing",
+			name:          "#6: Update - Successful queueing",
 			workType:      images.ImageCacheUpdate,
 			oldImageCache: defaultImageCache,
 			newImageCache: fledgedv1alpha1.ImageCache{
