@@ -144,7 +144,7 @@ $ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 Before you could delete the image cache, you need to purge the images in the cache using the following command. This will remove all cached images from the worker nodes.
 
 ```
-$ kubectl delete imagecaches imagecache1 -n kube-fledged --wait=false
+$ kubectl annotate imagecaches imagecache1 -n kube-fledged fledged.k8s.io/purge-imagecache=
 ```
 
 View the status of purging the image cache. If any failures, such images should be removed manually or you could decide to leave the images in the worker nodes.
@@ -156,7 +156,7 @@ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 Finally delete the image cache using following command.
 
 ```
-$ kubectl delete imagecaches imagecache1 -n kube-fledged --now
+$ kubectl delete imagecaches imagecache1 -n kube-fledged
 ```
 
 ## How it works
