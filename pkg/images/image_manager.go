@@ -280,9 +280,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 	//m.lock.Lock()
 	iwstatus := map[string]ImageWorkResult{}
 	//m.lock.Unlock()
-	/*
-		deletePropagation := metav1.DeletePropagationBackground
-	*/
+	deletePropagation := metav1.DeletePropagationBackground
 	var iwstatusLock sync.RWMutex
 	var imageCache *fledgedv1alpha1.ImageCache
 	m.lock.Lock()
@@ -294,14 +292,13 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 			imageCache = iwres.ImageWorkRequest.Imagecache
 			delete(m.imageworkstatus, job)
 			// delete jobs
-			/*
-				if err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
-					Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
-					glog.Errorf("Error deleting job %s: %v", job, err)
-					m.lock.Unlock()
-					errCh <- err
-					return
-				}*/
+			if err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
+				Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
+				glog.Errorf("Error deleting job %s: %v", job, err)
+				m.lock.Unlock()
+				errCh <- err
+				return
+			}
 		}
 	}
 	m.lock.Unlock()
