@@ -69,11 +69,11 @@ type ImageManager struct {
 
 // ImageWorkRequest has image name, node name, work type and imagecache
 type ImageWorkRequest struct {
-	Image      string
-	Node       string
+	Image                   string
+	Node                    string
 	ContainerRuntimeVersion string
-	WorkType   WorkType
-	Imagecache *fledgedv1alpha1.ImageCache
+	WorkType                WorkType
+	Imagecache              *fledgedv1alpha1.ImageCache
 }
 
 // ImageWorkResult stores the result of pulling and deleting image
@@ -167,9 +167,9 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 	if pod.Status.Phase == corev1.PodSucceeded {
 		iwres.Status = ImageWorkResultStatusSucceeded
 		if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
-			glog.Infof("Job %s succeeded (delete: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+			glog.Infof("Job %s succeeded (delete:- %s --> %s, runtime: %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node, iwres.ImageWorkRequest.ContainerRuntimeVersion)
 		} else {
-			glog.Infof("Job %s succeeded (pull: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+			glog.Infof("Job %s succeeded (pull:- %s --> %s, runtime: %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node, iwres.ImageWorkRequest.ContainerRuntimeVersion)
 		}
 	}
 	if pod.Status.Phase == corev1.PodFailed {
@@ -398,13 +398,13 @@ func (m *ImageManager) processNextWorkItem() bool {
 			if err != nil {
 				return fmt.Errorf("error deleting image '%s' from node '%s': %s", iwr.Image, iwr.Node, err.Error())
 			}
-			glog.Infof("Job %s created (delete: %s --> %s)", job.Name, iwr.Image, iwr.Node)
+			glog.Infof("Job %s created (delete:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion)
 		} else {
 			job, err = m.pullImage(iwr)
 			if err != nil {
 				return fmt.Errorf("error pulling image '%s' to node '%s': %s", iwr.Image, iwr.Node, err.Error())
 			}
-			glog.Infof("Job %s created (pull: %s --> %s)", job.Name, iwr.Image, iwr.Node)
+			glog.Infof("Job %s created (pull:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion)
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.

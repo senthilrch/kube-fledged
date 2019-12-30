@@ -272,6 +272,9 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
 		newImageCache := new.(*fledgedv1alpha1.ImageCache)
 
+		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
+			return false
+		}
 		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
 			glog.Errorf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
 			return false
@@ -291,8 +294,6 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 					return false
 				}
 			}
-		} else {
-			return false
 		}
 	case images.ImageCacheDelete:
 		return false
@@ -556,11 +557,11 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			for _, n := range nodes {
 				for m := range i.Images {
 					ipr := images.ImageWorkRequest{
-						Image:      i.Images[m],
-						Node:       n.Labels["kubernetes.io/hostname"],
+						Image:                   i.Images[m],
+						Node:                    n.Labels["kubernetes.io/hostname"],
 						ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
-						WorkType:   wqKey.WorkType,
-						Imagecache: imageCache,
+						WorkType:                wqKey.WorkType,
+						Imagecache:              imageCache,
 					}
 					c.imageworkqueue.AddRateLimited(ipr)
 				}
@@ -575,11 +576,11 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 						}
 						if !matched {
 							ipr := images.ImageWorkRequest{
-								Image:      oldimage,
-								Node:       n.Labels["kubernetes.io/hostname"],
+								Image:                   oldimage,
+								Node:                    n.Labels["kubernetes.io/hostname"],
 								ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
-								WorkType:   images.ImageCachePurge,
-								Imagecache: imageCache,
+								WorkType:                images.ImageCachePurge,
+								Imagecache:              imageCache,
 							}
 							c.imageworkqueue.AddRateLimited(ipr)
 						}
