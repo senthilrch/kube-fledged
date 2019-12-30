@@ -272,12 +272,11 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		oldImageCache := old.(*fledgedv1alpha1.ImageCache)
 		newImageCache := new.(*fledgedv1alpha1.ImageCache)
 
-		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
-			return false
-		}
 		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
-			glog.Errorf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
-			return false
+			if !reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
+				glog.Warningf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
+				return false
+			}
 		}
 		if _, exists := newImageCache.Annotations[imageCachePurgeAnnotationKey]; exists {
 			if _, exists := oldImageCache.Annotations[imageCachePurgeAnnotationKey]; !exists {
@@ -294,6 +293,8 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 					return false
 				}
 			}
+		} else {
+			return false
 		}
 	case images.ImageCacheDelete:
 		return false
