@@ -154,73 +154,67 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, hos
 		containerRuntime = "containerd"
 	}
 
-	containerSpec := map[string]struct{
+	containerSpec := map[string]struct {
 		Containers []corev1.Container
-		Volumes []corev1.Volume
-		}{
-		"docker": struct{
-			Containers []corev1.Container
-			Volumes []corev1.Volume
-			}{
-				Containers: []corev1.Container{
-					{
-						Name:    "docker-client",
-						Image:   dockerclientimage,
-						Command: []string{"/bin/bash"},
-						Args:    []string{"-c", "exec /usr/bin/docker image rm -f " + image + " > /dev/termination-log 2>&1"},
-						VolumeMounts: []corev1.VolumeMount{
-							{
-								Name:      "docker-sock",
-								MountPath: "/var/run/docker.sock",
-							},
-						},	
-						ImagePullPolicy: corev1.PullIfNotPresent,	
-					},
-				},
-				Volumes: []corev1.Volume{
-					{
-						Name: "docker-sock",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/var/run/docker.sock",
-								Type: &hostpathtype,
-							},
+		Volumes    []corev1.Volume
+	}{
+		"docker": {
+			Containers: []corev1.Container{
+				{
+					Name:    "docker-client",
+					Image:   dockerclientimage,
+					Command: []string{"/bin/bash"},
+					Args:    []string{"-c", "exec /usr/bin/docker image rm -f " + image + " > /dev/termination-log 2>&1"},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "docker-sock",
+							MountPath: "/var/run/docker.sock",
 						},
-					},	
+					},
+					ImagePullPolicy: corev1.PullIfNotPresent,
 				},
 			},
-		"containerd": struct{
-			Containers []corev1.Container
-			Volumes []corev1.Volume
-			}{
-				Containers: []corev1.Container{
-					{
-						Name:    "crictl-client",
-						Image:   dockerclientimage,
-						Command: []string{"/bin/bash"},
-						Args:    []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///run/containerd/containerd.sock  --image-endpoint=unix:///run/containerd/containerd.sock image rm -f " + image + " > /dev/termination-log 2>&1"},
-						VolumeMounts: []corev1.VolumeMount{
-							{
-								Name:      "containerd-sock",
-								MountPath: "/run/containerd/containerd.sock",
-							},
-						},	
-						ImagePullPolicy: corev1.PullIfNotPresent,	
+			Volumes: []corev1.Volume{
+				{
+					Name: "docker-sock",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/var/run/docker.sock",
+							Type: &hostpathtype,
+						},
 					},
 				},
-				Volumes: []corev1.Volume{
-					{
-						Name: "containerd-sock",
-						VolumeSource: corev1.VolumeSource{
-							HostPath: &corev1.HostPathVolumeSource{
-								Path: "/run/containerd/containerd.sock",
-								Type: &hostpathtype,
-							},
+			},
+		},
+		"containerd": {
+			Containers: []corev1.Container{
+				{
+					Name:    "crictl-client",
+					Image:   dockerclientimage,
+					Command: []string{"/bin/bash"},
+					Args:    []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///run/containerd/containerd.sock  --image-endpoint=unix:///run/containerd/containerd.sock rmi " + image + " > /dev/termination-log 2>&1"},
+					VolumeMounts: []corev1.VolumeMount{
+						{
+							Name:      "containerd-sock",
+							MountPath: "/run/containerd/containerd.sock",
 						},
-					},	
+					},
+					ImagePullPolicy: corev1.PullIfNotPresent,
 				},
-			},	
-		}
+			},
+			Volumes: []corev1.Volume{
+				{
+					Name: "containerd-sock",
+					VolumeSource: corev1.VolumeSource{
+						HostPath: &corev1.HostPathVolumeSource{
+							Path: "/run/containerd/containerd.sock",
+							Type: &hostpathtype,
+						},
+					},
+				},
+			},
+		},
+	}
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
@@ -247,8 +241,8 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, hos
 					NodeSelector: map[string]string{
 						"kubernetes.io/hostname": hostname,
 					},
-					Containers: containerSpec[containerRuntime].Containers,
-					Volumes: containerSpec[containerRuntime].Volumes,
+					Containers:       containerSpec[containerRuntime].Containers,
+					Volumes:          containerSpec[containerRuntime].Volumes,
 					RestartPolicy:    corev1.RestartPolicyNever,
 					ImagePullSecrets: imagecache.Spec.ImagePullSecrets,
 					Tolerations: []corev1.Toleration{
