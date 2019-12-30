@@ -558,6 +558,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 					ipr := images.ImageWorkRequest{
 						Image:      i.Images[m],
 						Node:       n.Labels["kubernetes.io/hostname"],
+						ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
 						WorkType:   wqKey.WorkType,
 						Imagecache: imageCache,
 					}
@@ -576,6 +577,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 							ipr := images.ImageWorkRequest{
 								Image:      oldimage,
 								Node:       n.Labels["kubernetes.io/hostname"],
+								ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
 								WorkType:   images.ImageCachePurge,
 								Imagecache: imageCache,
 							}

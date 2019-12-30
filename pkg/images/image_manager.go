@@ -71,6 +71,7 @@ type ImageManager struct {
 type ImageWorkRequest struct {
 	Image      string
 	Node       string
+	ContainerRuntimeVersion string
 	WorkType   WorkType
 	Imagecache *fledgedv1alpha1.ImageCache
 }
@@ -442,7 +443,7 @@ func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 // deleteImage deletes the image from the node
 func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
-	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, m.dockerClientImage)
+	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion, m.dockerClientImage)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err
