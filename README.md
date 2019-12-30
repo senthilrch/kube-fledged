@@ -23,7 +23,8 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
 ### Prerequisites
 
 - A functioning kubernetes cluster (v1.7 or above). It could be a simple development cluster like minikube or a large production cluster.
-- All master and worker nodes with docker engine installed, and having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
+- All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
+- Supported container runtimes: docker, containerd
 - make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
 
 ### Build
