@@ -273,8 +273,10 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		newImageCache := new.(*fledgedv1alpha1.ImageCache)
 
 		if oldImageCache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
-			glog.Errorf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
-			return false
+			if !reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
+				glog.Warningf("Received image cache update/purge/delete for '%s' while it is under processing, so ignoring.", oldImageCache.Name)
+				return false
+			}
 		}
 		if _, exists := newImageCache.Annotations[imageCachePurgeAnnotationKey]; exists {
 			if _, exists := oldImageCache.Annotations[imageCachePurgeAnnotationKey]; !exists {
@@ -556,10 +558,11 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			for _, n := range nodes {
 				for m := range i.Images {
 					ipr := images.ImageWorkRequest{
-						Image:      i.Images[m],
-						Node:       n.Labels["kubernetes.io/hostname"],
-						WorkType:   wqKey.WorkType,
-						Imagecache: imageCache,
+						Image:                   i.Images[m],
+						Node:                    n.Labels["kubernetes.io/hostname"],
+						ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
+						WorkType:                wqKey.WorkType,
+						Imagecache:              imageCache,
 					}
 					c.imageworkqueue.AddRateLimited(ipr)
 				}
@@ -574,10 +577,11 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 						}
 						if !matched {
 							ipr := images.ImageWorkRequest{
-								Image:      oldimage,
-								Node:       n.Labels["kubernetes.io/hostname"],
-								WorkType:   images.ImageCachePurge,
-								Imagecache: imageCache,
+								Image:                   oldimage,
+								Node:                    n.Labels["kubernetes.io/hostname"],
+								ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
+								WorkType:                images.ImageCachePurge,
+								Imagecache:              imageCache,
 							}
 							c.imageworkqueue.AddRateLimited(ipr)
 						}
