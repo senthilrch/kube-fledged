@@ -151,13 +151,21 @@ $ kubectl annotate imagecaches imagecache1 -n kube-fledged fledged.k8s.io/purge-
 View the status of purging the image cache. If any failures, such images should be removed manually or you could decide to leave the images in the worker nodes.
 
 ```
-kubectl get imagecaches imagecache1 -n kube-fledged -o json
+$ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 ```
 
 Finally delete the image cache using following command.
 
 ```
 $ kubectl delete imagecaches imagecache1 -n kube-fledged
+```
+
+## Remove kube-fledged
+
+Run the following command to remove _kube-fledged_ from the cluster. 
+
+```
+$ make remove
 ```
 
 ## How it works
