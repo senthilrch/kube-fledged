@@ -140,6 +140,14 @@ $ kubectl edit imagecaches imagecache1 -n kube-fledged
 $ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 ```
 
+### Refresh image cache
+
+_kube-fledged_ supports both automatic and on-demand refresh of image cache. Auto refresh is enabled using the flag `--image-cache-refresh-frequency:`. To request for an on-demand refresh, run the following command:-
+
+```
+$ kubectl annotate imagecaches imagecache1 -n kube-fledged fledged.k8s.io/refresh-imagecache=
+```
+
 ### Delete image cache
 
 Before you could delete the image cache, you need to purge the images in the cache using the following command. This will remove all cached images from the worker nodes.
