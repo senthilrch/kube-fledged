@@ -146,76 +146,6 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, hos
 	backoffLimit := int32(0)
 	activeDeadlineSeconds := int64((time.Hour).Seconds())
 
-	var containerRuntime string
-	if strings.Contains(containerRuntimeVersion, "docker") {
-		containerRuntime = "docker"
-	}
-	if strings.Contains(containerRuntimeVersion, "containerd") {
-		containerRuntime = "containerd"
-	}
-
-	containerSpec := map[string]struct {
-		Containers []corev1.Container
-		Volumes    []corev1.Volume
-	}{
-		"docker": {
-			Containers: []corev1.Container{
-				{
-					Name:    "docker-client",
-					Image:   dockerclientimage,
-					Command: []string{"/bin/bash"},
-					Args:    []string{"-c", "exec /usr/bin/docker image rm -f " + image + " > /dev/termination-log 2>&1"},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "docker-sock",
-							MountPath: "/var/run/docker.sock",
-						},
-					},
-					ImagePullPolicy: corev1.PullIfNotPresent,
-				},
-			},
-			Volumes: []corev1.Volume{
-				{
-					Name: "docker-sock",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/var/run/docker.sock",
-							Type: &hostpathtype,
-						},
-					},
-				},
-			},
-		},
-		"containerd": {
-			Containers: []corev1.Container{
-				{
-					Name:    "crictl-client",
-					Image:   dockerclientimage,
-					Command: []string{"/bin/bash"},
-					Args:    []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///run/containerd/containerd.sock  --image-endpoint=unix:///run/containerd/containerd.sock rmi " + image + " > /dev/termination-log 2>&1"},
-					VolumeMounts: []corev1.VolumeMount{
-						{
-							Name:      "containerd-sock",
-							MountPath: "/run/containerd/containerd.sock",
-						},
-					},
-					ImagePullPolicy: corev1.PullIfNotPresent,
-				},
-			},
-			Volumes: []corev1.Volume{
-				{
-					Name: "containerd-sock",
-					VolumeSource: corev1.VolumeSource{
-						HostPath: &corev1.HostPathVolumeSource{
-							Path: "/run/containerd/containerd.sock",
-							Type: &hostpathtype,
-						},
-					},
-				},
-			},
-		},
-	}
-
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: imagecache.Name + "-",
@@ -241,8 +171,32 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, hos
 					NodeSelector: map[string]string{
 						"kubernetes.io/hostname": hostname,
 					},
-					Containers:       containerSpec[containerRuntime].Containers,
-					Volumes:          containerSpec[containerRuntime].Volumes,
+					Containers: []corev1.Container{
+						{
+							Name:    "docker-cri-client",
+							Image:   dockerclientimage,
+							Command: []string{"/bin/bash"},
+							Args:    []string{"-c", "exec /usr/bin/docker image rm -f " + image + " > /dev/termination-log 2>&1"},
+							VolumeMounts: []corev1.VolumeMount{
+								{
+									Name:      "runtime-sock",
+									MountPath: "/var/run/docker.sock",
+								},
+							},
+							ImagePullPolicy: corev1.PullIfNotPresent,
+						},
+					},
+					Volumes: []corev1.Volume{
+						{
+							Name: "runtime-sock",
+							VolumeSource: corev1.VolumeSource{
+								HostPath: &corev1.HostPathVolumeSource{
+									Path: "/var/run/docker.sock",
+									Type: &hostpathtype,
+								},
+							},
+						},
+					},
 					RestartPolicy:    corev1.RestartPolicyNever,
 					ImagePullSecrets: imagecache.Spec.ImagePullSecrets,
 					Tolerations: []corev1.Toleration{
@@ -253,6 +207,19 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, hos
 				},
 			},
 		},
+	}
+	if strings.Contains(containerRuntimeVersion, "docker") {
+		// Job manifest needs no change
+	}
+	if strings.Contains(containerRuntimeVersion, "containerd") {
+		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///run/containerd/containerd.sock  --image-endpoint=unix:///run/containerd/containerd.sock rmi " + image + " > /dev/termination-log 2>&1"}
+		job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = "/run/containerd/containerd.sock"
+		job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = "/run/containerd/containerd.sock"
+	}
+	if strings.Contains(containerRuntimeVersion, "crio") || strings.Contains(containerRuntimeVersion, "cri-o") {
+		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///var/run/crio/crio.sock  --image-endpoint=unix:///var/run/crio/crio.sock rmi " + image + " > /dev/termination-log 2>&1"}
+		job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = "/var/run/crio/crio.sock"
+		job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = "/var/run/crio/crio.sock"
 	}
 	return job, nil
 }
