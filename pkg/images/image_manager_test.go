@@ -144,6 +144,45 @@ func TestPullDeleteImage(t *testing.T) {
 			expectError:         true,
 			expectedErrorString: "Internal error occurred: fake error",
 		},
+		{
+			name:   "#7 Successful creation of image delete job (runtime: containerd)",
+			action: "deleteimage",
+			iwr: ImageWorkRequest{
+				Image:                   "foo",
+				Node:                    "bar",
+				ContainerRuntimeVersion: "containerd://1.0.0",
+				WorkType:                ImageCachePurge,
+				Imagecache:              &defaultImageCache,
+			},
+			expectError:         false,
+			expectedErrorString: "",
+		},
+		{
+			name:   "#8 Successful creation of image delete job (runtime: cri-o)",
+			action: "deleteimage",
+			iwr: ImageWorkRequest{
+				Image:                   "foo",
+				Node:                    "bar",
+				ContainerRuntimeVersion: "cri-o://1.0.0",
+				WorkType:                ImageCachePurge,
+				Imagecache:              &defaultImageCache,
+			},
+			expectError:         false,
+			expectedErrorString: "",
+		},
+		{
+			name:   "#9 Successful creation of image delete job (runtime: docker)",
+			action: "deleteimage",
+			iwr: ImageWorkRequest{
+				Image:                   "foo",
+				Node:                    "bar",
+				ContainerRuntimeVersion: "docker://1.0.0",
+				WorkType:                ImageCachePurge,
+				Imagecache:              &defaultImageCache,
+			},
+			expectError:         false,
+			expectedErrorString: "",
+		},
 	}
 	for _, test := range tests {
 		fakekubeclientset := &fakeclientset.Clientset{}

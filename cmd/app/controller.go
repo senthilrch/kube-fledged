@@ -679,9 +679,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		if status.Status == fledgedv1alpha1.ImageCacheActionStatusFailed {
 			c.recorder.Event(imageCache, corev1.EventTypeWarning, status.Reason, status.Message)
 		}
-
-	case images.ImageCacheDelete:
-		break
 	}
 	glog.Infof("Completed sync actions for image cache %s(%s)", name, wqKey.WorkType)
 	return nil
