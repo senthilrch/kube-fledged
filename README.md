@@ -18,6 +18,51 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 - IoT applications that run on Edge devices when the network connectivity between the edge and image registry is intermittent.
 - If a cluster administrator or operator needs to roll-out upgrades to an application and wants to verify before-hand if the new images can be pulled successfully.
 
+## Quick Install
+
+These instructions will help you install _kube-fledged_ using pre-built images of the latest stable release.
+
+- Create the source code directories on local linux machine and setup $GOPATH
+
+  ```
+  $ mkdir -p $HOME/src/github.com/senthilrch
+  $ export GOPATH=$HOME
+  ```
+
+- Clone the repository
+
+  ```
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
+  $ cd $HOME/src/github.com/senthilrch/kube-fledged
+  ```
+
+- All manifests required for deploying _kube-fledged_ are present inside 'kube-fledged/deploy'. Edit "fledged-deployment.yaml":-
+
+  - Set the value of KUBERNETES_SERVICE_HOST to the IP address of api server of the cluster 
+  - Set KUBERNETES_SERVICE_PORT to Port number of api server
+
+  ```
+      - env:
+        - name: KUBERNETES_SERVICE_HOST
+          value: "<IP address of api server>"
+        - name: KUBERNETES_SERVICE_PORT
+          value: "<Port number of api server>"
+  ```
+
+- Deploy _kube-fledged_ to the cluster
+
+  ```
+  $ make deploy
+  ```
+
+- Verify if _kube-fledged_ deployed successfully
+
+  ```
+  $ kubectl get pods -n kube-fledged -l app=fledged
+  $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
+  $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
+  ```
+
 ## Build and Deploy
 
 These instructions will help you build _kube-fledged_ from source and deploy it on a kubernetes cluster.
@@ -70,8 +115,8 @@ All manifests required for deploying _kube-fledged_ are present inside 'kube-fle
 
 Edit "fledged-deployment.yaml":-
 
-- Set the value of KUBERNETES_SERVICE_HOST to the IP/hostname of api server of the cluster 
-- Set KUBERNETES_SERVICE_PORT to port number of api server
+- Set the value of KUBERNETES_SERVICE_HOST to the IP address of api server of the cluster 
+- Set KUBERNETES_SERVICE_PORT to Port number of api server
 - Set "image" to "<your_docker_hub_username>/fledged:<your_tag>"
 
 ```
@@ -79,7 +124,7 @@ Edit "fledged-deployment.yaml":-
         - name: KUBERNETES_SERVICE_HOST
           value: "<IP address of api server>"
         - name: KUBERNETES_SERVICE_PORT
-          value: "<port number of api server>"
+          value: "<Port number of api server>"
         image: <your_docker_hub_username>/fledged:<your_tag>
 ```
 
