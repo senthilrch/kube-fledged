@@ -22,18 +22,11 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 
 These instructions will help you install _kube-fledged_ using pre-built images of the latest stable release.
 
-- Create the source code directories on local linux machine and setup $GOPATH
+- Clone the repository to your home directory
 
   ```
-  $ mkdir -p $HOME/src/github.com/senthilrch
-  $ export GOPATH=$HOME
-  ```
-
-- Clone the repository
-
-  ```
-  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
-  $ cd $HOME/src/github.com/senthilrch/kube-fledged
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/kube-fledged
+  $ cd $HOME/kube-fledged
   ```
 
 - All manifests required for deploying _kube-fledged_ are present inside 'kube-fledged/deploy'. Edit "fledged-deployment.yaml":-
@@ -69,25 +62,18 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
 
 ### Prerequisites
 
-- A functioning kubernetes cluster (v1.7 or above). It could be a simple development cluster like minikube or a large production cluster.
+- A functioning kubernetes cluster (v1.15 or above). It could be a simple development cluster like minikube or a large production cluster.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
 - Supported container runtimes: docker, containerd, cri-0
 - make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
 
 ### Build
 
-Create the source code directories on local linux machine and setup $GOPATH
+Clone the repository to your home directory
 
 ```
-$ mkdir -p $HOME/src/github.com/senthilrch
-$ export GOPATH=$HOME
-```
-
-Clone the repository
-
-```
-$ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
-$ cd $HOME/src/github.com/senthilrch/kube-fledged
+$ git clone https://github.com/senthilrch/kube-fledged.git $HOME/kube-fledged
+$ cd $HOME/kube-fledged
 ```
 
 If you are behind a proxy, export the following ENV variables (UPPER case)
