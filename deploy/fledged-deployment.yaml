@@ -14,12 +14,7 @@ spec:
         app: fledged
     spec:
       containers:
-      - env:
-        - name: KUBERNETES_SERVICE_HOST
-          value: 10.128.0.29
-        - name: KUBERNETES_SERVICE_PORT
-          value: "6443"
-        image: senthilrch/fledged:v0.5.0
+      - image: senthilrch/fledged:v0.5.0
         command: ["/opt/bin/fledged"]
         args:
         - "--stderrthreshold=INFO"

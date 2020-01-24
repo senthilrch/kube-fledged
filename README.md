@@ -20,26 +20,13 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 
 ## Quick Install
 
-These instructions will help you install _kube-fledged_ using pre-built images of the latest stable release.
+These instructions install _kube-fledged_ using pre-built images of the latest stable release.
 
-- Clone the repository to your home directory
+- Clone the source code repository to your home directory
 
   ```
   $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/kube-fledged
   $ cd $HOME/kube-fledged
-  ```
-
-- All manifests required for deploying _kube-fledged_ are present inside 'kube-fledged/deploy'. Edit "fledged-deployment.yaml":-
-
-  - Set the value of KUBERNETES_SERVICE_HOST to the IP address of api server of the cluster 
-  - Set KUBERNETES_SERVICE_PORT to Port number of api server
-
-  ```
-      - env:
-        - name: KUBERNETES_SERVICE_HOST
-          value: "<IP address of api server>"
-        - name: KUBERNETES_SERVICE_PORT
-          value: "<Port number of api server>"
   ```
 
 - Deploy _kube-fledged_ to the cluster
@@ -69,72 +56,63 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
 
 ### Build
 
-Clone the repository to your home directory
+- Clone the source code repository to your home directory
 
-```
-$ git clone https://github.com/senthilrch/kube-fledged.git $HOME/kube-fledged
-$ cd $HOME/kube-fledged
-```
+  ```
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/kube-fledged
+  $ cd $HOME/kube-fledged
+  ```
 
-If you are behind a proxy, export the following ENV variables (UPPER case)
+- If you are behind a proxy, export the following ENV variables (UPPER case)
 
-```
-export HTTP_PROXY=http://proxy_ip_or_hostname:port
-export HTTPS_PROXY=https://proxy_ip_or_hostname:port
-```
+  ```
+  export HTTP_PROXY=http://proxy_ip_or_hostname:port
+  export HTTPS_PROXY=https://proxy_ip_or_hostname:port
+  ```
 
-Build and push the docker images to registry (e.g. Docker hub)
+- Build and push the docker images to registry (e.g. Docker hub)
 
-```
-$ export FLEDGED_IMAGE_NAME=<your_docker_hub_username>/fledged:<your_tag>
-$ export FLEDGED_DOCKER_CLIENT_IMAGE_NAME=<your_docker_hub_username>/fledged-docker-client:<your_tag>
-$ export DOCKER_VERSION=<docker_version_used_for_building_docker_client_image>
-$ docker login -u <username> -p <password>
-$ make fledged-image && make client-image && make push-image
-```
+  ```
+  $ export FLEDGED_IMAGE_NAME=<your_docker_hub_username>/fledged:<your_tag>
+  $ export FLEDGED_DOCKER_CLIENT_IMAGE_NAME=<your_docker_hub_username>/fledged-docker-client:<your_tag>
+  $ export DOCKER_VERSION=<docker_version_used_for_building_docker_client_image>
+  $ docker login -u <username> -p <password>
+  $ make fledged-image && make client-image && make push-image
+  ```
 
 ### Deploy
 
 _Note:- You need to have 'cluster-admin' privileges to deploy_
 
-All manifests required for deploying _kube-fledged_ are present inside 'kube-fledged/deploy'. These steps deploy _kube-fledged_ into a separate namespace called "kube-fledged" with default configuration flags.
+- All manifests required for deploying _kube-fledged_ are present inside 'kube-fledged/deploy'. These steps deploy _kube-fledged_ into a separate namespace called "kube-fledged" with default configuration flags. Edit "fledged-deployment.yaml".
 
-Edit "fledged-deployment.yaml":-
+  Set "image" to "<your_docker_hub_username>/fledged:<your_tag>"
 
-- Set the value of KUBERNETES_SERVICE_HOST to the IP address of api server of the cluster 
-- Set KUBERNETES_SERVICE_PORT to Port number of api server
-- Set "image" to "<your_docker_hub_username>/fledged:<your_tag>"
+  ```
+  image: <your_docker_hub_username>/fledged:<your_tag>
+  ```
 
-```
-      - env:
-        - name: KUBERNETES_SERVICE_HOST
-          value: "<IP address of api server>"
-        - name: KUBERNETES_SERVICE_PORT
-          value: "<Port number of api server>"
-        image: <your_docker_hub_username>/fledged:<your_tag>
-```
+- If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod). The secret <your_registry_key> should be created in "kube-fledged" namespace.
 
-If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod). The secret <your_registry_key> should be created in "kube-fledged" namespace.
+  ```
+  serviceAccountName: fledged
+  imagePullSecrets:
+    - name: <your_registry_key>
+  ```
 
-```
-      serviceAccountName: fledged
-      imagePullSecrets:
-        - name: <your_registry_key>
-```
+- Deploy _kube-fledged_ to the cluster
 
-Deploy _kube-fledged_ to the cluster
+  ```
+  $ make deploy
+  ```
 
-```
-$ make deploy
-```
+- Verify if _kube-fledged_ deployed successfully
 
-Verify if _kube-fledged_ deployed successfully
-
-```
-$ kubectl get pods -n kube-fledged -l app=fledged
-$ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
-$ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
-```
+  ```
+  $ kubectl get pods -n kube-fledged -l app=fledged
+  $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
+  $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
+  ```
 
 ## How to use
 
