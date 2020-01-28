@@ -216,7 +216,7 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 ## Built With
 
 * [kubernetes/sample-controller](https://github.com/kubernetes/sample-controller) - Building our own kubernetes-style controller using CRD.
-* [Dep](https://github.com/golang/dep) - Go dependency management tool
+* [Go Modules](https://golang.org/doc/go1.11#modules) - Go Modules for Dependency Management
 * [Make](https://www.gnu.org/software/make/) - GNU Make
 
 
