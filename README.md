@@ -18,6 +18,13 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 - IoT applications that run on Edge devices when the network connectivity between the edge and image registry is intermittent.
 - If a cluster administrator or operator needs to roll-out upgrades to an application and wants to verify before-hand if the new images can be pulled successfully.
 
+## Prerequisites
+
+- A functioning kubernetes cluster (v1.9 or above). It could be a simple development cluster like minikube or a large production cluster.
+- All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
+- Supported container runtimes: docker, containerd, cri-o
+- make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
+
 ## Quick Install
 
 These instructions install _kube-fledged_ using pre-built images of the latest stable release in [Docker Hub.](https://hub.docker.com/u/senthilrch)
@@ -46,13 +53,6 @@ These instructions install _kube-fledged_ using pre-built images of the latest s
 ## Build and Deploy
 
 These instructions will help you build _kube-fledged_ from source and deploy it on a kubernetes cluster.
-
-### Prerequisites
-
-- A functioning kubernetes cluster (v1.15 or above). It could be a simple development cluster like minikube or a large production cluster.
-- All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- Supported container runtimes: docker, containerd, cri-0
-- make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
 
 ### Build
 
