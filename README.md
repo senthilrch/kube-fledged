@@ -179,7 +179,7 @@ Finally delete the image cache using following command.
 $ kubectl delete imagecaches imagecache1 -n kube-fledged
 ```
 
-## Remove kube-fledged
+### Remove kube-fledged
 
 Run the following command to remove _kube-fledged_ from the cluster. 
 
