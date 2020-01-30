@@ -185,7 +185,7 @@ func (c *Controller) danglingImageCaches() error {
 		return nil
 	}
 	status := &fledgedv1alpha1.ImageCacheStatus{
-		Failures: map[string][]fledgedv1alpha1.NodeReasonMessage{},
+		Failures: map[string]fledgedv1alpha1.NodeReasonMessageList{},
 		Status:   fledgedv1alpha1.ImageCacheActionStatusAborted,
 		Reason:   fledgedv1alpha1.ImageCacheReasonImagePullAborted,
 		Message:  fledgedv1alpha1.ImageCacheMessageImagePullAborted,
@@ -423,7 +423,7 @@ func (c *Controller) runRefreshWorker() {
 // with the current status of the resource.
 func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 	status := &fledgedv1alpha1.ImageCacheStatus{
-		Failures: map[string][]fledgedv1alpha1.NodeReasonMessage{},
+		Failures: map[string]fledgedv1alpha1.NodeReasonMessageList{},
 	}
 
 	// Convert the namespace/name string into a distinct namespace and name

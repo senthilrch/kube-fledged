@@ -29,11 +29,12 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 
 These instructions install _kube-fledged_ using pre-built images of the latest stable release in [Docker Hub.](https://hub.docker.com/u/senthilrch)
 
-- Clone the source code repository to your home directory
+- Clone the source code repository
 
   ```
-  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/kube-fledged
-  $ cd $HOME/kube-fledged
+  $ mkdir -p $HOME/src/github.com/senthilrch
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
+  $ cd $HOME/src/github.com/senthilrch/kube-fledged
   ```
 
 - Deploy _kube-fledged_ to the cluster
@@ -56,11 +57,12 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
 
 ### Build
 
-- Clone the source code repository to your home directory
+- Clone the source code repository
 
   ```
-  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/kube-fledged
-  $ cd $HOME/kube-fledged
+  $ mkdir -p $HOME/src/github.com/senthilrch
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
+  $ cd $HOME/src/github.com/senthilrch/kube-fledged
   ```
 
 - If you are behind a proxy, export the following ENV variables (UPPER case)
