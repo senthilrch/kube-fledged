@@ -21,7 +21,6 @@ spec:
       type: object
       required:
       - spec
-      - status
       properties:
         apiVersion:
           description: 'APIVersion defines the versioned schema of this representation
@@ -74,6 +73,7 @@ spec:
           required:
           - message
           - reason
+          - startTime
           - status
           properties:
             completionTime:

@@ -30,7 +30,7 @@ type ImageCache struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   ImageCacheSpec   `json:"spec"`
-	Status ImageCacheStatus `json:"status"`
+	Status ImageCacheStatus `json:"status,omitempty"`
 }
 
 // CacheSpecImages specifies the Images to be cached
@@ -51,7 +51,7 @@ type ImageCacheStatus struct {
 	Reason         string                           `json:"reason"`
 	Message        string                           `json:"message"`
 	Failures       map[string]NodeReasonMessageList `json:"failures,omitempty"`
-	StartTime      *metav1.Time                     `json:"startTime,omitempty"`
+	StartTime      *metav1.Time                     `json:"startTime"`
 	CompletionTime *metav1.Time                     `json:"completionTime,omitempty"`
 }
 
