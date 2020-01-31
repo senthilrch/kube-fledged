@@ -144,6 +144,45 @@ func TestPullDeleteImage(t *testing.T) {
 			expectError:         true,
 			expectedErrorString: "Internal error occurred: fake error",
 		},
+		{
+			name:   "#7 Successful creation of image delete job (runtime: containerd)",
+			action: "deleteimage",
+			iwr: ImageWorkRequest{
+				Image:                   "foo",
+				Node:                    "bar",
+				ContainerRuntimeVersion: "containerd://1.0.0",
+				WorkType:                ImageCachePurge,
+				Imagecache:              &defaultImageCache,
+			},
+			expectError:         false,
+			expectedErrorString: "",
+		},
+		{
+			name:   "#8 Successful creation of image delete job (runtime: cri-o)",
+			action: "deleteimage",
+			iwr: ImageWorkRequest{
+				Image:                   "foo",
+				Node:                    "bar",
+				ContainerRuntimeVersion: "cri-o://1.0.0",
+				WorkType:                ImageCachePurge,
+				Imagecache:              &defaultImageCache,
+			},
+			expectError:         false,
+			expectedErrorString: "",
+		},
+		{
+			name:   "#9 Successful creation of image delete job (runtime: docker)",
+			action: "deleteimage",
+			iwr: ImageWorkRequest{
+				Image:                   "foo",
+				Node:                    "bar",
+				ContainerRuntimeVersion: "docker://1.0.0",
+				WorkType:                ImageCachePurge,
+				Imagecache:              &defaultImageCache,
+			},
+			expectError:         false,
+			expectedErrorString: "",
+		},
 	}
 	for _, test := range tests {
 		fakekubeclientset := &fakeclientset.Clientset{}
@@ -343,7 +382,35 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "#3: Purge - Successful",
+			name: "#3: Create - Successful (Node not ready, hence empty containerstatuses)",
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: imageCacheName,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusJobCreated,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+					Status: corev1.PodStatus{
+						Phase:             corev1.PodPending,
+						ContainerStatuses: []corev1.ContainerStatus{},
+					},
+				},
+			},
+			expectError: false,
+		},
+		{
+			name: "#4: Purge - Successful",
 			imageworkstatus: map[string]ImageWorkResult{
 				"fakejob": {
 					ImageWorkRequest: ImageWorkRequest{
@@ -381,7 +448,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "#4: Purge - Successful",
+			name: "#5: Purge - Successful",
 			imageworkstatus: map[string]ImageWorkResult{
 				"fakejob": {
 					ImageWorkRequest: ImageWorkRequest{
@@ -419,7 +486,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "#5: Purge - Unsuccessful",
+			name: "#6: Purge - Unsuccessful",
 			imageworkstatus: map[string]ImageWorkResult{
 				"fakejob": {
 					ImageWorkRequest: ImageWorkRequest{
@@ -444,7 +511,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 			expectedErrorString: "No pods matched job",
 		},
 		{
-			name: "#6: Purge - Unsuccessful",
+			name: "#7: Purge - Unsuccessful",
 			imageworkstatus: map[string]ImageWorkResult{
 				"fakejob": {
 					ImageWorkRequest: ImageWorkRequest{
@@ -478,7 +545,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 			expectedErrorString: "More than one pod matched job",
 		},
 		{
-			name: "#7: Create - Unsuccessful",
+			name: "#8: Create - Unsuccessful",
 			imageworkstatus: map[string]ImageWorkResult{
 				"fakejob": {
 					ImageWorkRequest: ImageWorkRequest{

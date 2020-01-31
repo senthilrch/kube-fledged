@@ -266,7 +266,6 @@ func TestPreFlightChecks(t *testing.T) {
 }
 
 func TestRunRefreshWorker(t *testing.T) {
-	now := metav1.Now()
 	tests := []struct {
 		name                string
 		imageCacheList      *fledgedv1alpha1.ImageCacheList
@@ -326,17 +325,16 @@ func TestRunRefreshWorker(t *testing.T) {
 			workqueueItems:      0,
 		},
 		{
-			name: "#4: Do not refresh image cache marked for deletion",
+			name: "#4: Do not refresh if image cache has been purged",
 			imageCacheList: &fledgedv1alpha1.ImageCacheList{
 				Items: []fledgedv1alpha1.ImageCache{
 					{
 						ObjectMeta: metav1.ObjectMeta{
-							Name:              "foo",
-							Namespace:         "kube-fledged",
-							DeletionTimestamp: &now,
+							Name:      "foo",
+							Namespace: "kube-fledged",
 						},
 						Status: fledgedv1alpha1.ImageCacheStatus{
-							Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
+							Reason: fledgedv1alpha1.ImageCacheReasonImageCachePurge,
 						},
 					},
 				},
@@ -557,19 +555,7 @@ func TestSyncHandler(t *testing.T) {
 			expectedErrString: "CacheSpecValidationFailed",
 		},
 		{
-			name:       "#6: Create - Error in adding finalizer",
-			imageCache: defaultImageCache,
-			wqKey: images.WorkQueueKey{
-				ObjKey:   "kube-fledged/foo",
-				WorkType: images.ImageCacheCreate,
-			},
-			nodeList:          defaultNodeList,
-			expectedActions:   []ActionReaction{{action: "update", reaction: "fake error"}},
-			expectErr:         true,
-			expectedErrString: "Internal error occurred: fake error",
-		},
-		{
-			name:       "#7: Refresh - Update status to processing",
+			name:       "#6: Refresh - Update status to processing",
 			imageCache: defaultImageCache,
 			wqKey: images.WorkQueueKey{
 				ObjKey:   "kube-fledged/foo",
@@ -582,6 +568,45 @@ func TestSyncHandler(t *testing.T) {
 			},
 			expectErr:         true,
 			expectedErrString: "Internal error occurred: fake error",
+		},
+		{
+			name: "#7: StatusUpdate - Successful Refresh",
+			imageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "kube-fledged",
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+				Status: fledgedv1alpha1.ImageCacheStatus{
+					StartTime: &now,
+					Status:    fledgedv1alpha1.ImageCacheActionStatusProcessing,
+					Reason:    fledgedv1alpha1.ImageCacheReasonImageCacheRefresh,
+				},
+			},
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheStatusUpdate,
+				Status: &map[string]images.ImageWorkResult{
+					"job1": {
+						Status: images.ImageWorkResultStatusSucceeded,
+						ImageWorkRequest: images.ImageWorkRequest{
+							WorkType: images.ImageCacheRefresh,
+						},
+					},
+				},
+			},
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: ""},
+			},
+			expectErr:         false,
+			expectedErrString: "",
 		},
 		{
 			name:       "#8: Purge - Update status to processing",
@@ -599,7 +624,37 @@ func TestSyncHandler(t *testing.T) {
 			expectedErrString: "Internal error occurred: fake error",
 		},
 		{
-			name:       "#9: Create - Successfully firing imagepull requests",
+			name: "#9: Purge - Successful purge",
+			imageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "foo",
+					Namespace: "kube-fledged",
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+				Status: fledgedv1alpha1.ImageCacheStatus{
+					Reason: fledgedv1alpha1.ImageCacheReasonImageCachePurge,
+				},
+			},
+			wqKey: images.WorkQueueKey{
+				ObjKey:   "kube-fledged/foo",
+				WorkType: images.ImageCacheRefresh,
+			},
+			nodeList: defaultNodeList,
+			expectedActions: []ActionReaction{
+				{action: "get", reaction: ""},
+				{action: "update", reaction: ""},
+			},
+			expectErr:         false,
+			expectedErrString: "",
+		},
+		{
+			name:       "#10: Create - Successfully firing imagepull requests",
 			imageCache: defaultImageCache,
 			wqKey: images.WorkQueueKey{
 				ObjKey:   "kube-fledged/foo",
@@ -614,7 +669,7 @@ func TestSyncHandler(t *testing.T) {
 			expectedErrString: "",
 		},
 		{
-			name:       "#10: Update - Successfully firing imagepull & imagedelete requests",
+			name:       "#11: Update - Successfully firing imagepull & imagedelete requests",
 			imageCache: defaultImageCache,
 			wqKey: images.WorkQueueKey{
 				ObjKey:   "kube-fledged/foo",
@@ -642,7 +697,7 @@ func TestSyncHandler(t *testing.T) {
 			expectedErrString: "",
 		},
 		{
-			name: "#11: StatusUpdate - ImagesPulledSuccessfully",
+			name: "#12: StatusUpdate - ImagesPulledSuccessfully",
 			imageCache: fledgedv1alpha1.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
@@ -679,7 +734,7 @@ func TestSyncHandler(t *testing.T) {
 			expectedErrString: "",
 		},
 		{
-			name: "#12: StatusUpdate - ImagesDeletedSuccessfully",
+			name: "#13: StatusUpdate - ImagesDeletedSuccessfully",
 			imageCache: fledgedv1alpha1.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
@@ -694,6 +749,8 @@ func TestSyncHandler(t *testing.T) {
 				},
 				Status: fledgedv1alpha1.ImageCacheStatus{
 					StartTime: &now,
+					Status:    fledgedv1alpha1.ImageCacheActionStatusProcessing,
+					Reason:    fledgedv1alpha1.ImageCacheReasonImageCachePurge,
 				},
 			},
 			wqKey: images.WorkQueueKey{
@@ -716,7 +773,7 @@ func TestSyncHandler(t *testing.T) {
 			expectedErrString: "",
 		},
 		{
-			name:       "#13: StatusUpdate - ImagePullFailedForSomeImages",
+			name:       "#14: StatusUpdate - ImagePullFailedForSomeImages",
 			imageCache: defaultImageCache,
 			wqKey: images.WorkQueueKey{
 				ObjKey:   "kube-fledged/foo",
@@ -738,7 +795,7 @@ func TestSyncHandler(t *testing.T) {
 			expectedErrString: "",
 		},
 		{
-			name:       "#14: StatusUpdate - ImageDeleteFailedForSomeImages",
+			name:       "#15: StatusUpdate - ImageDeleteFailedForSomeImages",
 			imageCache: defaultImageCache,
 			wqKey: images.WorkQueueKey{
 				ObjKey:   "kube-fledged/foo",
@@ -751,34 +808,6 @@ func TestSyncHandler(t *testing.T) {
 						},
 					},
 				},
-			},
-			expectedActions: []ActionReaction{
-				{action: "get", reaction: ""},
-				{action: "update", reaction: ""},
-			},
-			expectErr:         false,
-			expectedErrString: "",
-		},
-		{
-			name: "#15: Delete - Remove Finalizer",
-			imageCache: fledgedv1alpha1.ImageCache{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "foo",
-					Namespace:         "kube-fledged",
-					DeletionTimestamp: &now,
-					Finalizers:        []string{"fledged"},
-				},
-				Spec: fledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
-						{
-							Images: []string{"foo"},
-						},
-					},
-				},
-			},
-			wqKey: images.WorkQueueKey{
-				ObjKey:   "kube-fledged/foo",
-				WorkType: images.ImageCacheDelete,
 			},
 			expectedActions: []ActionReaction{
 				{action: "get", reaction: ""},
@@ -978,6 +1007,29 @@ func TestEnqueueImageCache(t *testing.T) {
 				},
 			},
 			expectedResult: false,
+		},
+		{
+			name:          "#10: Update - Imagecache refresh. Successful queueing",
+			workType:      images.ImageCacheUpdate,
+			oldImageCache: defaultImageCache,
+			newImageCache: fledgedv1alpha1.ImageCache{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:        "foo",
+					Namespace:   "kube-fledged",
+					Annotations: map[string]string{imageCacheRefreshAnnotationKey: ""},
+				},
+				Spec: fledgedv1alpha1.ImageCacheSpec{
+					CacheSpec: []fledgedv1alpha1.CacheSpecImages{
+						{
+							Images: []string{"foo"},
+						},
+					},
+				},
+				Status: fledgedv1alpha1.ImageCacheStatus{
+					Status: fledgedv1alpha1.ImageCacheActionStatusSucceeded,
+				},
+			},
+			expectedResult: true,
 		},
 	}
 

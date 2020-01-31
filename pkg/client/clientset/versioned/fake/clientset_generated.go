@@ -41,7 +41,7 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 		}
 	}
 
-	cs := &Clientset{}
+	cs := &Clientset{tracker: o}
 	cs.discovery = &fakediscovery.FakeDiscovery{Fake: &cs.Fake}
 	cs.AddReactor("*", "*", testing.ObjectReaction(o))
 	cs.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
@@ -63,20 +63,20 @@ func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 type Clientset struct {
 	testing.Fake
 	discovery *fakediscovery.FakeDiscovery
+	tracker   testing.ObjectTracker
 }
 
 func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 	return c.discovery
 }
 
+func (c *Clientset) Tracker() testing.ObjectTracker {
+	return c.tracker
+}
+
 var _ clientset.Interface = &Clientset{}
 
 // FledgedV1alpha1 retrieves the FledgedV1alpha1Client
 func (c *Clientset) FledgedV1alpha1() fledgedv1alpha1.FledgedV1alpha1Interface {
-	return &fakefledgedv1alpha1.FakeFledgedV1alpha1{Fake: &c.Fake}
-}
-
-// Fledged retrieves the FledgedV1alpha1Client
-func (c *Clientset) Fledged() fledgedv1alpha1.FledgedV1alpha1Interface {
 	return &fakefledgedv1alpha1.FakeFledgedV1alpha1{Fake: &c.Fake}
 }

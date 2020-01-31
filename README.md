@@ -3,6 +3,8 @@
 [![Build Status](https://travis-ci.org/senthilrch/kube-fledged.svg?branch=master)](https://travis-ci.org/senthilrch/kube-fledged)
 [![Coverage Status](https://coveralls.io/repos/github/senthilrch/kube-fledged/badge.svg?branch=master)](https://coveralls.io/github/senthilrch/kube-fledged?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/senthilrch/kube-fledged)](https://goreportcard.com/report/github.com/senthilrch/kube-fledged)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/senthilrch/kube-fledged)](https://img.shields.io/github/v/release/senthilrch/kube-fledged)
+[![License](https://img.shields.io/github/license/senthilrch/kube-fledged)](https://img.shields.io/github/license/senthilrch/kube-fledged)
 
 **_kube-fledged_** is a kubernetes add-on for creating and managing a cache of container images directly on the worker nodes of a kubernetes cluster. It allows a user to define a list
 of images and onto which worker nodes those images should be cached (i.e. pre-pulled). As a result, application pods start almost instantly, since the images need not be pulled from the registry.
@@ -16,92 +18,103 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 - IoT applications that run on Edge devices when the network connectivity between the edge and image registry is intermittent.
 - If a cluster administrator or operator needs to roll-out upgrades to an application and wants to verify before-hand if the new images can be pulled successfully.
 
+## Prerequisites
+
+- A functioning kubernetes cluster (v1.9 or above). It could be a simple development cluster like minikube or a large production cluster.
+- All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
+- Supported container runtimes: docker, containerd, cri-o
+- git, make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
+
+## Quick Install
+
+These instructions install _kube-fledged_ using pre-built images of the latest stable release in [Docker Hub.](https://hub.docker.com/u/senthilrch)
+
+- Clone the source code repository
+
+  ```
+  $ mkdir -p $HOME/src/github.com/senthilrch
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
+  $ cd $HOME/src/github.com/senthilrch/kube-fledged
+  ```
+
+- Deploy _kube-fledged_ to the cluster
+
+  ```
+  $ make deploy
+  ```
+
+- Verify if _kube-fledged_ deployed successfully
+
+  ```
+  $ kubectl get pods -n kube-fledged -l app=fledged
+  $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
+  $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
+  ```
+
 ## Build and Deploy
 
 These instructions will help you build _kube-fledged_ from source and deploy it on a kubernetes cluster.
 
-### Prerequisites
-
-- A functioning kubernetes cluster (v1.7 or above). It could be a simple development cluster like minikube or a large production cluster.
-- All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- Supported container runtimes: docker, containerd
-- make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
-
 ### Build
 
-Create the source code directories on local linux machine and setup $GOPATH
+- Clone the source code repository
 
-```
-$ mkdir -p $HOME/src/github.com/senthilrch
-$ export GOPATH=$HOME
-```
+  ```
+  $ mkdir -p $HOME/src/github.com/senthilrch
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
+  $ cd $HOME/src/github.com/senthilrch/kube-fledged
+  ```
 
-Clone the repository
+- If you are behind a proxy, export the following ENV variables (UPPER case)
 
-```
-$ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
-$ cd $HOME/src/github.com/senthilrch/kube-fledged
-```
+  ```
+  export HTTP_PROXY=http://proxy_ip_or_hostname:port
+  export HTTPS_PROXY=https://proxy_ip_or_hostname:port
+  ```
 
-If you are behind a proxy, export the following ENV variables (UPPER case)
+- Build and push the docker images to registry (e.g. Docker hub)
 
-```
-export HTTP_PROXY=http://proxy_ip_or_hostname:port
-export HTTPS_PROXY=https://proxy_ip_or_hostname:port
-```
-
-Build and push the docker images to registry (e.g. Docker hub)
-
-```
-$ export FLEDGED_IMAGE_NAME=<your_docker_hub_username>/fledged:<your_tag>
-$ export FLEDGED_DOCKER_CLIENT_IMAGE_NAME=<your_docker_hub_username>/fledged-docker-client:<your_tag>
-$ export DOCKER_VERSION=<docker_version_used_for_building_docker_client_image>
-$ docker login -u <username> -p <password>
-$ make fledged-image && make client-image && make push-image
-```
+  ```
+  $ export FLEDGED_IMAGE_NAME=<your_docker_hub_username>/fledged:<your_tag>
+  $ export FLEDGED_DOCKER_CLIENT_IMAGE_NAME=<your_docker_hub_username>/fledged-docker-client:<your_tag>
+  $ export DOCKER_VERSION=<docker_version_used_for_building_docker_client_image>
+  $ docker login -u <username> -p <password>
+  $ make fledged-image && make client-image && make push-image
+  ```
 
 ### Deploy
 
 _Note:- You need to have 'cluster-admin' privileges to deploy_
 
-All manifests required for deploying _kube-fledged_ are present inside 'kube-fledged/deploy'. These steps deploy _kube-fledged_ into a separate namespace called "kube-fledged" with default configuration flags.
+- All manifests required for deploying _kube-fledged_ are present inside 'kube-fledged/deploy'. These steps deploy _kube-fledged_ into a separate namespace called "kube-fledged" with default configuration flags. Edit "fledged-deployment.yaml".
 
-Edit "fledged-deployment.yaml":-
+  Set "image" to "<your_docker_hub_username>/fledged:<your_tag>"
 
-- Set the value of KUBERNETES_SERVICE_HOST to the IP/hostname of api server of the cluster 
-- Set KUBERNETES_SERVICE_PORT to port number of api server
-- Set "image" to "<your_docker_hub_username>/fledged:<your_tag>"
+  ```
+  image: <your_docker_hub_username>/fledged:<your_tag>
+  ```
 
-```
-      - env:
-        - name: KUBERNETES_SERVICE_HOST
-          value: "<IP address of api server>"
-        - name: KUBERNETES_SERVICE_PORT
-          value: "<port number of api server>"
-        image: <your_docker_hub_username>/fledged:<your_tag>
-```
+- If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod). The secret <your_registry_key> should be created in "kube-fledged" namespace.
 
-If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod). The secret <your_registry_key> should be created in "kube-fledged" namespace.
+  ```
+  serviceAccountName: fledged
+  imagePullSecrets:
+    - name: <your_registry_key>
+  ```
 
-```
-      serviceAccountName: fledged
-      imagePullSecrets:
-        - name: <your_registry_key>
-```
+- Deploy _kube-fledged_ to the cluster
 
-Deploy _kube-fledged_ to the cluster
+  ```
+  $ make deploy
+  ```
 
-```
-$ make deploy
-```
+- Verify if _kube-fledged_ deployed successfully
 
-Verify if _kube-fledged_ deployed successfully
-
-```
-$ kubectl get pods -n kube-fledged -l app=fledged
-$ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
-$ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
-```
+  ```
+  $ kubectl get pods -n kube-fledged -l app=fledged
+  $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
+  $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
+  ```
 
 ## How to use
 
@@ -140,6 +153,14 @@ $ kubectl edit imagecaches imagecache1 -n kube-fledged
 $ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 ```
 
+### Refresh image cache
+
+_kube-fledged_ supports both automatic and on-demand refresh of image cache. Auto refresh is enabled using the flag `--image-cache-refresh-frequency:`. To request for an on-demand refresh, run the following command:-
+
+```
+$ kubectl annotate imagecaches imagecache1 -n kube-fledged fledged.k8s.io/refresh-imagecache=
+```
+
 ### Delete image cache
 
 Before you could delete the image cache, you need to purge the images in the cache using the following command. This will remove all cached images from the worker nodes.
@@ -151,13 +172,21 @@ $ kubectl annotate imagecaches imagecache1 -n kube-fledged fledged.k8s.io/purge-
 View the status of purging the image cache. If any failures, such images should be removed manually or you could decide to leave the images in the worker nodes.
 
 ```
-kubectl get imagecaches imagecache1 -n kube-fledged -o json
+$ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 ```
 
 Finally delete the image cache using following command.
 
 ```
 $ kubectl delete imagecaches imagecache1 -n kube-fledged
+```
+
+### Remove kube-fledged
+
+Run the following command to remove _kube-fledged_ from the cluster. 
+
+```
+$ make remove
 ```
 
 ## How it works
@@ -189,7 +218,7 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 ## Built With
 
 * [kubernetes/sample-controller](https://github.com/kubernetes/sample-controller) - Building our own kubernetes-style controller using CRD.
-* [Dep](https://github.com/golang/dep) - Go dependency management tool
+* [Go Modules](https://golang.org/doc/go1.11#modules) - Go Modules for Dependency Management
 * [Make](https://www.gnu.org/software/make/) - GNU Make
 
 

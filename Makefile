@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: clean clean-fledged clean-client fledged-image client-image push-images test deploy update
+.PHONY: clean clean-fledged clean-client fledged-image client-image push-images test deploy update remove
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
@@ -108,3 +108,10 @@ update:
 	kubectl scale deployment fledged --replicas=0 -n kube-fledged && sleep 5 && \
 	kubectl scale deployment fledged --replicas=1 -n kube-fledged && sleep 5 && \
 	kubectl get pods -l app=fledged -n kube-fledged
+
+remove:
+	kubectl delete -f deploy/fledged-namespace.yaml && \
+	kubectl delete -f deploy/fledged-clusterrolebinding.yaml && \
+	kubectl delete -f deploy/fledged-clusterrole.yaml && \
+	kubectl delete -f deploy/fledged-crd.yaml
+

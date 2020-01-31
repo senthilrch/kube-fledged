@@ -131,7 +131,7 @@ func (c *FakeImageCaches) DeleteCollection(options *v1.DeleteOptions, listOption
 // Patch applies the patch and returns the patched imageCache.
 func (c *FakeImageCaches) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ImageCache, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(imagecachesResource, c.ns, name, data, subresources...), &v1alpha1.ImageCache{})
+		Invokes(testing.NewPatchSubresourceAction(imagecachesResource, c.ns, name, pt, data, subresources...), &v1alpha1.ImageCache{})
 
 	if obj == nil {
 		return nil, err

@@ -46,9 +46,9 @@ import (
 
 const controllerAgentName = "fledged"
 const fledgedNameSpace = "kube-fledged"
-const fledgedFinalizer = "fledged"
 const fledgedCacheSpecValidationKey = "fledged.k8s.io/cachespecvalidation"
 const imageCachePurgeAnnotationKey = "fledged.k8s.io/purge-imagecache"
+const imageCacheRefreshAnnotationKey = "fledged.k8s.io/refresh-imagecache"
 
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a ImageCache is synced
@@ -185,7 +185,7 @@ func (c *Controller) danglingImageCaches() error {
 		return nil
 	}
 	status := &fledgedv1alpha1.ImageCacheStatus{
-		Failures: map[string][]fledgedv1alpha1.NodeReasonMessage{},
+		Failures: map[string]fledgedv1alpha1.NodeReasonMessageList{},
 		Status:   fledgedv1alpha1.ImageCacheActionStatusAborted,
 		Reason:   fledgedv1alpha1.ImageCacheReasonImagePullAborted,
 		Message:  fledgedv1alpha1.ImageCacheMessageImagePullAborted,
@@ -281,6 +281,12 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 		if _, exists := newImageCache.Annotations[imageCachePurgeAnnotationKey]; exists {
 			if _, exists := oldImageCache.Annotations[imageCachePurgeAnnotationKey]; !exists {
 				workType = images.ImageCachePurge
+				break
+			}
+		}
+		if _, exists := newImageCache.Annotations[imageCacheRefreshAnnotationKey]; exists {
+			if _, exists := oldImageCache.Annotations[imageCacheRefreshAnnotationKey]; !exists {
+				workType = images.ImageCacheRefresh
 				break
 			}
 		}
@@ -404,8 +410,8 @@ func (c *Controller) runRefreshWorker() {
 			imageCaches[i].Status.Reason == fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed {
 			continue
 		}
-		// Do not refresh image cache marked for deletion
-		if imageCaches[i].DeletionTimestamp != nil {
+		// Do not refresh if image cache has been purged
+		if imageCaches[i].Status.Reason == fledgedv1alpha1.ImageCacheReasonImageCachePurge {
 			continue
 		}
 		c.enqueueImageCache(images.ImageCacheRefresh, imageCaches[i], nil)
@@ -417,7 +423,7 @@ func (c *Controller) runRefreshWorker() {
 // with the current status of the resource.
 func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 	status := &fledgedv1alpha1.ImageCacheStatus{
-		Failures: map[string][]fledgedv1alpha1.NodeReasonMessage{},
+		Failures: map[string]fledgedv1alpha1.NodeReasonMessageList{},
 	}
 
 	// Convert the namespace/name string into a distinct namespace and name
@@ -646,15 +652,23 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 
-		if imageCache.Status.Reason == fledgedv1alpha1.ImageCacheReasonImageCachePurge {
+		if imageCache.Status.Reason == fledgedv1alpha1.ImageCacheReasonImageCachePurge || imageCache.Status.Reason == fledgedv1alpha1.ImageCacheReasonImageCacheRefresh {
 			imageCache, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
 			if err != nil {
 				glog.Errorf("Error getting image cache %s: %v", name, err)
 				return err
 			}
-			if err := c.removeAnnotation(imageCache, imageCachePurgeAnnotationKey); err != nil {
-				glog.Errorf("Error removing Annotation %s from imagecache(%s): %v", imageCachePurgeAnnotationKey, imageCache.Name, err)
-				return err
+			if imageCache.Status.Reason == fledgedv1alpha1.ImageCacheReasonImageCachePurge {
+				if err := c.removeAnnotation(imageCache, imageCachePurgeAnnotationKey); err != nil {
+					glog.Errorf("Error removing Annotation %s from imagecache(%s): %v", imageCachePurgeAnnotationKey, imageCache.Name, err)
+					return err
+				}
+			}
+			if imageCache.Status.Reason == fledgedv1alpha1.ImageCacheReasonImageCacheRefresh {
+				if err := c.removeAnnotation(imageCache, imageCacheRefreshAnnotationKey); err != nil {
+					glog.Errorf("Error removing Annotation %s from imagecache(%s): %v", imageCacheRefreshAnnotationKey, imageCache.Name, err)
+					return err
+				}
 			}
 		}
 
@@ -665,9 +679,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		if status.Status == fledgedv1alpha1.ImageCacheActionStatusFailed {
 			c.recorder.Event(imageCache, corev1.EventTypeWarning, status.Reason, status.Message)
 		}
-
-	case images.ImageCacheDelete:
-		break
 	}
 	glog.Infof("Completed sync actions for image cache %s(%s)", name, wqKey.WorkType)
 	return nil

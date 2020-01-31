@@ -23,8 +23,9 @@ import (
 	"github.com/golang/glog"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd" // Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
+	"k8s.io/client-go/rest"
 
+	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 	"github.com/senthilrch/kube-fledged/cmd/app"
 	clientset "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
@@ -33,8 +34,6 @@ import (
 )
 
 var (
-	masterURL                  string
-	kubeconfig                 string
 	imageCacheRefreshFrequency time.Duration
 	imagePullDeadlineDuration  time.Duration
 	dockerClientImage          string
@@ -47,7 +46,7 @@ func main() {
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
 
-	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
+	cfg, err := rest.InClusterConfig()
 	if err != nil {
 		glog.Fatalf("Error building kubeconfig: %s", err.Error())
 	}
@@ -85,8 +84,6 @@ func main() {
 }
 
 func init() {
-	flag.StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
-	flag.StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig.")
 	flag.DurationVar(&imagePullDeadlineDuration, "image-pull-deadline-duration", time.Minute*5, "Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed")
 	flag.DurationVar(&imageCacheRefreshFrequency, "image-cache-refresh-frequency", time.Minute*15, "The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to 0s will disable refresh")
 	flag.StringVar(&dockerClientImage, "docker-client-image", "senthilrch/fledged-docker-client:latest", "The image name of the docker client. the docker client is used when deleting images during purging the cache")

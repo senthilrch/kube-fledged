@@ -217,13 +217,18 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 					glog.Infof("Job %s expired (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
 				}
 				if pods[0].Status.Phase == corev1.PodPending {
-					if pods[0].Status.ContainerStatuses[0].State.Waiting != nil {
-						iwres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
-						iwres.Message = pods[0].Status.ContainerStatuses[0].State.Waiting.Message
-					}
-					if pods[0].Status.ContainerStatuses[0].State.Terminated != nil {
-						iwres.Reason = pods[0].Status.ContainerStatuses[0].State.Terminated.Reason
-						iwres.Message = pods[0].Status.ContainerStatuses[0].State.Terminated.Message
+					if len(pods[0].Status.ContainerStatuses) == 1 {
+						if pods[0].Status.ContainerStatuses[0].State.Waiting != nil {
+							iwres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
+							iwres.Message = pods[0].Status.ContainerStatuses[0].State.Waiting.Message
+						}
+						if pods[0].Status.ContainerStatuses[0].State.Terminated != nil {
+							iwres.Reason = pods[0].Status.ContainerStatuses[0].State.Terminated.Reason
+							iwres.Message = pods[0].Status.ContainerStatuses[0].State.Terminated.Message
+						}
+					} else {
+						iwres.Reason = "Pending"
+						iwres.Message = "Check if node is ready"
 					}
 				}
 				if iwres.ImageWorkRequest.WorkType != ImageCachePurge {
