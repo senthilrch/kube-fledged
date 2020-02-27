@@ -27,7 +27,7 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 
 ## Quick Install
 
-These instructions install _kube-fledged_ using pre-built images of the latest stable release in [Docker Hub.](https://hub.docker.com/u/senthilrch)
+These instructions install _kube-fledged_ to "kube-fledged" namespace, using pre-built images of the latest stable release in [Docker Hub.](https://hub.docker.com/u/senthilrch)
 
 - Clone the source code repository
 
@@ -53,7 +53,7 @@ These instructions install _kube-fledged_ using pre-built images of the latest s
 
 ## Build and Deploy
 
-These instructions will help you build _kube-fledged_ from source and deploy it on a kubernetes cluster.
+These instructions will help you build _kube-fledged_ from source and deploy it to "kube-fledged" namespace on a kubernetes cluster. If you need to deploy it to a different namespace, edit the manifests in ./deploy accordingly.
 
 ### Build
 
