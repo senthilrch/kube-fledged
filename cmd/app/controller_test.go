@@ -40,6 +40,8 @@ import (
 	core "k8s.io/client-go/testing"
 )
 
+const fledgedNameSpace = "kube-fledged"
+
 // noResyncPeriodFunc returns 0 for resyncPeriod in case resyncing is not needed.
 func noResyncPeriodFunc() time.Duration {
 	return 0
@@ -63,7 +65,7 @@ func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clie
 	   		fledgedInformerFactory.Start(stopCh)
 	   	} */
 
-	controller := NewController(kubeclientset, fledgedclientset, nodeInformer, imagecacheInformer,
+	controller := NewController(kubeclientset, fledgedclientset, fledgedNameSpace, nodeInformer, imagecacheInformer,
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
 	controller.nodesSynced = func() bool { return true }
 	controller.imageCachesSynced = func() bool { return true }
