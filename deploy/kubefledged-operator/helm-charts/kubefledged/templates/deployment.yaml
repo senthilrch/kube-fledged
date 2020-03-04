@@ -25,20 +25,15 @@ spec:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
-          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          image: {{ .Values.image.fledgedRepository }}:{{ .Chart.AppVersion }}
+          command: "{{ .Values.command }}"
+          args:
+            - "--stderrthreshold={{ .Values.args.logLevel}}"
+            - "--image-pull-deadline-duration={{ .Values.args.imagePullDeadlineDuration}}"
+            - "--image-cache-refresh-frequency={{ .Values.args.imageCacheRefreshFrequency}}"
+            - "--docker-client-image={{ .Values.image.dockerClientRepository }}:{{ .Chart.AppVersion }}"
+            - "--image-pull-policy={{ .Values.args.imagePullPolicy}}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - name: http
-              containerPort: 80
-              protocol: TCP
-          livenessProbe:
-            httpGet:
-              path: /
-              port: http
-          readinessProbe:
-            httpGet:
-              path: /
-              port: http
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

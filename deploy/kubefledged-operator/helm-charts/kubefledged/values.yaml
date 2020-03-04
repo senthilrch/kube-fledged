@@ -5,9 +5,15 @@
 replicaCount: 1
 
 image:
-  repository: nginx
+  fledgedRepository: senthilrch/fledged
+  dockerClientRepository: senthilrch/fledged-docker-client
   pullPolicy: IfNotPresent
-
+command: ["/opt/bin/fledged"]
+args:
+  logLevel: INFO
+  imagePullDeadlineDuration: 5m
+  imageCacheRefreshFrequency: 15m
+  imagePullPolicy: IfNotPresent
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -16,6 +22,20 @@ serviceAccount:
   # Specifies whether a service account should be created
   create: true
   # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+clusterRole:
+  # Specifies whether a cluster role should be created
+  create: true
+  # The name of the cluster role to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+clusterRoleBinding:
+  # Specifies whether a cluster role binding should be created
+  create: true
+  # The name of the cluster role binding to use.
   # If not set and create is true, a name is generated using the fullname template
   name:
 

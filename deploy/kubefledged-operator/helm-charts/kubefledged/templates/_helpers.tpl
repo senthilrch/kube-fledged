@@ -61,3 +61,25 @@ Create the name of the service account to use
     {{ default "default" .Values.serviceAccount.name }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Create the name of the cluster role to use
+*/}}
+{{- define "kubefledged.clusterRoleName" -}}
+{{- if .Values.clusterRole.create -}}
+    {{ default (include "kubefledged.fullname" .) .Values.clusterRole.name }}
+{{- else -}}
+    {{ default "default" .Values.clusterRole.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create the name of the cluster role binding to use
+*/}}
+{{- define "kubefledged.clusterRoleBindingName" -}}
+{{- if .Values.clusterRoleBinding.create -}}
+    {{ default (include "kubefledged.fullname" .) .Values.clusterRoleBinding.name }}
+{{- else -}}
+    {{ default "default" .Values.clusterRoleBinding.name }}
+{{- end -}}
+{{- end -}}
