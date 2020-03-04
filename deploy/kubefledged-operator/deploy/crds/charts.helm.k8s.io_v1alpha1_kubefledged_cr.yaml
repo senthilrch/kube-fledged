@@ -1,0 +1,34 @@
+apiVersion: charts.helm.k8s.io/v1alpha1
+kind: KubeFledged
+metadata:
+  name: example-kubefledged
+spec:
+  # Default values copied from <project_dir>/helm-charts/kubefledged/values.yaml
+  
+  affinity: {}
+  fullnameOverride: ""
+  image:
+    pullPolicy: IfNotPresent
+    repository: nginx
+  imagePullSecrets: []
+  ingress:
+    annotations: {}
+    enabled: false
+    hosts:
+    - host: chart-example.local
+      paths: []
+    tls: []
+  nameOverride: ""
+  nodeSelector: {}
+  podSecurityContext: {}
+  replicaCount: 1
+  resources: {}
+  securityContext: {}
+  service:
+    port: 80
+    type: ClusterIP
+  serviceAccount:
+    create: true
+    name: null
+  tolerations: []
+  
