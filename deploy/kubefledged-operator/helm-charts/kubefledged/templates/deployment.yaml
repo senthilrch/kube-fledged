@@ -26,7 +26,7 @@ spec:
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: {{ .Values.image.fledgedRepository }}:{{ .Chart.AppVersion }}
-          command: "{{ .Values.command }}"
+          command: {{ .Values.command }}
           args:
             - "--stderrthreshold={{ .Values.args.logLevel}}"
             - "--image-pull-deadline-duration={{ .Values.args.imagePullDeadlineDuration}}"
