@@ -4,7 +4,7 @@ kind: ClusterRole
 metadata:
   name: {{ include "kubefledged.clusterRoleName" . }}
   labels:
-{{ include "kubefledged.labels" . | nindent 4 }}
+    {{ include "kubefledged.labels" . | nindent 4 }}
   annotations:
     rbac.authorization.kubernetes.io/autoupdate: "true"
 rules:

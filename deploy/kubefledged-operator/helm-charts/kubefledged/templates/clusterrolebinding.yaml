@@ -4,7 +4,7 @@ kind: ClusterRoleBinding
 metadata:
   name: {{ include "kubefledged.clusterRoleBindingName" . }}
   labels:
-{{ include "kubefledged.labels" . | nindent 4 }}
+    {{ include "kubefledged.labels" . | nindent 4 }}
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -12,7 +12,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{ include "kubefledged.serviceAccountName" . }}
-  namespace: default
+  namespace: {{ .Values.fledgedNameSpace }}
 - apiGroup: rbac.authorization.k8s.io
   kind: Group
   name: system:nodes

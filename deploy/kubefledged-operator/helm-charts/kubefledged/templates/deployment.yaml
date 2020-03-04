@@ -4,6 +4,7 @@ metadata:
   name: {{ include "kubefledged.fullname" . }}
   labels:
     {{- include "kubefledged.labels" . | nindent 4 }}
+  namespace: {{ .Values.fledgedNameSpace }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
@@ -34,6 +35,11 @@ spec:
             - "--docker-client-image={{ .Values.image.dockerClientRepository }}:{{ .Chart.AppVersion }}"
             - "--image-pull-policy={{ .Values.args.imagePullPolicy}}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: KUBEFLEDGED_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
