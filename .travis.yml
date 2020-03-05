@@ -5,12 +5,21 @@ install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
   - go get -u golang.org/x/lint/golint
+before_script:
+  - RELEASE_VERSION=v0.15.2 curl -LO https://github.com/operator-framework/operator-sdk/releases/download/${RELEASE_VERSION}/operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
+  - chmod +x operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu
+  - mv operator-sdk-${RELEASE_VERSION}-x86_64-linux-gnu operator-sdk
+  - export PATH=$PATH:$PWD
 script:
-- hack/verify-codegen.sh
-- hack/verify-boilerplate.sh
-- hack/verify-gofmt.sh
-- hack/verify-golint.sh
-- hack/verify-govet.sh
-- make GIT_BRANCH=${TRAVIS_BRANCH} build-images
-- make test
-- $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+        #  - hack/verify-codegen.sh
+        #  - hack/verify-boilerplate.sh
+        #  - hack/verify-gofmt.sh
+        #  - hack/verify-golint.sh
+        #  - hack/verify-govet.sh
+  - echo $PATH
+  - which operator-sdk
+  - cd deploy/kubefledged-operator
+  - operator-sdk --verbose build docker.io/senthilrch/kubefledged-operator:v0.6.0 
+        # - make GIT_BRANCH=${TRAVIS_BRANCH} build-images
+  - make test
+  - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
