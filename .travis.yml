@@ -1,6 +1,6 @@
 language: go
 go:
-  - 1.13.5
+  - 1.13.8
 install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
@@ -11,7 +11,6 @@ script:
 - hack/verify-gofmt.sh
 - hack/verify-golint.sh
 - hack/verify-govet.sh
-- make fledged-image
-- make client-image
+- make GIT_BRANCH=${TRAVIS_BRANCH} build-images
 - make test
 - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci

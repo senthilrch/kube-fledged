@@ -5,8 +5,8 @@
 replicaCount: 1
 kubefledgedNameSpace: kube-fledged
 image:
-  fledgedRepository: senthilrch/fledged
-  dockerClientRepository: senthilrch/fledged-docker-client
+  fledgedRepository: docker.io/senthilrch/fledged
+  dockerClientRepository: docker.io/senthilrch/fledged-docker-client
   pullPolicy: IfNotPresent
 command: ["/opt/bin/fledged"]
 args:

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: clean clean-fledged clean-client fledged-image client-image push-images test deploy update remove
+.PHONY: clean clean-fledged clean-client clean-operator fledged-image client-image operator-image build-images push-images test deploy update remove
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
@@ -31,20 +31,40 @@ K8S_VERSION=v1.12.0
 
 GOARM=7
 
-ifndef FLEDGED_IMAGE_NAME
-  FLEDGED_IMAGE_NAME=senthilrch/fledged:latest
+ifndef FLEDGED_IMAGE_REPO
+  FLEDGED_IMAGE_REPO=docker.io/senthilrch/fledged
 endif
 
-ifndef FLEDGED_DOCKER_CLIENT_IMAGE_NAME
-  FLEDGED_DOCKER_CLIENT_IMAGE_NAME=senthilrch/fledged-docker-client:latest
+ifndef FLEDGED_DOCKER_CLIENT_IMAGE_REPO
+  FLEDGED_DOCKER_CLIENT_IMAGE_REPO=docker.io/senthilrch/fledged-docker-client
+endif
+
+ifndef OPERATOR_IMAGE_REPO
+  OPERATOR_IMAGE_REPO=docker.io/senthilrch/kubefledged-operator
+endif
+
+ifndef RELEASE_VERSION
+  RELEASE_VERSION=latest
 endif
 
 ifndef DOCKER_VERSION
-  DOCKER_VERSION=19.03.5
+  DOCKER_VERSION=19.03.7
 endif
 
 ifndef CRICTL_VERSION
   CRICTL_VERSION=v1.17.0
+endif
+
+ifndef GOLANG_VERSION
+  GOLANG_VERSION=1.13.8
+endif
+
+ifndef ALPINE_VERSION
+  ALPINE_VERSION=3.11
+endif
+
+ifndef GIT_BRANCH
+  GIT_BRANCH=master
 endif
 
 HTTP_PROXY_CONFIG=
@@ -59,38 +79,48 @@ endif
 
 
 ### BUILDING
-clean: clean-fledged clean-client
+clean: clean-fledged clean-client clean-operator
 
 clean-fledged:
 	-rm -f build/fledged
-	-rm -f build/fledged.tar.gz
-	-docker image rm $(FLEDGED_IMAGE_NAME)
+	-docker image rm $(FLEDGED_IMAGE_REPO):$(RELEASE_VERSION)
 	-docker image rm `docker image ls -f dangling=true -q`
 
 clean-client:
-	-rm -f build/fledged-docker-client.tar.gz
-	-docker image rm $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME)
+	-docker image rm $(FLEDGED_DOCKER_CLIENT_IMAGE_REPO):$(RELEASE_VERSION)
+	-docker image rm `docker image ls -f dangling=true -q`
+
+clean-operator:
+	-docker image rm $(OPERATOR_IMAGE_REPO):$(RELEASE_VERSION)
 	-docker image rm `docker image ls -f dangling=true -q`
 
 fledged:
 	CGO_ENABLED=0 go build -o build/fledged \
-	  -ldflags '-s -w -extldflags "-static"' cmd/fledged.go
+	-ldflags '-s -w -extldflags "-static"' cmd/fledged.go
 
-fledged-image: clean-fledged fledged
-	cd build && docker build -t $(FLEDGED_IMAGE_NAME) . && \
-	docker save -o fledged.tar $(FLEDGED_IMAGE_NAME) && \
-	gzip fledged.tar
+fledged-image: clean-fledged
+	cd build && docker build -t $(FLEDGED_IMAGE_REPO):$(RELEASE_VERSION) -f Dockerfile.fledged \
+	${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} --build-arg GIT_BRANCH=${GIT_BRANCH} \
+	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} .
 
 client-image: clean-client
-	cd build && docker build -t $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME) \
+	cd build && docker build -t $(FLEDGED_DOCKER_CLIENT_IMAGE_REPO):$(RELEASE_VERSION) \
 	-f Dockerfile.docker_client  ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
-	--build-arg DOCKER_VERSION=${DOCKER_VERSION} --build-arg CRICTL_VERSION=${CRICTL_VERSION} . && 	\
-	docker save -o fledged-docker-client.tar $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME) && \
-	gzip fledged-docker-client.tar 
+	--build-arg DOCKER_VERSION=${DOCKER_VERSION} --build-arg CRICTL_VERSION=${CRICTL_VERSION} \
+	--build-arg ALPINE_VERSION=${ALPINE_VERSION} .
 
-push-image:
-	-docker push $(FLEDGED_IMAGE_NAME)
-	-docker push $(FLEDGED_DOCKER_CLIENT_IMAGE_NAME)
+operator-image: clean-operator
+	cd deploy/kubefledged-operator && \
+	operator-sdk build $(OPERATOR_IMAGE_REPO):$(RELEASE_VERSION)
+
+build-images: fledged-image client-image operator-image
+
+push-images:
+	-docker push $(FLEDGED_IMAGE_REPO):$(RELEASE_VERSION)
+	-docker push $(FLEDGED_DOCKER_CLIENT_IMAGE_REPO):$(RELEASE_VERSION)
+	-docker push $(OPERATOR_IMAGE_REPO):$(RELEASE_VERSION)
+
+release: build-images push-images
 
 test:
 	-rm -f coverage.out
