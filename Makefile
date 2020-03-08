@@ -23,12 +23,6 @@ else
 	CGO_ENABLED=0
 endif
 
-# Go version to use for builds
-GO_VERSION=1.11.1
-
-# K8s version used for Makefile helpers
-K8S_VERSION=v1.12.0
-
 GOARM=7
 
 ifndef FLEDGED_IMAGE_REPO
@@ -44,7 +38,7 @@ ifndef OPERATOR_IMAGE_REPO
 endif
 
 ifndef RELEASE_VERSION
-  RELEASE_VERSION=latest
+  RELEASE_VERSION=v0.6.0
 endif
 
 ifndef DOCKER_VERSION
@@ -61,6 +55,10 @@ endif
 
 ifndef ALPINE_VERSION
   ALPINE_VERSION=3.11
+endif
+
+ifndef OPERATORSDK_VERSION
+  OPERATORSDK_VERSION=v0.15.2
 endif
 
 ifndef GIT_BRANCH
@@ -111,7 +109,8 @@ client-image: clean-client
 
 operator-image: clean-operator
 	cd deploy/kubefledged-operator && \
-	operator-sdk build $(OPERATOR_IMAGE_REPO):$(RELEASE_VERSION)
+	docker build -t $(OPERATOR_IMAGE_REPO):$(RELEASE_VERSION) -f ./build/Dockerfile \
+	--build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} .
 
 build-images: fledged-image client-image operator-image
 
