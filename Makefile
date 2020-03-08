@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: clean clean-fledged clean-client clean-operator fledged-image client-image operator-image build-images push-images test deploy update remove
+.PHONY: clean clean-fledged clean-client clean-operator fledged-dev fledged-image client-image operator-image build-images push-images test deploy update remove
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
@@ -92,9 +92,10 @@ clean-operator:
 	-docker image rm $(OPERATOR_IMAGE_REPO):$(RELEASE_VERSION)
 	-docker image rm `docker image ls -f dangling=true -q`
 
-fledged:
-	CGO_ENABLED=0 go build -o build/fledged \
-	-ldflags '-s -w -extldflags "-static"' cmd/fledged.go
+fledged-dev: clean-fledged
+	CGO_ENABLED=0 go build -o build/fledged -ldflags '-s -w -extldflags "-static"' cmd/fledged.go && \
+	cd build && docker build -t $(FLEDGED_IMAGE_REPO):$(RELEASE_VERSION) -f Dockerfile.fledged_dev \
+	--build-arg ALPINE_VERSION=${ALPINE_VERSION} .
 
 fledged-image: clean-fledged
 	cd build && docker build -t $(FLEDGED_IMAGE_REPO):$(RELEASE_VERSION) -f Dockerfile.fledged \
