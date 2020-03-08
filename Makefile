@@ -126,21 +126,21 @@ test:
 	bash hack/run-unit-tests.sh
 
 deploy:
-	kubectl apply -f deploy/fledged-crd.yaml && sleep 2 && \
-	kubectl apply -f deploy/fledged-namespace.yaml && sleep 2 && \
-	kubectl apply -f deploy/fledged-serviceaccount.yaml && \
-	kubectl apply -f deploy/fledged-clusterrole.yaml && \
-	kubectl apply -f deploy/fledged-clusterrolebinding.yaml && \
-	kubectl apply -f deploy/fledged-deployment.yaml
+	kubectl apply -f deploy/kubefledged-crd.yaml && sleep 2 && \
+	kubectl apply -f deploy/kubefledged-namespace.yaml && sleep 2 && \
+	kubectl apply -f deploy/kubefledged-serviceaccount.yaml && \
+	kubectl apply -f deploy/kubefledged-clusterrole.yaml && \
+	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml && \
+	kubectl apply -f deploy/kubefledged-deployment.yaml
 
 update:
-	kubectl scale deployment fledged --replicas=0 -n kube-fledged && sleep 5 && \
-	kubectl scale deployment fledged --replicas=1 -n kube-fledged && sleep 5 && \
-	kubectl get pods -l app=fledged -n kube-fledged
+	kubectl scale deployment kubefledged --replicas=0 -n kube-fledged && sleep 5 && \
+	kubectl scale deployment kubefledged --replicas=1 -n kube-fledged && sleep 5 && \
+	kubectl get pods -l app=kubefledged -n kube-fledged
 
 remove:
-	kubectl delete -f deploy/fledged-namespace.yaml && \
-	kubectl delete -f deploy/fledged-clusterrolebinding.yaml && \
-	kubectl delete -f deploy/fledged-clusterrole.yaml && \
-	kubectl delete -f deploy/fledged-crd.yaml
+	kubectl delete -f deploy/kubefledged-namespace.yaml && \
+	kubectl delete -f deploy/kubefledged-clusterrolebinding.yaml && \
+	kubectl delete -f deploy/kubefledged-clusterrole.yaml && \
+	kubectl delete -f deploy/kubefledged-crd.yaml
 

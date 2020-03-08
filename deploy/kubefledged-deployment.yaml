@@ -1,17 +1,17 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: fledged
+  name: kubefledged
   namespace: kube-fledged
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: fledged
+      app: kubefledged
   template:
     metadata:
       labels:
-        app: fledged
+        app: kubefledged
     spec:
       containers:
       - image: senthilrch/fledged:v0.6.0
@@ -25,10 +25,10 @@ spec:
         imagePullPolicy: Always
         name: fledged
         env:
-        - name: FLEDGED_NAMESPACE
+        - name: KUBEFLEDGED_NAMESPACE
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-      serviceAccountName: fledged
+      serviceAccountName: kubefledged
 
 
