@@ -2,7 +2,7 @@ apiVersion: charts.helm.k8s.io/v1alpha1
 kind: KubeFledged
 metadata:
   name: mykubefledged
-  namespace: OPERATOR_NAMESPACE
+  namespace: operator
 spec:
   # Defaults defined in <project_dir>/helm-charts/kubefledged/values.yaml
-  kubefledgedNameSpace: KUBEFLEDGED_NAMESPACE
+  kubefledgedNameSpace: kube-fledged

@@ -4,7 +4,7 @@ metadata:
   name: {{ include "kubefledged.fullname" . }}
   labels:
     {{- include "kubefledged.labels" . | nindent 4 }}
-  namespace: {{ .Values.fledgedNameSpace }}
+  namespace: {{ .Values.kubefledgedNameSpace }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:

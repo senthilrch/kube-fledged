@@ -7,13 +7,8 @@ metadata:
 spec:
   cacheSpec:
   - images:
-    - senthilrch/my-private-app:1.0
     - nginx
   - images:
     - redis
-    - jenkins
-    - docker
-    nodeSelector:
-      kubernetes.io/hostname: worker1
   imagePullSecrets:
   - name: myregistrykey
