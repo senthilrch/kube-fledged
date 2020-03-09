@@ -25,9 +25,9 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 - Supported container runtimes: docker, containerd, cri-o
 - git, make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
 
-## Quick Install
+## Quick Install using YAML manifests
 
-These instructions install _kube-fledged_ to a separate namespace called "kube-fledged", using pre-built images of the latest stable release in [Docker Hub.](https://hub.docker.com/u/senthilrch)
+These instructions install _kube-fledged_ to a separate namespace called "kube-fledged", using YAML manifests and pre-built images in [Docker Hub.](https://hub.docker.com/u/senthilrch)
 
 - Clone the source code repository
 
@@ -47,6 +47,49 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
 
   ```
   $ kubectl get pods -n kube-fledged -l app=kubefledged
+  $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
+  $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
+  ```
+
+## Quick Install using Helm operator
+
+These instructions install _kube-fledged_ to a separate namespace called "kube-fledged", using Helm operator and pre-built images in [Docker Hub.](https://hub.docker.com/u/senthilrch)
+
+- Clone the source code repository
+
+  ```
+  $ mkdir -p $HOME/src/github.com/senthilrch
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
+  $ cd $HOME/src/github.com/senthilrch/kube-fledged
+  ```
+
+- Deploy the operator to a separate namespace called "operators"
+
+  ```
+  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/service_account.yaml
+  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
+  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/operator.yaml
+  $ kubectl create namespace operators
+  $ kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_kubefledgeds_crd.yaml
+  $ kubectl create -f deploy/kubefledged-operator/deploy/service_account.yaml
+  $ kubectl create -f deploy/kubefledged-operator/deploy/clusterrole.yaml
+  $ kubectl create -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
+  $ kubectl create -f deploy/kubefledged-operator/deploy/operator.yaml
+  ```
+
+- Deploy _kube-fledged_ to a separate namespace called "kube-fledged"
+
+  ```
+  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+  $ sed -i "s|KUBEFLEDGED_NAMESPACE|kube-fledged|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+  $ kubectl create namespace kube-fledged
+  $ kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+  ```
+
+- Verify if _kube-fledged_ deployed successfully
+
+  ```
+  $ kubectl get pods -n kube-fledged -l app.kubernetes.io/name=kubefledged
   $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
