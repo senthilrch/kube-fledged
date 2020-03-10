@@ -11,6 +11,34 @@ of images and onto which worker nodes those images should be cached (i.e. pre-pu
 
 _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable parameters to customize the functioning as per one's needs. 
 
+## Table of contents
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Use cases](#use-cases)
+- [Prerequisites](#prerequisites)
+- [Quick Install using YAML manifests](#quick-install-using-yaml-manifests)
+- [Quick Install using Helm operator](#quick-install-using-helm-operator)
+- [Build and Deploy](#build-and-deploy)
+  - [Build](#build)
+  - [Deploy](#deploy)
+- [How to use](#how-to-use)
+  - [Create image cache](#create-image-cache)
+  - [View the status of image cache](#view-the-status-of-image-cache)
+  - [Add/remove images in image cache](#addremove-images-in-image-cache)
+  - [Refresh image cache](#refresh-image-cache)
+  - [Delete image cache](#delete-image-cache)
+  - [Remove kube-fledged](#remove-kube-fledged)
+- [How it works](#how-it-works)
+- [Configuration Flags](#configuration-flags)
+- [Supported Platforms](#supported-platforms)
+- [Built With](#built-with)
+- [Contributing](#contributing)
+- [License](#license)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 ## Use cases
 
 - Applications that require rapid start-up. For e.g. an application performing real-time data processing needs to scale rapidly due to a burst in data volume.
