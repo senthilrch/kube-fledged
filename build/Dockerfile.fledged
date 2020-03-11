@@ -1,0 +1,30 @@
+# Copyright 2018 The kube-fledged authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+ARG GOLANG_VERSION
+ARG ALPINE_VERSION
+
+FROM golang:$GOLANG_VERSION AS builder
+LABEL stage=builder
+ARG GIT_BRANCH
+RUN mkdir -p /go/src/github.com/senthilrch && \
+    git clone --depth=1 --single-branch --branch=$GIT_BRANCH https://github.com/senthilrch/kube-fledged  /go/src/github.com/senthilrch/kube-fledged && \
+    cd /go/src/github.com/senthilrch/kube-fledged && \
+    CGO_ENABLED=0 go build -o build/fledged -ldflags '-s -w -extldflags "-static"' cmd/fledged.go
+
+FROM alpine:$ALPINE_VERSION
+LABEL maintainer="senthilrch <senthilrch@gmail.com>"
+COPY --from=builder /go/src/github.com/senthilrch/kube-fledged/build/fledged /opt/bin/fledged
+RUN chmod 755 /opt/bin/fledged
+ENTRYPOINT ["/opt/bin/fledged"]

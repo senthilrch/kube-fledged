@@ -1,0 +1,12 @@
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kubefledged-operator
+subjects:
+- kind: ServiceAccount
+  name: kubefledged-operator
+  namespace: OPERATOR_NAMESPACE
+roleRef:
+  kind: ClusterRole
+  name: kubefledged-operator
+  apiGroup: rbac.authorization.k8s.io

@@ -45,7 +45,6 @@ import (
 )
 
 const controllerAgentName = "fledged"
-const fledgedNameSpace = "kube-fledged"
 const fledgedCacheSpecValidationKey = "fledged.k8s.io/cachespecvalidation"
 const imageCachePurgeAnnotationKey = "fledged.k8s.io/purge-imagecache"
 const imageCacheRefreshAnnotationKey = "fledged.k8s.io/refresh-imagecache"
@@ -65,6 +64,7 @@ type Controller struct {
 	// fledgedclientset is a clientset for fledged.k8s.io API group
 	fledgedclientset clientset.Interface
 
+	fledgedNameSpace  string
 	nodesLister       corelisters.NodeLister
 	nodesSynced       cache.InformerSynced
 	imageCachesLister listers.ImageCacheLister
@@ -88,6 +88,7 @@ type Controller struct {
 func NewController(
 	kubeclientset kubernetes.Interface,
 	fledgedclientset clientset.Interface,
+	namespace string,
 	nodeInformer coreinformers.NodeInformer,
 	imageCacheInformer informers.ImageCacheInformer,
 	imageCacheRefreshFrequency time.Duration,
@@ -105,6 +106,7 @@ func NewController(
 	controller := &Controller{
 		kubeclientset:              kubeclientset,
 		fledgedclientset:           fledgedclientset,
+		fledgedNameSpace:           namespace,
 		nodesLister:                nodeInformer.Lister(),
 		nodesSynced:                nodeInformer.Informer().HasSynced,
 		imageCachesLister:          imageCacheInformer.Lister(),
@@ -115,7 +117,7 @@ func NewController(
 		imageCacheRefreshFrequency: imageCacheRefreshFrequency,
 	}
 
-	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, fledgedNameSpace, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
+	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, controller.fledgedNameSpace, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
 	controller.imageManager = imageManager
 
 	glog.Info("Setting up event handlers")
@@ -147,7 +149,7 @@ func (c *Controller) PreFlightChecks() error {
 
 // danglingJobs finds and removes dangling or stuck jobs
 func (c *Controller) danglingJobs() error {
-	joblist, err := c.kubeclientset.BatchV1().Jobs(fledgedNameSpace).List(metav1.ListOptions{})
+	joblist, err := c.kubeclientset.BatchV1().Jobs(c.fledgedNameSpace).List(metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("Error listing jobs: %v", err)
 		return err
@@ -159,7 +161,7 @@ func (c *Controller) danglingJobs() error {
 	}
 	deletePropagation := metav1.DeletePropagationBackground
 	for _, job := range joblist.Items {
-		err := c.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
+		err := c.kubeclientset.BatchV1().Jobs(c.fledgedNameSpace).
 			Delete(job.Name, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation})
 		if err != nil {
 			glog.Errorf("Error deleting job(%s): %v", job.Name, err)
@@ -174,7 +176,7 @@ func (c *Controller) danglingJobs() error {
 // image caches will get refreshed in the next cycle
 func (c *Controller) danglingImageCaches() error {
 	dangling := false
-	imagecachelist, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(fledgedNameSpace).List(metav1.ListOptions{})
+	imagecachelist, err := c.fledgedclientset.FledgedV1alpha1().ImageCaches(c.fledgedNameSpace).List(metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("Error listing imagecaches: %v", err)
 		return err
@@ -391,7 +393,7 @@ func (c *Controller) processNextWorkItem() bool {
 // runRefreshWorker is resposible of refreshing the image cache
 func (c *Controller) runRefreshWorker() {
 	// List the ImageCache resources
-	imageCaches, err := c.imageCachesLister.ImageCaches(fledgedNameSpace).List(labels.Everything())
+	imageCaches, err := c.imageCachesLister.ImageCaches(c.fledgedNameSpace).List(labels.Everything())
 	if err != nil {
 		glog.Errorf("Error in listing image caches: %v", err)
 		return

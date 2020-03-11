@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "kubefledged.fullname" . }}-test-connection"
+  labels:
+{{ include "kubefledged.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test-success
+spec:
+  containers:
+    - name: wget
+      image: busybox
+      command: ['wget']
+      args:  ['{{ include "kubefledged.fullname" . }}:{{ .Values.service.port }}']
+  restartPolicy: Never

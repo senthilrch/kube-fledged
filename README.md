@@ -1,4 +1,6 @@
-# kube-fledged
+<img src="logo.png">
+
+# 
 
 [![Build Status](https://travis-ci.org/senthilrch/kube-fledged.svg?branch=master)](https://travis-ci.org/senthilrch/kube-fledged)
 [![Coverage Status](https://coveralls.io/repos/github/senthilrch/kube-fledged/badge.svg?branch=master)](https://coveralls.io/github/senthilrch/kube-fledged?branch=master)
@@ -10,6 +12,34 @@
 of images and onto which worker nodes those images should be cached (i.e. pre-pulled). As a result, application pods start almost instantly, since the images need not be pulled from the registry.
 
 _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable parameters to customize the functioning as per one's needs. 
+
+## Table of contents
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Use cases](#use-cases)
+- [Prerequisites](#prerequisites)
+- [Quick Install using YAML manifests](#quick-install-using-yaml-manifests)
+- [Quick Install using Helm operator](#quick-install-using-helm-operator)
+- [Build and Deploy](#build-and-deploy)
+  - [Build](#build)
+  - [Deploy](#deploy)
+- [How to use](#how-to-use)
+  - [Create image cache](#create-image-cache)
+  - [View the status of image cache](#view-the-status-of-image-cache)
+  - [Add/remove images in image cache](#addremove-images-in-image-cache)
+  - [Refresh image cache](#refresh-image-cache)
+  - [Delete image cache](#delete-image-cache)
+  - [Remove kube-fledged](#remove-kube-fledged)
+- [How it works](#how-it-works)
+- [Configuration Flags](#configuration-flags)
+- [Supported Platforms](#supported-platforms)
+- [Built With](#built-with)
+- [Contributing](#contributing)
+- [License](#license)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Use cases
 
@@ -25,9 +55,9 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 - Supported container runtimes: docker, containerd, cri-o
 - git, make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
 
-## Quick Install
+## Quick Install using YAML manifests
 
-These instructions install _kube-fledged_ using pre-built images of the latest stable release in [Docker Hub.](https://hub.docker.com/u/senthilrch)
+These instructions install _kube-fledged_ to a separate namespace called "kube-fledged", using YAML manifests and pre-built images in [Docker Hub.](https://hub.docker.com/u/senthilrch)
 
 - Clone the source code repository
 
@@ -46,14 +76,57 @@ These instructions install _kube-fledged_ using pre-built images of the latest s
 - Verify if _kube-fledged_ deployed successfully
 
   ```
-  $ kubectl get pods -n kube-fledged -l app=fledged
+  $ kubectl get pods -n kube-fledged -l app=kubefledged
+  $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
+  $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
+  ```
+
+## Quick Install using Helm operator
+
+These instructions install _kube-fledged_ to a separate namespace called "kube-fledged", using Helm operator and pre-built images in [Docker Hub.](https://hub.docker.com/u/senthilrch)
+
+- Clone the source code repository
+
+  ```
+  $ mkdir -p $HOME/src/github.com/senthilrch
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
+  $ cd $HOME/src/github.com/senthilrch/kube-fledged
+  ```
+
+- Deploy the operator to a separate namespace called "operators"
+
+  ```
+  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/service_account.yaml
+  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
+  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/operator.yaml
+  $ kubectl create namespace operators
+  $ kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_kubefledgeds_crd.yaml
+  $ kubectl create -f deploy/kubefledged-operator/deploy/service_account.yaml
+  $ kubectl create -f deploy/kubefledged-operator/deploy/clusterrole.yaml
+  $ kubectl create -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
+  $ kubectl create -f deploy/kubefledged-operator/deploy/operator.yaml
+  ```
+
+- Deploy _kube-fledged_ to a separate namespace called "kube-fledged"
+
+  ```
+  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+  $ sed -i "s|KUBEFLEDGED_NAMESPACE|kube-fledged|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+  $ kubectl create namespace kube-fledged
+  $ kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+  ```
+
+- Verify if _kube-fledged_ deployed successfully
+
+  ```
+  $ kubectl get pods -n kube-fledged -l app.kubernetes.io/name=kubefledged
   $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
 
 ## Build and Deploy
 
-These instructions will help you build _kube-fledged_ from source and deploy it on a kubernetes cluster.
+These instructions will help you build _kube-fledged_ from source and deploy it to a separate namespace called "kube-fledged". If you need to deploy it to a different namespace, edit the namespace field of the manifests in "kube-fledged/deploy" accordingly.
 
 ### Build
 
@@ -75,18 +148,18 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
 - Build and push the docker images to registry (e.g. Docker hub)
 
   ```
-  $ export FLEDGED_IMAGE_NAME=<your_docker_hub_username>/fledged:<your_tag>
-  $ export FLEDGED_DOCKER_CLIENT_IMAGE_NAME=<your_docker_hub_username>/fledged-docker-client:<your_tag>
-  $ export DOCKER_VERSION=<docker_version_used_for_building_docker_client_image>
+  $ export RELEASE_VERSION=<your_tag>
+  $ export FLEDGED_IMAGE_REPO=<your_docker_hub_username>/fledged
+  $ export FLEDGED_DOCKER_CLIENT_IMAGE_REPO=<your_docker_hub_username>/fledged-docker-client
   $ docker login -u <username> -p <password>
-  $ make fledged-image && make client-image && make push-image
+  $ make fledged-image && make client-image && make push-images
   ```
 
 ### Deploy
 
 _Note:- You need to have 'cluster-admin' privileges to deploy_
 
-- All manifests required for deploying _kube-fledged_ are present inside 'kube-fledged/deploy'. These steps deploy _kube-fledged_ into a separate namespace called "kube-fledged" with default configuration flags. Edit "fledged-deployment.yaml".
+- All manifests required for deploying _kube-fledged_ are present in 'kube-fledged/deploy' directory. Edit "kubefledged-deployment.yaml".
 
   Set "image" to "<your_docker_hub_username>/fledged:<your_tag>"
 
@@ -94,10 +167,10 @@ _Note:- You need to have 'cluster-admin' privileges to deploy_
   image: <your_docker_hub_username>/fledged:<your_tag>
   ```
 
-- If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "fledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod). The secret <your_registry_key> should be created in "kube-fledged" namespace.
+- If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "kubefledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod). The secret <your_registry_key> should be created in "kube-fledged" namespace.
 
   ```
-  serviceAccountName: fledged
+  serviceAccountName: kubefledged
   imagePullSecrets:
     - name: <your_registry_key>
   ```
@@ -111,7 +184,7 @@ _Note:- You need to have 'cluster-admin' privileges to deploy_
 - Verify if _kube-fledged_ deployed successfully
 
   ```
-  $ kubectl get pods -n kube-fledged -l app=fledged
+  $ kubectl get pods -n kube-fledged -l app=kubefledged
   $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
@@ -122,7 +195,7 @@ _kube-fledged_ provides APIs to perform CRUD operations on image cache.  These A
 
 ### Create image cache
 
-Refer to sample image cache manifest in "deploy/fledged-imagecache.yaml". Edit it as per your needs before creating image cache. If images are in private repositories requiring credentials to pull, add "imagePullSecrets" to the end.
+Refer to sample image cache manifest in "deploy/kubefledged-imagecache.yaml". Edit it as per your needs before creating image cache. If images are in private repositories requiring credentials to pull, add "imagePullSecrets" to the end.
 
 ```
   imagePullSecrets:
@@ -132,7 +205,7 @@ Refer to sample image cache manifest in "deploy/fledged-imagecache.yaml". Edit i
 Create the image cache using kubectl. Verify successful creation
 
 ```
-$ kubectl create -f deploy/fledged-imagecache.yaml
+$ kubectl create -f deploy/kubefledged-imagecache.yaml
 $ kubectl get imagecaches -n kube-fledged
 ```
 

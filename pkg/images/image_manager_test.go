@@ -36,6 +36,8 @@ import (
 	"k8s.io/client-go/util/workqueue"
 )
 
+const fledgedNameSpace = "kube-fledged"
+
 func newTestImageManager(kubeclientset kubernetes.Interface) (*ImageManager, coreinformers.PodInformer) {
 	imagePullDeadlineDuration := time.Millisecond * 10
 	dockerClientImage := "senthilrch/fledged-docker-client:latest"

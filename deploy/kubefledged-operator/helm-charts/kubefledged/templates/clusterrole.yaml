@@ -1,0 +1,61 @@
+{{- if .Values.clusterRole.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "kubefledged.clusterRoleName" . }}
+  labels:
+    {{ include "kubefledged.labels" . | nindent 4 }}
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+rules:
+  - apiGroups:
+      - "fledged.k8s.io"
+    resources:
+      - imagecaches
+    verbs:
+      - get
+      - list
+      - watch
+      - update      
+  - apiGroups:
+      - "fledged.k8s.io"
+    resources:
+      - imagecaches/status
+    verbs:
+      - patch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - list
+      - watch
+      - get
+  - apiGroups:
+      - ""
+    resources:
+      - events
+    verbs:
+      - get
+      - list
+      - create
+      - update
+      - patch
+  - apiGroups:
+      - "batch"
+    resources:
+      - jobs
+    verbs:
+      - get
+      - list
+      - create
+      - delete
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+    verbs:
+      - list
+      - watch
+      - get    
+{{- end -}}

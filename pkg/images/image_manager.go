@@ -39,7 +39,6 @@ import (
 )
 
 const controllerAgentName = "fledged"
-const fledgedNameSpace = "kube-fledged"
 
 const (
 	// ImageWorkResultStatusSucceeded means image pull/delete succeeded
@@ -54,6 +53,7 @@ const (
 
 // ImageManager provides the functionalities for pulling and deleting images
 type ImageManager struct {
+	fledgedNameSpace          string
 	workqueue                 workqueue.RateLimitingInterface
 	imageworkqueue            workqueue.RateLimitingInterface
 	kubeclientset             kubernetes.Interface
@@ -121,6 +121,7 @@ func NewImageManager(
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 
 	imagemanager := &ImageManager{
+		fledgedNameSpace:          namespace,
 		workqueue:                 workqueue,
 		imageworkqueue:            imageworkqueue,
 		kubeclientset:             kubeclientset,
@@ -196,7 +197,7 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 	for job, iwres := range m.imageworkstatus {
 		if iwres.ImageWorkRequest.Imagecache.Name == imageCacheName {
 			if iwres.Status == ImageWorkResultStatusJobCreated {
-				pods, err := m.podsLister.Pods(fledgedNameSpace).
+				pods, err := m.podsLister.Pods(m.fledgedNameSpace).
 					List(labels.Set(map[string]string{"job-name": job}).AsSelector())
 				if err != nil {
 					glog.Errorf("Error listing Pods: %v", err)
@@ -235,11 +236,11 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 					fieldSelector := fields.Set{
 						"involvedObject.kind":      "Pod",
 						"involvedObject.name":      pods[0].Name,
-						"involvedObject.namespace": fledgedNameSpace,
+						"involvedObject.namespace": m.fledgedNameSpace,
 						"reason":                   "Failed",
 					}.AsSelector().String()
 
-					eventlist, err := m.kubeclientset.CoreV1().Events(fledgedNameSpace).
+					eventlist, err := m.kubeclientset.CoreV1().Events(m.fledgedNameSpace).
 						List(metav1.ListOptions{FieldSelector: fieldSelector})
 					if err != nil {
 						glog.Errorf("Error listing events for pod (%s): %v", pods[0].Name, err)
@@ -297,7 +298,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 			imageCache = iwres.ImageWorkRequest.Imagecache
 			delete(m.imageworkstatus, job)
 			// delete jobs
-			if err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).
+			if err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).
 				Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
 				glog.Errorf("Error deleting job %s: %v", job, err)
 				m.lock.Unlock()
@@ -437,7 +438,7 @@ func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 		return nil, err
 	}
 	// Create a Job to pull the image into the node
-	job, err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).Create(newjob)
+	job, err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).Create(newjob)
 	if err != nil {
 		glog.Errorf("Error creating job in node %s: %v", iwr.Node, err)
 		return nil, err
@@ -454,7 +455,7 @@ func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 		return nil, err
 	}
 	// Create a Job to delete the image from the node
-	job, err := m.kubeclientset.BatchV1().Jobs(fledgedNameSpace).Create(newjob)
+	job, err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).Create(newjob)
 	if err != nil {
 		glog.Errorf("Error creating job in node %s: %v", iwr.Node, err)
 		return nil, err

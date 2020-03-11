@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"os"
 	"time"
 
 	"github.com/golang/glog"
@@ -38,6 +39,7 @@ var (
 	imagePullDeadlineDuration  time.Duration
 	dockerClientImage          string
 	imagePullPolicy            string
+	fledgedNameSpace           string
 )
 
 func main() {
@@ -64,7 +66,7 @@ func main() {
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
 	fledgedInformerFactory := informers.NewSharedInformerFactory(fledgedClient, time.Second*30)
 
-	controller := app.NewController(kubeClient, fledgedClient,
+	controller := app.NewController(kubeClient, fledgedClient, fledgedNameSpace,
 		kubeInformerFactory.Core().V1().Nodes(),
 		fledgedInformerFactory.Fledged().V1alpha1().ImageCaches(),
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
@@ -88,4 +90,7 @@ func init() {
 	flag.DurationVar(&imageCacheRefreshFrequency, "image-cache-refresh-frequency", time.Minute*15, "The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to 0s will disable refresh")
 	flag.StringVar(&dockerClientImage, "docker-client-image", "senthilrch/fledged-docker-client:latest", "The image name of the docker client. the docker client is used when deleting images during purging the cache")
 	flag.StringVar(&imagePullPolicy, "image-pull-policy", "", " Image pull policy for pulling images into the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Default value for Images with ':latest' tag is 'Always'")
+	if fledgedNameSpace = os.Getenv("KUBEFLEDGED_NAMESPACE"); fledgedNameSpace == "" {
+		fledgedNameSpace = "kube-fledged"
+	}
 }

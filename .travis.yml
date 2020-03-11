@@ -1,17 +1,17 @@
 language: go
 go:
-  - 1.13.5
+  - 1.13.8
 install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
   - go get -u golang.org/x/lint/golint
 script:
-- hack/verify-codegen.sh
-- hack/verify-boilerplate.sh
-- hack/verify-gofmt.sh
-- hack/verify-golint.sh
-- hack/verify-govet.sh
-- make fledged-image
-- make client-image
-- make test
-- $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+  - hack/verify-codegen.sh
+  - hack/verify-boilerplate.sh
+  - hack/verify-gofmt.sh
+  - hack/verify-golint.sh
+  - hack/verify-govet.sh
+  - make fledged-dev
+  - make GIT_BRANCH=${TRAVIS_BRANCH} build-images
+  - make test
+  - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
