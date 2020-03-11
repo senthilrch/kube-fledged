@@ -1,4 +1,4 @@
-<img src="logo.png" width="500">
+<img src="logo.png">
 
 # 
 
