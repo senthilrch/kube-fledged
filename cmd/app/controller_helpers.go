@@ -17,7 +17,9 @@ limitations under the License.
 package app
 
 import (
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/golang/glog"
 	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
@@ -70,4 +72,32 @@ func validateCacheSpec(c *Controller, imageCache *fledgedv1alpha1.ImageCache) er
 		}
 	}
 	return nil
+}
+
+func checkIfImageNeedsToBePulled(imagePullPolicy string, image string, node *corev1.Node) (bool, error) {
+	var fImage string
+	if imagePullPolicy == string(corev1.PullIfNotPresent) {
+		if !strings.Contains(image, ":") && !strings.Contains(image, "@sha") {
+			fImage = strings.Join([]string{image, "latest"}, ":")
+		}
+		imageAlreadyPresent, err := imageAlreadyPresentInNode(fImage, node)
+		if err != nil {
+			return false, err
+		}
+		if imageAlreadyPresent {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func imageAlreadyPresentInNode(image string, node *corev1.Node) (bool, error) {
+	imagesByteSlice, err := json.Marshal(node.Status.Images)
+	if err != nil {
+		return false, err
+	}
+	if strings.Contains(string(imagesByteSlice), image) {
+		return true, nil
+	}
+	return false, nil
 }
