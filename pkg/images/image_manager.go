@@ -47,8 +47,8 @@ const (
 	ImageWorkResultStatusFailed = "failed"
 	// ImageWorkResultStatusJobCreated means job for image pull/delete created
 	ImageWorkResultStatusJobCreated = "jobcreated"
-	//ImageWorkResultReasonImagePullFailed  = "imagepullfailed"
-	//ImageWorkResultMessageImagePullFailed = "failed to pull image to node. for details, please check events of pod"
+	//ImageWorkResultStatusAlreadyPulled  means image is already present in the node
+	ImageWorkResultStatusAlreadyPulled = "alreadypulled"
 )
 
 // ImageManager provides the functionalities for pulling and deleting images
@@ -70,7 +70,7 @@ type ImageManager struct {
 // ImageWorkRequest has image name, node name, work type and imagecache
 type ImageWorkRequest struct {
 	Image                   string
-	Node                    string
+	Node                    *corev1.Node
 	ContainerRuntimeVersion string
 	WorkType                WorkType
 	Imagecache              *fledgedv1alpha1.ImageCache
@@ -389,7 +389,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 			return nil
 		}
 
-		if iwr.Image == "" && iwr.Node == "" {
+		if iwr.Image == "" && iwr.Node == nil {
 			m.imageworkqueue.Forget(obj)
 			errCh := make(chan error)
 			go m.updateImageCacheStatus(iwr.Imagecache.Name, errCh)
@@ -399,23 +399,40 @@ func (m *ImageManager) processNextWorkItem() bool {
 		// ImageCache resource to be synced.
 		var job *batchv1.Job
 		var err error
+		var pull, delete bool
 		if iwr.WorkType == ImageCachePurge {
+			delete = true
 			job, err = m.deleteImage(iwr)
 			if err != nil {
-				return fmt.Errorf("error deleting image '%s' from node '%s': %s", iwr.Image, iwr.Node, err.Error())
+				return fmt.Errorf("error deleting image '%s' from node '%s': %s", iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], err.Error())
 			}
-			glog.Infof("Job %s created (delete:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion)
+			glog.Infof("Job %s created (delete:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], iwr.ContainerRuntimeVersion)
 		} else {
-			job, err = m.pullImage(iwr)
+			pull = true
+			pull, err = checkIfImageNeedsToBePulled(m.imagePullPolicy, iwr.Image, iwr.Node)
 			if err != nil {
-				return fmt.Errorf("error pulling image '%s' to node '%s': %s", iwr.Image, iwr.Node, err.Error())
+				glog.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
+				return fmt.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
 			}
-			glog.Infof("Job %s created (pull:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion)
+			if pull {
+				job, err = m.pullImage(iwr)
+				if err != nil {
+					return fmt.Errorf("error pulling image '%s' to node '%s': %s", iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], err.Error())
+				}
+				glog.Infof("Job %s created (pull:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], iwr.ContainerRuntimeVersion)
+			} else {
+				glog.Infof("Job not created (image-already-present:- %s --> %s, runtime: %s)", iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], iwr.ContainerRuntimeVersion)
+			}
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		m.lock.Lock()
-		m.imageworkstatus[job.Name] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusJobCreated}
+		if pull || delete {
+			m.imageworkstatus[job.Name] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusJobCreated}
+		} else {
+			// generate a random fake job name
+			//m.imageworkstatus[fakejobname] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusAlreadyPulled}
+		}
 		m.lock.Unlock()
 		m.imageworkqueue.Forget(obj)
 		return nil

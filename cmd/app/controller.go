@@ -82,7 +82,6 @@ type Controller struct {
 	// Kubernetes API.
 	recorder                   record.EventRecorder
 	imageCacheRefreshFrequency time.Duration
-	imagePullPolicy            string
 }
 
 // NewController returns a new fledged controller
@@ -116,7 +115,6 @@ func NewController(
 		imageworkqueue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus"),
 		recorder:                   recorder,
 		imageCacheRefreshFrequency: imageCacheRefreshFrequency,
-		imagePullPolicy:            imagePullPolicy,
 	}
 
 	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, controller.fledgedNameSpace, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
@@ -568,23 +566,14 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
 			for _, n := range nodes {
 				for m := range i.Images {
-					pullImage, err := checkIfImageNeedsToBePulled(c.imagePullPolicy, i.Images[m], n)
-					if err != nil {
-						glog.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
-						return fmt.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
+					ipr := images.ImageWorkRequest{
+						Image:                   i.Images[m],
+						Node:                    n,
+						ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
+						WorkType:                wqKey.WorkType,
+						Imagecache:              imageCache,
 					}
-					if pullImage {
-						ipr := images.ImageWorkRequest{
-							Image:                   i.Images[m],
-							Node:                    n.Labels["kubernetes.io/hostname"],
-							ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
-							WorkType:                wqKey.WorkType,
-							Imagecache:              imageCache,
-						}
-						c.imageworkqueue.AddRateLimited(ipr)
-					} else {
-						glog.Infof("Image %s already present in node %s: image not re-pulled", i.Images[m], n.Labels["kubernetes.io/hostname"])
-					}
+					c.imageworkqueue.AddRateLimited(ipr)
 				}
 				if wqKey.WorkType == images.ImageCacheUpdate {
 					for _, oldimage := range wqKey.OldImageCache.Spec.CacheSpec[k].Images {
@@ -596,23 +585,14 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 							}
 						}
 						if !matched {
-							pullImage, err := checkIfImageNeedsToBePulled(c.imagePullPolicy, oldimage, n)
-							if err != nil {
-								glog.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
-								return fmt.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
+							ipr := images.ImageWorkRequest{
+								Image:                   oldimage,
+								Node:                    n,
+								ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
+								WorkType:                images.ImageCachePurge,
+								Imagecache:              imageCache,
 							}
-							if pullImage {
-								ipr := images.ImageWorkRequest{
-									Image:                   oldimage,
-									Node:                    n.Labels["kubernetes.io/hostname"],
-									ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
-									WorkType:                images.ImageCachePurge,
-									Imagecache:              imageCache,
-								}
-								c.imageworkqueue.AddRateLimited(ipr)
-							} else {
-								glog.Infof("Image %s already present in node %s: image not re-pulled", oldimage, n.Labels["kubernetes.io/hostname"])
-							}
+							c.imageworkqueue.AddRateLimited(ipr)
 						}
 					}
 				}
@@ -642,7 +622,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
 		failures := false
 		for _, v := range *wqKey.Status {
-			if v.Status == images.ImageWorkResultStatusSucceeded && !failures {
+			if (v.Status == images.ImageWorkResultStatusSucceeded || v.Status == images.ImageWorkResultStatusAlreadyPulled) && !failures {
 				status.Status = fledgedv1alpha1.ImageCacheActionStatusSucceeded
 				if v.ImageWorkRequest.WorkType == images.ImageCachePurge {
 					status.Message = fledgedv1alpha1.ImageCacheMessageImagesDeletedSuccessfully
@@ -662,7 +642,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			if v.Status == images.ImageWorkResultStatusFailed {
 				status.Failures[v.ImageWorkRequest.Image] = append(
 					status.Failures[v.ImageWorkRequest.Image], fledgedv1alpha1.NodeReasonMessage{
-						Node:    v.ImageWorkRequest.Node,
+						Node:    v.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"],
 						Reason:  v.Reason,
 						Message: v.Message,
 					})
