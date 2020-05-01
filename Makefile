@@ -38,27 +38,27 @@ ifndef OPERATOR_IMAGE_REPO
 endif
 
 ifndef RELEASE_VERSION
-  RELEASE_VERSION=v0.6.0
+  RELEASE_VERSION=v0.7.0
 endif
 
 ifndef DOCKER_VERSION
-  DOCKER_VERSION=19.03.7
+  DOCKER_VERSION=19.03.8
 endif
 
 ifndef CRICTL_VERSION
-  CRICTL_VERSION=v1.17.0
+  CRICTL_VERSION=v1.18.0
 endif
 
 ifndef GOLANG_VERSION
-  GOLANG_VERSION=1.13.8
+  GOLANG_VERSION=1.14.2
 endif
 
 ifndef ALPINE_VERSION
-  ALPINE_VERSION=3.11
+  ALPINE_VERSION=3.11.6
 endif
 
 ifndef OPERATORSDK_VERSION
-  OPERATORSDK_VERSION=v0.15.2
+  OPERATORSDK_VERSION=v0.17.0
 endif
 
 ifndef GIT_BRANCH
@@ -127,16 +127,16 @@ test:
 	bash hack/run-unit-tests.sh
 
 deploy:
-	kubectl apply -f deploy/kubefledged-crd.yaml && sleep 2 && \
-	kubectl apply -f deploy/kubefledged-namespace.yaml && sleep 2 && \
+	kubectl apply -f deploy/kubefledged-crd.yaml && \
+	kubectl apply -f deploy/kubefledged-namespace.yaml && \
 	kubectl apply -f deploy/kubefledged-serviceaccount.yaml && \
 	kubectl apply -f deploy/kubefledged-clusterrole.yaml && \
 	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml && \
 	kubectl apply -f deploy/kubefledged-deployment.yaml
 
 update:
-	kubectl scale deployment kubefledged --replicas=0 -n kube-fledged && sleep 5 && \
-	kubectl scale deployment kubefledged --replicas=1 -n kube-fledged && sleep 5 && \
+	kubectl scale deployment kubefledged --replicas=0 -n kube-fledged && sleep 1 && \
+	kubectl scale deployment kubefledged --replicas=1 -n kube-fledged && sleep 1 && \
 	kubectl get pods -l app=kubefledged -n kube-fledged
 
 remove:
