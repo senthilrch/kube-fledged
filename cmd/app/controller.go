@@ -196,6 +196,7 @@ func (c *Controller) danglingImageCaches() error {
 	}
 	for _, imagecache := range imagecachelist.Items {
 		if imagecache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
+			status.StartTime = imagecache.Status.StartTime
 			err := c.updateImageCacheStatus(&imagecache, status)
 			if err != nil {
 				glog.Errorf("Error updating ImageCache(%s) status to '%s': %v", imagecache.Name, fledgedv1alpha1.ImageCacheActionStatusAborted, err)
