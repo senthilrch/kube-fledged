@@ -18,6 +18,7 @@ package images
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,6 +41,7 @@ import (
 )
 
 const controllerAgentName = "fledged"
+const fakeJobPrefix = "fakejob-"
 
 const (
 	// ImageWorkResultStatusSucceeded means image pull/delete succeeded
@@ -169,9 +171,9 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 	if pod.Status.Phase == corev1.PodSucceeded {
 		iwres.Status = ImageWorkResultStatusSucceeded
 		if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
-			glog.Infof("Job %s succeeded (delete:- %s --> %s, runtime: %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node, iwres.ImageWorkRequest.ContainerRuntimeVersion)
+			glog.Infof("Job %s succeeded (delete:- %s --> %s, runtime: %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"], iwres.ImageWorkRequest.ContainerRuntimeVersion)
 		} else {
-			glog.Infof("Job %s succeeded (pull:- %s --> %s, runtime: %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node, iwres.ImageWorkRequest.ContainerRuntimeVersion)
+			glog.Infof("Job %s succeeded (pull:- %s --> %s, runtime: %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"], iwres.ImageWorkRequest.ContainerRuntimeVersion)
 		}
 	}
 	if pod.Status.Phase == corev1.PodFailed {
@@ -181,9 +183,9 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 			iwres.Message = pod.Status.ContainerStatuses[0].State.Terminated.Message
 		}
 		if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
-			glog.Infof("Job %s failed (delete: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+			glog.Infof("Job %s failed (delete: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 		} else {
-			glog.Infof("Job %s failed (pull: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+			glog.Infof("Job %s failed (pull: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 		}
 	}
 	m.lock.Lock()
@@ -214,9 +216,9 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 				}
 				iwres.Status = ImageWorkResultStatusFailed
 				if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
-					glog.Infof("Job %s expired (delete: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+					glog.Infof("Job %s expired (delete: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 				} else {
-					glog.Infof("Job %s expired (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+					glog.Infof("Job %s expired (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 				}
 				if pods[0].Status.Phase == corev1.PodPending {
 					if len(pods[0].Status.ContainerStatuses) == 1 {
@@ -299,12 +301,14 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 			imageCache = iwres.ImageWorkRequest.Imagecache
 			delete(m.imageworkstatus, job)
 			// delete jobs
-			if err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).
-				Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
-				glog.Errorf("Error deleting job %s: %v", job, err)
-				m.lock.Unlock()
-				errCh <- err
-				return
+			if !strings.HasPrefix(job, fakeJobPrefix) {
+				if err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).
+					Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
+					glog.Errorf("Error deleting job %s: %v", job, err)
+					m.lock.Unlock()
+					errCh <- err
+					return
+				}
 			}
 		}
 	}
@@ -432,7 +436,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 			m.imageworkstatus[job.Name] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusJobCreated}
 		} else {
 			// generate a random fake job name
-			m.imageworkstatus[names.SimpleNameGenerator.GenerateName("fakejob-")] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusAlreadyPulled}
+			m.imageworkstatus[names.SimpleNameGenerator.GenerateName(fakeJobPrefix)] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusAlreadyPulled}
 		}
 		m.lock.Unlock()
 		m.imageworkqueue.Forget(obj)

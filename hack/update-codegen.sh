@@ -18,7 +18,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-export GOPATH=${GOPATH:-${HOME}/go}
+export GOPATH=${HOME}/go
 go get -d k8s.io/code-generator@v0.17.2
 
 SCRIPT_ROOT=$(dirname ${BASH_SOURCE})/..

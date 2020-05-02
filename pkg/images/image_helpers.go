@@ -228,12 +228,11 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, nod
 }
 
 func checkIfImageNeedsToBePulled(imagePullPolicy string, image string, node *corev1.Node) (bool, error) {
-	var fImage string
 	if imagePullPolicy == string(corev1.PullIfNotPresent) {
 		if !strings.Contains(image, ":") && !strings.Contains(image, "@sha") {
-			fImage = strings.Join([]string{image, "latest"}, ":")
+			return true, nil
 		}
-		imageAlreadyPresent, err := imageAlreadyPresentInNode(fImage, node)
+		imageAlreadyPresent, err := imageAlreadyPresentInNode(image, node)
 		if err != nil {
 			return false, err
 		}

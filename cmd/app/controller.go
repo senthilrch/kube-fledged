@@ -604,7 +604,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		c.imageworkqueue.AddRateLimited(images.ImageWorkRequest{WorkType: wqKey.WorkType, Imagecache: imageCache})
 
 	case images.ImageCacheStatusUpdate:
-		glog.Infof("wqKey.Status = %+v", wqKey.Status)
+		glog.V(4).Infof("wqKey.Status = %+v", wqKey.Status)
 		// Finally, we update the status block of the ImageCache resource to reflect the
 		// current state of the world
 		// Get the ImageCache resource with this namespace/name
