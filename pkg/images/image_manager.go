@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/storage/names"
 	kubeinformers "k8s.io/client-go/informers"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -431,7 +432,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 			m.imageworkstatus[job.Name] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusJobCreated}
 		} else {
 			// generate a random fake job name
-			//m.imageworkstatus[fakejobname] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusAlreadyPulled}
+			m.imageworkstatus[names.SimpleNameGenerator.GenerateName("fakejob-")] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusAlreadyPulled}
 		}
 		m.lock.Unlock()
 		m.imageworkqueue.Forget(obj)
