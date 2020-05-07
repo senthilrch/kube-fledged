@@ -65,6 +65,14 @@ ifndef GIT_BRANCH
   GIT_BRANCH=master
 endif
 
+ifndef TARGET_PLATFORMS
+  TARGET_PLATFORMS=linux/amd64,linux/arm/v7,linux/arm64/v8
+endif
+
+ifndef OPERATOR_TARGET_PLATFORMS
+  OPERATOR_TARGET_PLATFORMS=linux/amd64,linux/arm64
+endif
+
 HTTP_PROXY_CONFIG=
 ifdef HTTP_PROXY
   HTTP_PROXY_CONFIG=--build-arg http_proxy=${HTTP_PROXY}
@@ -76,51 +84,56 @@ ifdef HTTPS_PROXY
 endif
 
 
-### BUILDING
+### BUILD
 clean: clean-fledged clean-client clean-operator
 
 clean-fledged:
 	-rm -f build/fledged
-	-docker image rm $(FLEDGED_IMAGE_REPO):$(RELEASE_VERSION)
+	-docker image rm ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION}
 	-docker image rm `docker image ls -f dangling=true -q`
 
 clean-client:
-	-docker image rm $(FLEDGED_DOCKER_CLIENT_IMAGE_REPO):$(RELEASE_VERSION)
+	-docker image rm ${FLEDGED_DOCKER_CLIENT_IMAGE_REPO}:${RELEASE_VERSION}
 	-docker image rm `docker image ls -f dangling=true -q`
 
 clean-operator:
-	-docker image rm $(OPERATOR_IMAGE_REPO):$(RELEASE_VERSION)
+	-docker image rm ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION}
 	-docker image rm `docker image ls -f dangling=true -q`
 
-fledged-dev: clean-fledged
+fledged-amd64: clean-fledged
 	CGO_ENABLED=0 go build -o build/fledged -ldflags '-s -w -extldflags "-static"' cmd/fledged.go && \
-	cd build && docker build -t $(FLEDGED_IMAGE_REPO):$(RELEASE_VERSION) -f Dockerfile.fledged_dev \
-	--build-arg ALPINE_VERSION=${ALPINE_VERSION} .
+	cd build && docker build -t ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION} -f Dockerfile.fledged_dev \
+	--build-arg ALPINE_VERSION=${ALPINE_VERSION} . && docker push ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION}
 
 fledged-image: clean-fledged
-	cd build && docker build -t $(FLEDGED_IMAGE_REPO):$(RELEASE_VERSION) -f Dockerfile.fledged \
-	${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} --build-arg GIT_BRANCH=${GIT_BRANCH} \
-	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} .
+	cd build && docker buildx build --platform=${TARGET_PLATFORMS} -t ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION} \
+	-f Dockerfile.fledged ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} --build-arg GIT_BRANCH=${GIT_BRANCH} \
+	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --push .
 
 client-image: clean-client
-	cd build && docker build -t $(FLEDGED_DOCKER_CLIENT_IMAGE_REPO):$(RELEASE_VERSION) \
+	cd build && docker buildx build --platform=${TARGET_PLATFORMS} -t ${FLEDGED_DOCKER_CLIENT_IMAGE_REPO}:${RELEASE_VERSION} \
 	-f Dockerfile.docker_client  ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
 	--build-arg DOCKER_VERSION=${DOCKER_VERSION} --build-arg CRICTL_VERSION=${CRICTL_VERSION} \
-	--build-arg ALPINE_VERSION=${ALPINE_VERSION} .
+	--build-arg ALPINE_VERSION=${ALPINE_VERSION} --push .
 
 operator-image: clean-operator
 	cd deploy/kubefledged-operator && \
-	docker build -t $(OPERATOR_IMAGE_REPO):$(RELEASE_VERSION) -f ./build/Dockerfile \
-	--build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} .
-
-build-images: fledged-image client-image operator-image
+	docker buildx build --platform=${OPERATOR_TARGET_PLATFORMS} -t ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION} \
+	-f ./build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --push .
 
 push-images:
-	-docker push $(FLEDGED_IMAGE_REPO):$(RELEASE_VERSION)
-	-docker push $(FLEDGED_DOCKER_CLIENT_IMAGE_REPO):$(RELEASE_VERSION)
-	-docker push $(OPERATOR_IMAGE_REPO):$(RELEASE_VERSION)
+	-docker push ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION}
+	-docker push ${FLEDGED_DOCKER_CLIENT_IMAGE_REPO}:${RELEASE_VERSION}
+	-docker push ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION}
 
-release: build-images push-images
+release: fledged-image client-image operator-image
+
+install-buildx:
+	docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+	docker buildx rm multibuilder
+	docker buildx create --name multibuilder --driver docker-container --use
+	docker buildx inspect --bootstrap
+	docker buildx ls
 
 test:
 	-rm -f coverage.out
