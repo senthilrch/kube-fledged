@@ -103,7 +103,10 @@ clean-operator:
 fledged-amd64: clean-fledged
 	CGO_ENABLED=0 go build -o build/fledged -ldflags '-s -w -extldflags "-static"' cmd/fledged.go && \
 	cd build && docker build -t ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION} -f Dockerfile.fledged_dev \
-	--build-arg ALPINE_VERSION=${ALPINE_VERSION} . && docker push ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION}
+	--build-arg ALPINE_VERSION=${ALPINE_VERSION}
+
+fledged-dev: fledged-amd64
+	docker push ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION}
 
 fledged-image: clean-fledged
 	cd build && docker buildx build --platform=${TARGET_PLATFORMS} -t ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION} \
@@ -130,7 +133,7 @@ release: fledged-image client-image operator-image
 
 install-buildx:
 	docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-	docker buildx rm multibuilder
+	-docker buildx rm multibuilder
 	docker buildx create --name multibuilder --driver docker-container --use
 	docker buildx inspect --bootstrap
 	docker buildx ls
