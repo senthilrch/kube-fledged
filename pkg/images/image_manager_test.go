@@ -44,10 +44,10 @@ var node = corev1.Node{
 	},
 }
 
-func newTestImageManager(kubeclientset kubernetes.Interface, imagePullPolicy string) (*ImageManager, coreinformers.PodInformer) {
+func newTestImageManager(kubeclientset kubernetes.Interface, imagepullpolicy string) (*ImageManager, coreinformers.PodInformer) {
 	imagePullDeadlineDuration := time.Millisecond * 10
 	dockerClientImage := "senthilrch/fledged-docker-client:latest"
-	imagePullPolicy = imagePullPolicy
+	imagePullPolicy := imagepullpolicy
 	imagecacheworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches")
 	imageworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus")
 
