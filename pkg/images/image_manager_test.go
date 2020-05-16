@@ -38,6 +38,12 @@ import (
 
 const fledgedNameSpace = "kube-fledged"
 
+var node = corev1.Node{
+	ObjectMeta: metav1.ObjectMeta{
+		Labels: map[string]string{"kubernetes.io/hostname": "bar"},
+	},
+}
+
 func newTestImageManager(kubeclientset kubernetes.Interface) (*ImageManager, coreinformers.PodInformer) {
 	imagePullDeadlineDuration := time.Millisecond * 10
 	dockerClientImage := "senthilrch/fledged-docker-client:latest"
@@ -79,7 +85,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "pullimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCacheCreate,
 				Imagecache: &defaultImageCache,
 			},
@@ -91,7 +97,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "pullimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCacheCreate,
 				Imagecache: nil,
 			},
@@ -103,7 +109,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "pullimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCacheCreate,
 				Imagecache: &defaultImageCache,
 			},
@@ -115,7 +121,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCachePurge,
 				Imagecache: &defaultImageCache,
 			},
@@ -127,7 +133,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCachePurge,
 				Imagecache: nil,
 			},
@@ -139,7 +145,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCachePurge,
 				Imagecache: &defaultImageCache,
 			},
@@ -151,7 +157,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:                   "foo",
-				Node:                    "bar",
+				Node:                    &node,
 				ContainerRuntimeVersion: "containerd://1.0.0",
 				WorkType:                ImageCachePurge,
 				Imagecache:              &defaultImageCache,
@@ -164,7 +170,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:                   "foo",
-				Node:                    "bar",
+				Node:                    &node,
 				ContainerRuntimeVersion: "cri-o://1.0.0",
 				WorkType:                ImageCachePurge,
 				Imagecache:              &defaultImageCache,
@@ -177,7 +183,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:                   "foo",
-				Node:                    "bar",
+				Node:                    &node,
 				ContainerRuntimeVersion: "docker://1.0.0",
 				WorkType:                ImageCachePurge,
 				Imagecache:              &defaultImageCache,
@@ -301,6 +307,7 @@ func TestHandlePodStatusChange(t *testing.T) {
 			Status: ImageWorkResultStatusJobCreated,
 			ImageWorkRequest: ImageWorkRequest{
 				WorkType: test.worktype,
+				Node:     &node,
 			},
 		}
 		imagemanager.handlePodStatusChange(&test.pod)
@@ -339,6 +346,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusSucceeded,
 				},
@@ -356,6 +364,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -393,6 +402,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -422,6 +432,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -460,6 +471,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -498,6 +510,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -523,6 +536,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -556,6 +570,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusSucceeded,
 				},
@@ -651,7 +666,7 @@ func TestProcessNextWorkItem(t *testing.T) {
 			name: "#1: Create - Successful",
 			iwr: ImageWorkRequest{
 				Image:      "fakeimage",
-				Node:       "fakenode",
+				Node:       &node,
 				WorkType:   ImageCacheCreate,
 				Imagecache: &defaultImageCache,
 			},
@@ -694,7 +709,7 @@ func TestProcessNextWorkItem(t *testing.T) {
 			name: "#2: Purge - Successful",
 			iwr: ImageWorkRequest{
 				Image:      "fakeimage",
-				Node:       "fakenode",
+				Node:       &node,
 				WorkType:   ImageCachePurge,
 				Imagecache: &defaultImageCache,
 			},
