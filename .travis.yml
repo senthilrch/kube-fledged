@@ -1,22 +1,25 @@
 language: go
 go:
   - 1.14.2
+env:
+  - DOCKER_CLI_EXPERIMENTAL=enabled
 install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
   - go get -u golang.org/x/lint/golint
 jobs:
   include:
-    - stage: push
+    #- stage: build_and_test
+    #  script:
+    #    - hack/verify-codegen.sh
+    #    - hack/verify-boilerplate.sh
+    #    - hack/verify-gofmt.sh
+    #    - hack/verify-golint.sh
+    #    - hack/verify-govet.sh
+    #    - make fledged-amd64
+    #    - make test
+    #    - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+    - stage: release
+      if: type = pull_request
       script:
-        - hack/verify-codegen.sh
-          #- hack/verify-boilerplate.sh
-          #- hack/verify-gofmt.sh
-          #- hack/verify-golint.sh
-          #- hack/verify-govet.sh
-          #- make fledged-amd64
-          #- make test
-          #- $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
-    - stage: pull_request
-      script:
-        - make test
+        - make GIT_BRANCH=${TRAVIS_BRANCH} release
