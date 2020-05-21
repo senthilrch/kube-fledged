@@ -93,27 +93,10 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ cd $HOME/src/github.com/senthilrch/kube-fledged
   ```
 
-- Deploy the operator to a separate namespace called "operators"
+- Deploy the operator to a separate namespace called "operators" and _kube-fledged_ to a separate namespace called "kube-fledged"
 
   ```
-  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/service_account.yaml
-  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
-  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/operator.yaml
-  $ kubectl create namespace operators
-  $ kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_kubefledgeds_crd.yaml
-  $ kubectl create -f deploy/kubefledged-operator/deploy/service_account.yaml
-  $ kubectl create -f deploy/kubefledged-operator/deploy/clusterrole.yaml
-  $ kubectl create -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
-  $ kubectl create -f deploy/kubefledged-operator/deploy/operator.yaml
-  ```
-
-- Deploy _kube-fledged_ to a separate namespace called "kube-fledged"
-
-  ```
-  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
-  $ sed -i "s|KUBEFLEDGED_NAMESPACE|kube-fledged|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
-  $ kubectl create namespace kube-fledged
-  $ kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+  $ make deploy-using-operator
   ```
 
 - Verify if _kube-fledged_ deployed successfully
@@ -259,7 +242,8 @@ $ kubectl delete imagecaches imagecache1 -n kube-fledged
 Run the following command to remove _kube-fledged_ from the cluster. 
 
 ```
-$ make remove
+$ make remove (if you deployed using YAML manifests)
+$ make remove-all (if you deployed using Helm Operator)
 ```
 
 ## How it works

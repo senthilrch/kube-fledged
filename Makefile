@@ -178,3 +178,20 @@ remove:
 	kubectl delete -f deploy/kubefledged-clusterrole.yaml && \
 	kubectl delete -f deploy/kubefledged-crd.yaml
 
+remove-all:
+	# Remove kube-fledged and the namespace "kube-fledged"
+	kubectl delete -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	-kubectl delete namespace kube-fledged
+	sed -i "s|kube-fledged|KUBEFLEDGED_NAMESPACE|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	sed -i "s|operators|OPERATOR_NAMESPACE|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	# Remove the operator and the namespace "operators"
+	kubectl delete -f deploy/kubefledged-operator/deploy/operator.yaml
+	kubectl delete -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
+	kubectl delete -f deploy/kubefledged-operator/deploy/clusterrole.yaml
+	kubectl delete -f deploy/kubefledged-operator/deploy/service_account.yaml
+	kubectl delete -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_kubefledgeds_crd.yaml
+	-kubectl delete namespace operators
+	sed -i "s|operators|OPERATOR_NAMESPACE|g" deploy/kubefledged-operator/deploy/operator.yaml
+	sed -i "s|operators|OPERATOR_NAMESPACE|g" deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
+	sed -i "s|operators|OPERATOR_NAMESPACE|g" deploy/kubefledged-operator/deploy/service_account.yaml
+
