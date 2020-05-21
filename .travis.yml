@@ -32,4 +32,5 @@ jobs:
     - stage: release
       if: type = pull_request
       script:
+        - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PSWD}
         - travis_wait make GIT_BRANCH=${TRAVIS_BRANCH} release
