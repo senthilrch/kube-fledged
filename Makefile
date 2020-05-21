@@ -111,18 +111,18 @@ fledged-dev: fledged-amd64
 fledged-image: clean-fledged
 	cd build && docker buildx build --platform=${TARGET_PLATFORMS} -t ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION} \
 	-f Dockerfile.fledged ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} --build-arg GIT_BRANCH=${GIT_BRANCH} \
-	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --push .
+	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain --push .
 
 client-image: clean-client
 	cd build && docker buildx build --platform=${TARGET_PLATFORMS} -t ${FLEDGED_DOCKER_CLIENT_IMAGE_REPO}:${RELEASE_VERSION} \
 	-f Dockerfile.docker_client  ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
 	--build-arg DOCKER_VERSION=${DOCKER_VERSION} --build-arg CRICTL_VERSION=${CRICTL_VERSION} \
-	--build-arg ALPINE_VERSION=${ALPINE_VERSION} --push .
+	--build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain --push .
 
 operator-image: clean-operator
 	cd deploy/kubefledged-operator && \
 	docker buildx build --platform=${OPERATOR_TARGET_PLATFORMS} -t ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION} \
-	-f ./build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --push .
+	-f ./build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --progress=plain --push .
 
 push-images:
 	-docker push ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION}
