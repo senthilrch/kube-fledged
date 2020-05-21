@@ -277,20 +277,25 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 `--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. default "15m"
 
-`--docker-client-image:` The image name of the docker client. the docker client is used when deleting images during purging the cache".
+`--docker-client-image:` The image name of the docker client. The docker client is used when deleting images during purging the cache".
 
-`--image-pull-policy:` Image pull policy for pulling images into the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Default value for Images with ':latest' tag is 'Always'
+`--image-pull-policy:` Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled.
 
 `--stderrthreshold:` Log level. set the value of this flag to INFO
 
 ## Supported Platforms
 
 - linux/amd64
+- linux/arm
+- linux/arm64
 
 
 ## Built With
 
 * [kubernetes/sample-controller](https://github.com/kubernetes/sample-controller) - Building our own kubernetes-style controller using CRD.
+* [kubernetes-sigs/kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) - SDK for building Kubernetes APIs using CRDs
+* [kubernetes-sigs/cri-tools](https://github.com/kubernetes-sigs/cri-tools) - CLI and validation tools for Kubelet Container Runtime Interface (CRI).
+* [docker/buildx](https://github.com/docker/buildx) - Docker CLI plugin for extended build capabilities with BuildKit 
 * [Go Modules](https://golang.org/doc/go1.11#modules) - Go Modules for Dependency Management
 * [Make](https://www.gnu.org/software/make/) - GNU Make
 
