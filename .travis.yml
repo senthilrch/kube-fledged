@@ -31,6 +31,9 @@ jobs:
     #    - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
     - stage: release
       if: type = pull_request
-      script:
-        - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PSWD}
-        - travis_wait make GIT_BRANCH=${TRAVIS_BRANCH} release
+      script: docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PSWD}
+      script: make install-buildx
+    - script: make GIT_BRANCH=${TRAVIS_BRANCH} fledged-image
+    - script: make GIT_BRANCH=${TRAVIS_BRANCH} client-image
+    - script: make GIT_BRANCH=${TRAVIS_BRANCH} operator-image
+
