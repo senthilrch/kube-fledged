@@ -7,7 +7,7 @@ kubefledgedNameSpace: kube-fledged
 image:
   fledgedRepository: docker.io/senthilrch/fledged
   dockerClientRepository: docker.io/senthilrch/fledged-docker-client
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
 command: ["/opt/bin/fledged"]
 args:
   logLevel: INFO
