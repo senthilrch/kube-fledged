@@ -17,30 +17,24 @@ install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
   - go get -u golang.org/x/lint/golint
+stages:
+  - build_and_test
+  - name: release
+    if: type = pull_request
 jobs:
   include:
-    #- stage: build_and_test
-    #  script:
-    #    - hack/verify-codegen.sh
-    #    - hack/verify-boilerplate.sh
-    #    - hack/verify-gofmt.sh
-    #    - hack/verify-golint.sh
-    #    - hack/verify-govet.sh
-    #    - make fledged-amd64
-    #    - make test
-    #    - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+    - stage: build_and_test
+      script:
+        - hack/verify-codegen.sh
+        - hack/verify-boilerplate.sh
+        - hack/verify-gofmt.sh
+        - hack/verify-golint.sh
+        - hack/verify-govet.sh
+        - make fledged-amd64
+        - make test
+        - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
     - stage: release
-      if: type = pull_request
-    - script:
+      script:
         - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PSWD}
-        - make install-buildx
-        - make GIT_BRANCH=${TRAVIS_BRANCH} fledged-image
-    - script:
-        - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PSWD}
-        - make install-buildx
-        - make GIT_BRANCH=${TRAVIS_BRANCH} client-image
-    - script:
-        - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PSWD}
-        - make install-buildx
-        - make GIT_BRANCH=${TRAVIS_BRANCH} operator-image
+        - travis_wait 60 make GIT_BRANCH=${TRAVIS_BRANCH} release 
 
