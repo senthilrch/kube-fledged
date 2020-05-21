@@ -164,7 +164,7 @@ deploy-using-operator:
 	# Deploy kube-fledged to a separate namespace called "kube-fledged"
 	sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
 	sed -i "s|KUBEFLEDGED_NAMESPACE|kube-fledged|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
-	kubectl create namespace kube-fledged
+	-kubectl create namespace kube-fledged
 	kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
 
 update:
