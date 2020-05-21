@@ -32,4 +32,4 @@ jobs:
     - stage: release
       if: type = pull_request
       script:
-        - make GIT_BRANCH=${TRAVIS_BRANCH} release
+        - travis_wait make GIT_BRANCH=${TRAVIS_BRANCH} release
