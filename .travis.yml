@@ -5,12 +5,18 @@ install:
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
   - go get -u golang.org/x/lint/golint
-script:
-  - hack/verify-codegen.sh
-  - hack/verify-boilerplate.sh
-  - hack/verify-gofmt.sh
-  - hack/verify-golint.sh
-  - hack/verify-govet.sh
-  - make fledged-amd64
-  - make test
-  - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+jobs:
+  include:
+    - stage: push
+      script:
+        - hack/verify-codegen.sh
+          #- hack/verify-boilerplate.sh
+          #- hack/verify-gofmt.sh
+          #- hack/verify-golint.sh
+          #- hack/verify-govet.sh
+          #- make fledged-amd64
+          #- make test
+          #- $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
+    - stage: pull_request
+      script:
+        - make test
