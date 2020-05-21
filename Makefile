@@ -129,7 +129,7 @@ push-images:
 	-docker push ${FLEDGED_DOCKER_CLIENT_IMAGE_REPO}:${RELEASE_VERSION}
 	-docker push ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION}
 
-release: fledged-image client-image operator-image
+release: install-buildx fledged-image client-image operator-image
 
 install-buildx:
 	docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -142,13 +142,30 @@ test:
 	-rm -f coverage.out
 	bash hack/run-unit-tests.sh
 
-deploy:
+deploy-using-yaml:
 	kubectl apply -f deploy/kubefledged-crd.yaml && \
 	kubectl apply -f deploy/kubefledged-namespace.yaml && \
 	kubectl apply -f deploy/kubefledged-serviceaccount.yaml && \
 	kubectl apply -f deploy/kubefledged-clusterrole.yaml && \
 	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml && \
 	kubectl apply -f deploy/kubefledged-deployment.yaml
+
+deploy-using-operator:
+	# Deploy the operator to a separate namespace called "operators"
+	sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/service_account.yaml
+	sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
+	sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/operator.yaml
+	-kubectl create namespace operators
+	kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_kubefledgeds_crd.yaml
+	kubectl create -f deploy/kubefledged-operator/deploy/service_account.yaml
+	kubectl create -f deploy/kubefledged-operator/deploy/clusterrole.yaml
+	kubectl create -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
+	kubectl create -f deploy/kubefledged-operator/deploy/operator.yaml
+	# Deploy kube-fledged to a separate namespace called "kube-fledged"
+	sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	sed -i "s|KUBEFLEDGED_NAMESPACE|kube-fledged|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	kubectl create namespace kube-fledged
+	kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
 
 update:
 	kubectl scale deployment kubefledged --replicas=0 -n kube-fledged && sleep 1 && \
