@@ -5,8 +5,11 @@ go:
 services:
   - docker
 env:
+  # Enable docker buildx plugin
   - DOCKER_CLI_EXPERIMENTAL=enabled
 before_install:
+  # Install latest stable version of docker-engine as described in docker documentation:-
+  # https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
   - sudo apt-get remove docker docker-engine docker.io containerd runc
   - sudo apt-get update
   - sudo apt-get install apt-transport-https ca-certificates curl gnupg-agent software-properties-common -y
@@ -14,16 +17,22 @@ before_install:
   - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
   - sudo apt-get install docker-ce docker-ce-cli containerd.io -y
 install:
+  # Install dependencies required for unit test coverage
   - go get golang.org/x/tools/cmd/cover
   - go get github.com/mattn/goveralls
   - go get -u golang.org/x/lint/golint
 stages:
-  - build_and_test
-  - name: release
+  # This stage builds fledged controller image, performs tests in "hack" and runs unit tests with coverage      
+  - build_amd64
+  # This stage builds multi-arch images for fledged controller, fledged client and operator (only for PR builds)
+  - name: build_multiarch
     if: type = pull_request
+  # This stage builds all three multi-arch images and pushes them to docker hub (only for release tags)  
+  - name: build_release
+    if: tag IS present
 jobs:
   include:
-    - stage: build_and_test
+    - stage: build_amd64
       script:
         - hack/verify-codegen.sh
         - hack/verify-boilerplate.sh
@@ -33,8 +42,13 @@ jobs:
         - make fledged-amd64
         - make test
         - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
-    - stage: release
+    - stage: build_multiarch
+      script:
+        # BUILD_OUTPUT is left empty to indicate buildx to leave the built images in it's cache
+        - travis_wait 60 make GIT_BRANCH=${TRAVIS_BRANCH} BUILD_OUTPUT= release 
+    - stage: build_release
       script:
         - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PSWD}
-        - travis_wait 60 make GIT_BRANCH=${TRAVIS_BRANCH} release 
+        # BUILD_OUTPUT=--push requests buildx to push the built images to docker hub
+        - travis_wait 60 make GIT_BRANCH=${TRAVIS_BRANCH} BUILD_OUTPUT=--push release 
 
