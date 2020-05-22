@@ -14,13 +14,13 @@ spec:
         app: kubefledged
     spec:
       containers:
-      - image: senthilrch/fledged:v0.6.0
+      - image: senthilrch/fledged:v0.7.0
         command: ["/opt/bin/fledged"]
         args:
         - "--stderrthreshold=INFO"
         - "--image-pull-deadline-duration=5m"
         - "--image-cache-refresh-frequency=15m"
-        - "--docker-client-image=senthilrch/fledged-docker-client:v0.6.0"
+        - "--docker-client-image=senthilrch/fledged-docker-client:v0.7.0"
         - "--image-pull-policy=IfNotPresent"
         imagePullPolicy: Always
         name: fledged

@@ -18,6 +18,7 @@ package images
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/apiserver/pkg/storage/names"
 	kubeinformers "k8s.io/client-go/informers"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -39,6 +41,7 @@ import (
 )
 
 const controllerAgentName = "fledged"
+const fakeJobPrefix = "fakejob-"
 
 const (
 	// ImageWorkResultStatusSucceeded means image pull/delete succeeded
@@ -47,8 +50,8 @@ const (
 	ImageWorkResultStatusFailed = "failed"
 	// ImageWorkResultStatusJobCreated means job for image pull/delete created
 	ImageWorkResultStatusJobCreated = "jobcreated"
-	//ImageWorkResultReasonImagePullFailed  = "imagepullfailed"
-	//ImageWorkResultMessageImagePullFailed = "failed to pull image to node. for details, please check events of pod"
+	//ImageWorkResultStatusAlreadyPulled  means image is already present in the node
+	ImageWorkResultStatusAlreadyPulled = "alreadypulled"
 )
 
 // ImageManager provides the functionalities for pulling and deleting images
@@ -70,7 +73,7 @@ type ImageManager struct {
 // ImageWorkRequest has image name, node name, work type and imagecache
 type ImageWorkRequest struct {
 	Image                   string
-	Node                    string
+	Node                    *corev1.Node
 	ContainerRuntimeVersion string
 	WorkType                WorkType
 	Imagecache              *fledgedv1alpha1.ImageCache
@@ -168,9 +171,9 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 	if pod.Status.Phase == corev1.PodSucceeded {
 		iwres.Status = ImageWorkResultStatusSucceeded
 		if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
-			glog.Infof("Job %s succeeded (delete:- %s --> %s, runtime: %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node, iwres.ImageWorkRequest.ContainerRuntimeVersion)
+			glog.Infof("Job %s succeeded (delete:- %s --> %s, runtime: %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"], iwres.ImageWorkRequest.ContainerRuntimeVersion)
 		} else {
-			glog.Infof("Job %s succeeded (pull:- %s --> %s, runtime: %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node, iwres.ImageWorkRequest.ContainerRuntimeVersion)
+			glog.Infof("Job %s succeeded (pull:- %s --> %s, runtime: %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"], iwres.ImageWorkRequest.ContainerRuntimeVersion)
 		}
 	}
 	if pod.Status.Phase == corev1.PodFailed {
@@ -180,9 +183,9 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 			iwres.Message = pod.Status.ContainerStatuses[0].State.Terminated.Message
 		}
 		if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
-			glog.Infof("Job %s failed (delete: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+			glog.Infof("Job %s failed (delete: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 		} else {
-			glog.Infof("Job %s failed (pull: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+			glog.Infof("Job %s failed (pull: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 		}
 	}
 	m.lock.Lock()
@@ -213,9 +216,9 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 				}
 				iwres.Status = ImageWorkResultStatusFailed
 				if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
-					glog.Infof("Job %s expired (delete: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+					glog.Infof("Job %s expired (delete: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 				} else {
-					glog.Infof("Job %s expired (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node)
+					glog.Infof("Job %s expired (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 				}
 				if pods[0].Status.Phase == corev1.PodPending {
 					if len(pods[0].Status.ContainerStatuses) == 1 {
@@ -298,12 +301,14 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 			imageCache = iwres.ImageWorkRequest.Imagecache
 			delete(m.imageworkstatus, job)
 			// delete jobs
-			if err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).
-				Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
-				glog.Errorf("Error deleting job %s: %v", job, err)
-				m.lock.Unlock()
-				errCh <- err
-				return
+			if !strings.HasPrefix(job, fakeJobPrefix) {
+				if err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).
+					Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
+					glog.Errorf("Error deleting job %s: %v", job, err)
+					m.lock.Unlock()
+					errCh <- err
+					return
+				}
 			}
 		}
 	}
@@ -389,7 +394,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 			return nil
 		}
 
-		if iwr.Image == "" && iwr.Node == "" {
+		if iwr.Image == "" && iwr.Node == nil {
 			m.imageworkqueue.Forget(obj)
 			errCh := make(chan error)
 			go m.updateImageCacheStatus(iwr.Imagecache.Name, errCh)
@@ -399,23 +404,40 @@ func (m *ImageManager) processNextWorkItem() bool {
 		// ImageCache resource to be synced.
 		var job *batchv1.Job
 		var err error
+		var pull, delete bool
 		if iwr.WorkType == ImageCachePurge {
+			delete = true
 			job, err = m.deleteImage(iwr)
 			if err != nil {
-				return fmt.Errorf("error deleting image '%s' from node '%s': %s", iwr.Image, iwr.Node, err.Error())
+				return fmt.Errorf("error deleting image '%s' from node '%s': %s", iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], err.Error())
 			}
-			glog.Infof("Job %s created (delete:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion)
+			glog.Infof("Job %s created (delete:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], iwr.ContainerRuntimeVersion)
 		} else {
-			job, err = m.pullImage(iwr)
+			pull = true
+			pull, err = checkIfImageNeedsToBePulled(m.imagePullPolicy, iwr.Image, iwr.Node)
 			if err != nil {
-				return fmt.Errorf("error pulling image '%s' to node '%s': %s", iwr.Image, iwr.Node, err.Error())
+				glog.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
+				return fmt.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
 			}
-			glog.Infof("Job %s created (pull:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion)
+			if pull {
+				job, err = m.pullImage(iwr)
+				if err != nil {
+					return fmt.Errorf("error pulling image '%s' to node '%s': %s", iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], err.Error())
+				}
+				glog.Infof("Job %s created (pull:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], iwr.ContainerRuntimeVersion)
+			} else {
+				glog.Infof("Job not created (image-already-present:- %s --> %s, runtime: %s)", iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], iwr.ContainerRuntimeVersion)
+			}
 		}
 		// Finally, if no error occurs we Forget this item so it does not
 		// get queued again until another change happens.
 		m.lock.Lock()
-		m.imageworkstatus[job.Name] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusJobCreated}
+		if pull || delete {
+			m.imageworkstatus[job.Name] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusJobCreated}
+		} else {
+			// generate a random fake job name
+			m.imageworkstatus[names.SimpleNameGenerator.GenerateName(fakeJobPrefix)] = ImageWorkResult{ImageWorkRequest: iwr, Status: ImageWorkResultStatusAlreadyPulled}
+		}
 		m.lock.Unlock()
 		m.imageworkqueue.Forget(obj)
 		return nil

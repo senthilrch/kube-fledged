@@ -42,6 +42,12 @@ import (
 
 const fledgedNameSpace = "kube-fledged"
 
+var node = corev1.Node{
+	ObjectMeta: metav1.ObjectMeta{
+		Labels: map[string]string{"kubernetes.io/hostname": "bar"},
+	},
+}
+
 // noResyncPeriodFunc returns 0 for resyncPeriod in case resyncing is not needed.
 func noResyncPeriodFunc() time.Duration {
 	return 0
@@ -443,7 +449,7 @@ func TestSyncHandler(t *testing.T) {
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:   "fakenode",
-					Labels: map[string]string{"foo": "bar"},
+					Labels: map[string]string{"kubernetes.io/hostname": "bar"},
 				},
 			},
 		},
@@ -599,6 +605,7 @@ func TestSyncHandler(t *testing.T) {
 						Status: images.ImageWorkResultStatusSucceeded,
 						ImageWorkRequest: images.ImageWorkRequest{
 							WorkType: images.ImageCacheRefresh,
+							Node:     &node,
 						},
 					},
 				},
@@ -724,6 +731,7 @@ func TestSyncHandler(t *testing.T) {
 						Status: images.ImageWorkResultStatusSucceeded,
 						ImageWorkRequest: images.ImageWorkRequest{
 							WorkType: images.ImageCacheCreate,
+							Node:     &node,
 						},
 					},
 				},
@@ -763,6 +771,7 @@ func TestSyncHandler(t *testing.T) {
 						Status: images.ImageWorkResultStatusSucceeded,
 						ImageWorkRequest: images.ImageWorkRequest{
 							WorkType: images.ImageCachePurge,
+							Node:     &node,
 						},
 					},
 				},
@@ -785,6 +794,7 @@ func TestSyncHandler(t *testing.T) {
 						Status: images.ImageWorkResultStatusFailed,
 						ImageWorkRequest: images.ImageWorkRequest{
 							WorkType: images.ImageCacheCreate,
+							Node:     &node,
 						},
 					},
 				},
@@ -807,6 +817,7 @@ func TestSyncHandler(t *testing.T) {
 						Status: images.ImageWorkResultStatusFailed,
 						ImageWorkRequest: images.ImageWorkRequest{
 							WorkType: images.ImageCachePurge,
+							Node:     &node,
 						},
 					},
 				},
@@ -1084,6 +1095,7 @@ func TestProcessNextWorkItem(t *testing.T) {
 						Status: images.ImageWorkResultStatusFailed,
 						ImageWorkRequest: images.ImageWorkRequest{
 							WorkType: images.ImageCachePurge,
+							Node:     &node,
 						},
 					},
 				},

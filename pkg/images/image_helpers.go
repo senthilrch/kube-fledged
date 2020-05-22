@@ -17,6 +17,7 @@ limitations under the License.
 package images
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -30,16 +31,17 @@ import (
 )
 
 // newImagePullJob constructs a job manifest for pulling an image to a node
-func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string, imagePullPolicy string) (*batchv1.Job, error) {
+func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, node *corev1.Node, imagePullPolicy string) (*batchv1.Job, error) {
 	var pullPolicy corev1.PullPolicy = corev1.PullIfNotPresent
-
+	hostname := node.Labels["kubernetes.io/hostname"]
 	if imagecache == nil {
 		glog.Error("imagecache pointer is nil")
 		return nil, fmt.Errorf("imagecache pointer is nil")
 	}
 	if imagePullPolicy == string(corev1.PullAlways) {
 		pullPolicy = corev1.PullAlways
-	} else if imagePullPolicy == "" {
+	} else if imagePullPolicy == string(corev1.PullIfNotPresent) {
+		pullPolicy = corev1.PullIfNotPresent
 		if latestimage := strings.Contains(image, ":latest") || !strings.Contains(image, ":"); latestimage {
 			pullPolicy = corev1.PullAlways
 		}
@@ -130,7 +132,8 @@ func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostn
 }
 
 // newImageDeleteJob constructs a job manifest to delete an image from a node
-func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, hostname string, containerRuntimeVersion string, dockerclientimage string) (*batchv1.Job, error) {
+func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, node *corev1.Node, containerRuntimeVersion string, dockerclientimage string) (*batchv1.Job, error) {
+	hostname := node.Labels["kubernetes.io/hostname"]
 	if imagecache == nil {
 		glog.Error("imagecache pointer is nil")
 		return nil, fmt.Errorf("imagecache pointer is nil")
@@ -222,4 +225,31 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, hos
 		job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = "/var/run/crio/crio.sock"
 	}
 	return job, nil
+}
+
+func checkIfImageNeedsToBePulled(imagePullPolicy string, image string, node *corev1.Node) (bool, error) {
+	if imagePullPolicy == string(corev1.PullIfNotPresent) {
+		if !strings.Contains(image, ":") && !strings.Contains(image, "@sha") {
+			return true, nil
+		}
+		imageAlreadyPresent, err := imageAlreadyPresentInNode(image, node)
+		if err != nil {
+			return false, err
+		}
+		if imageAlreadyPresent {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func imageAlreadyPresentInNode(image string, node *corev1.Node) (bool, error) {
+	imagesByteSlice, err := json.Marshal(node.Status.Images)
+	if err != nil {
+		return false, err
+	}
+	if strings.Contains(string(imagesByteSlice), image) {
+		return true, nil
+	}
+	return false, nil
 }

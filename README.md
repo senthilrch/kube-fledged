@@ -93,27 +93,10 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ cd $HOME/src/github.com/senthilrch/kube-fledged
   ```
 
-- Deploy the operator to a separate namespace called "operators"
+- Deploy the operator to a separate namespace called "operators" and _kube-fledged_ to a separate namespace called "kube-fledged"
 
   ```
-  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/service_account.yaml
-  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
-  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/operator.yaml
-  $ kubectl create namespace operators
-  $ kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_kubefledgeds_crd.yaml
-  $ kubectl create -f deploy/kubefledged-operator/deploy/service_account.yaml
-  $ kubectl create -f deploy/kubefledged-operator/deploy/clusterrole.yaml
-  $ kubectl create -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
-  $ kubectl create -f deploy/kubefledged-operator/deploy/operator.yaml
-  ```
-
-- Deploy _kube-fledged_ to a separate namespace called "kube-fledged"
-
-  ```
-  $ sed -i "s|OPERATOR_NAMESPACE|operators|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
-  $ sed -i "s|KUBEFLEDGED_NAMESPACE|kube-fledged|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
-  $ kubectl create namespace kube-fledged
-  $ kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+  $ make deploy-using-operator
   ```
 
 - Verify if _kube-fledged_ deployed successfully
@@ -259,7 +242,8 @@ $ kubectl delete imagecaches imagecache1 -n kube-fledged
 Run the following command to remove _kube-fledged_ from the cluster. 
 
 ```
-$ make remove
+$ make remove (if you deployed using YAML manifests)
+$ make remove-all (if you deployed using Helm Operator)
 ```
 
 ## How it works
@@ -277,20 +261,26 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 `--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. default "15m"
 
-`--docker-client-image:` The image name of the docker client. the docker client is used when deleting images during purging the cache".
+`--docker-client-image:` The image name of the docker client. The docker client is used when deleting images during purging the cache".
 
-`--image-pull-policy:` Image pull policy for pulling images into the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Default value for Images with ':latest' tag is 'Always'
+`--image-pull-policy:` Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled.
 
 `--stderrthreshold:` Log level. set the value of this flag to INFO
 
 ## Supported Platforms
 
 - linux/amd64
+- linux/arm
+- linux/arm64
 
 
 ## Built With
 
 * [kubernetes/sample-controller](https://github.com/kubernetes/sample-controller) - Building our own kubernetes-style controller using CRD.
+* [kubebuilder](https://github.com/kubernetes-sigs/kubebuilder) - SDK for building Kubernetes APIs using CRDs
+* [operator-sdk](https://github.com/operator-framework/operator-sdk) - SDK for building Kubernetes applications
+* [cri-tools](https://github.com/kubernetes-sigs/cri-tools) - CLI and validation tools for Kubelet Container Runtime Interface (CRI).
+* [buildx](https://github.com/docker/buildx) - Docker CLI plugin for extended build capabilities with BuildKit 
 * [Go Modules](https://golang.org/doc/go1.11#modules) - Go Modules for Dependency Management
 * [Make](https://www.gnu.org/software/make/) - GNU Make
 

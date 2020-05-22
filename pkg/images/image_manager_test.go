@@ -38,10 +38,16 @@ import (
 
 const fledgedNameSpace = "kube-fledged"
 
-func newTestImageManager(kubeclientset kubernetes.Interface) (*ImageManager, coreinformers.PodInformer) {
+var node = corev1.Node{
+	ObjectMeta: metav1.ObjectMeta{
+		Labels: map[string]string{"kubernetes.io/hostname": "bar"},
+	},
+}
+
+func newTestImageManager(kubeclientset kubernetes.Interface, imagepullpolicy string) (*ImageManager, coreinformers.PodInformer) {
 	imagePullDeadlineDuration := time.Millisecond * 10
 	dockerClientImage := "senthilrch/fledged-docker-client:latest"
-	imagePullPolicy := "IfNotPresent"
+	imagePullPolicy := imagepullpolicy
 	imagecacheworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches")
 	imageworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus")
 
@@ -79,7 +85,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "pullimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCacheCreate,
 				Imagecache: &defaultImageCache,
 			},
@@ -91,7 +97,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "pullimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCacheCreate,
 				Imagecache: nil,
 			},
@@ -103,7 +109,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "pullimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCacheCreate,
 				Imagecache: &defaultImageCache,
 			},
@@ -115,7 +121,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCachePurge,
 				Imagecache: &defaultImageCache,
 			},
@@ -127,7 +133,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCachePurge,
 				Imagecache: nil,
 			},
@@ -139,7 +145,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:      "foo",
-				Node:       "bar",
+				Node:       &node,
 				WorkType:   ImageCachePurge,
 				Imagecache: &defaultImageCache,
 			},
@@ -151,7 +157,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:                   "foo",
-				Node:                    "bar",
+				Node:                    &node,
 				ContainerRuntimeVersion: "containerd://1.0.0",
 				WorkType:                ImageCachePurge,
 				Imagecache:              &defaultImageCache,
@@ -164,7 +170,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:                   "foo",
-				Node:                    "bar",
+				Node:                    &node,
 				ContainerRuntimeVersion: "cri-o://1.0.0",
 				WorkType:                ImageCachePurge,
 				Imagecache:              &defaultImageCache,
@@ -177,7 +183,7 @@ func TestPullDeleteImage(t *testing.T) {
 			action: "deleteimage",
 			iwr: ImageWorkRequest{
 				Image:                   "foo",
-				Node:                    "bar",
+				Node:                    &node,
 				ContainerRuntimeVersion: "docker://1.0.0",
 				WorkType:                ImageCachePurge,
 				Imagecache:              &defaultImageCache,
@@ -198,7 +204,7 @@ func TestPullDeleteImage(t *testing.T) {
 			})
 		}
 
-		imagemanager, _ := newTestImageManager(fakekubeclientset)
+		imagemanager, _ := newTestImageManager(fakekubeclientset, "IfNotPresent")
 		var err error
 		if test.action == "pullimage" {
 			_, err = imagemanager.pullImage(test.iwr)
@@ -296,11 +302,12 @@ func TestHandlePodStatusChange(t *testing.T) {
 	}
 	for _, test := range tests {
 		fakekubeclientset := &fakeclientset.Clientset{}
-		imagemanager, _ := newTestImageManager(fakekubeclientset)
+		imagemanager, _ := newTestImageManager(fakekubeclientset, "IfNotPresent")
 		imagemanager.imageworkstatus[test.pod.Labels["job-name"]] = ImageWorkResult{
 			Status: ImageWorkResultStatusJobCreated,
 			ImageWorkRequest: ImageWorkRequest{
 				WorkType: test.worktype,
+				Node:     &node,
 			},
 		}
 		imagemanager.handlePodStatusChange(&test.pod)
@@ -339,6 +346,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusSucceeded,
 				},
@@ -356,6 +364,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -393,6 +402,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -422,6 +432,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -460,6 +471,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -498,6 +510,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -523,6 +536,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusJobCreated,
 				},
@@ -556,6 +570,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 								Name: imageCacheName,
 							},
 						},
+						Node: &node,
 					},
 					Status: ImageWorkResultStatusSucceeded,
 				},
@@ -599,7 +614,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 				return true, nil, apierrors.NewInternalError(fmt.Errorf("fake error"))
 			})
 		}
-		imagemanager, podInformer := newTestImageManager(fakekubeclientset)
+		imagemanager, podInformer := newTestImageManager(fakekubeclientset, "IfNotPresent")
 		for _, pod := range test.pods {
 			if !reflect.DeepEqual(pod, corev1.Pod{}) {
 				podInformer.Informer().GetIndexer().Add(&pod)
@@ -639,11 +654,18 @@ func TestProcessNextWorkItem(t *testing.T) {
 			},
 		},
 	}
+	testnode := node
+	testnode.Status.Images = []corev1.ContainerImage{
+		{
+			Names: []string{"foo:v1"},
+		},
+	}
 	tests := []struct {
 		name                string
 		iwr                 ImageWorkRequest
 		imageworkstatus     map[string]ImageWorkResult
 		pods                []corev1.Pod
+		imagepullpolicy     string
 		expectError         bool
 		expectedErrorString string
 	}{
@@ -651,7 +673,7 @@ func TestProcessNextWorkItem(t *testing.T) {
 			name: "#1: Create - Successful",
 			iwr: ImageWorkRequest{
 				Image:      "fakeimage",
-				Node:       "fakenode",
+				Node:       &node,
 				WorkType:   ImageCacheCreate,
 				Imagecache: &defaultImageCache,
 			},
@@ -688,13 +710,14 @@ func TestProcessNextWorkItem(t *testing.T) {
 					},
 				},
 			},
-			expectError: false,
+			imagepullpolicy: "IfNotPresent",
+			expectError:     false,
 		},
 		{
 			name: "#2: Purge - Successful",
 			iwr: ImageWorkRequest{
 				Image:      "fakeimage",
-				Node:       "fakenode",
+				Node:       &node,
 				WorkType:   ImageCachePurge,
 				Imagecache: &defaultImageCache,
 			},
@@ -779,10 +802,98 @@ func TestProcessNextWorkItem(t *testing.T) {
 			expectError:         false,
 			expectedErrorString: "Unexpected type in workqueue",
 		},
+		{
+			name: "#5: Create - Successful (Image not present in Node)",
+			iwr: ImageWorkRequest{
+				Image:      "foo:v1",
+				Node:       &node,
+				WorkType:   ImageCacheCreate,
+				Imagecache: &defaultImageCache,
+			},
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: defaultImageCache.Name,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusSucceeded,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								State: corev1.ContainerState{
+									Terminated: &corev1.ContainerStateTerminated{
+										Reason:  "fakereason",
+										Message: "fakemessage",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			imagepullpolicy: "IfNotPresent",
+			expectError:     false,
+		},
+		{
+			name: "#6: Create - Successful (Image already present in Node)",
+			iwr: ImageWorkRequest{
+				Image:      "foo:v1",
+				Node:       &testnode,
+				WorkType:   ImageCacheCreate,
+				Imagecache: &defaultImageCache,
+			},
+			imageworkstatus: map[string]ImageWorkResult{
+				"fakejob": {
+					ImageWorkRequest: ImageWorkRequest{
+						Imagecache: &fledgedv1alpha1.ImageCache{
+							ObjectMeta: metav1.ObjectMeta{
+								Name: defaultImageCache.Name,
+							},
+						},
+					},
+					Status: ImageWorkResultStatusSucceeded,
+				},
+			},
+			pods: []corev1.Pod{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Namespace: fledgedNameSpace,
+						Labels:    map[string]string{"job-name": "fakejob"},
+					},
+					Status: corev1.PodStatus{
+						Phase: corev1.PodPending,
+						ContainerStatuses: []corev1.ContainerStatus{
+							{
+								State: corev1.ContainerState{
+									Terminated: &corev1.ContainerStateTerminated{
+										Reason:  "fakereason",
+										Message: "fakemessage",
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			imagepullpolicy: "IfNotPresent",
+			expectError:     false,
+		},
 	}
 	for _, test := range tests {
 		fakekubeclientset := &fakeclientset.Clientset{}
-		imagemanager, podInformer := newTestImageManager(fakekubeclientset)
+		imagemanager, podInformer := newTestImageManager(fakekubeclientset, test.imagepullpolicy)
 		for _, pod := range test.pods {
 			if !reflect.DeepEqual(pod, corev1.Pod{}) {
 				podInformer.Informer().GetIndexer().Add(&pod)

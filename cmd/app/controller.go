@@ -194,6 +194,7 @@ func (c *Controller) danglingImageCaches() error {
 	}
 	for _, imagecache := range imagecachelist.Items {
 		if imagecache.Status.Status == fledgedv1alpha1.ImageCacheActionStatusProcessing {
+			status.StartTime = imagecache.Status.StartTime
 			err := c.updateImageCacheStatus(&imagecache, status)
 			if err != nil {
 				glog.Errorf("Error updating ImageCache(%s) status to '%s': %v", imagecache.Name, fledgedv1alpha1.ImageCacheActionStatusAborted, err)
@@ -567,7 +568,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 				for m := range i.Images {
 					ipr := images.ImageWorkRequest{
 						Image:                   i.Images[m],
-						Node:                    n.Labels["kubernetes.io/hostname"],
+						Node:                    n,
 						ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
 						WorkType:                wqKey.WorkType,
 						Imagecache:              imageCache,
@@ -586,7 +587,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 						if !matched {
 							ipr := images.ImageWorkRequest{
 								Image:                   oldimage,
-								Node:                    n.Labels["kubernetes.io/hostname"],
+								Node:                    n,
 								ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
 								WorkType:                images.ImageCachePurge,
 								Imagecache:              imageCache,
@@ -603,7 +604,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		c.imageworkqueue.AddRateLimited(images.ImageWorkRequest{WorkType: wqKey.WorkType, Imagecache: imageCache})
 
 	case images.ImageCacheStatusUpdate:
-		glog.Infof("wqKey.Status = %+v", wqKey.Status)
+		glog.V(4).Infof("wqKey.Status = %+v", wqKey.Status)
 		// Finally, we update the status block of the ImageCache resource to reflect the
 		// current state of the world
 		// Get the ImageCache resource with this namespace/name
@@ -621,7 +622,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 
 		failures := false
 		for _, v := range *wqKey.Status {
-			if v.Status == images.ImageWorkResultStatusSucceeded && !failures {
+			if (v.Status == images.ImageWorkResultStatusSucceeded || v.Status == images.ImageWorkResultStatusAlreadyPulled) && !failures {
 				status.Status = fledgedv1alpha1.ImageCacheActionStatusSucceeded
 				if v.ImageWorkRequest.WorkType == images.ImageCachePurge {
 					status.Message = fledgedv1alpha1.ImageCacheMessageImagesDeletedSuccessfully
@@ -641,7 +642,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			if v.Status == images.ImageWorkResultStatusFailed {
 				status.Failures[v.ImageWorkRequest.Image] = append(
 					status.Failures[v.ImageWorkRequest.Image], fledgedv1alpha1.NodeReasonMessage{
-						Node:    v.ImageWorkRequest.Node,
+						Node:    v.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"],
 						Reason:  v.Reason,
 						Message: v.Message,
 					})
