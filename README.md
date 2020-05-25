@@ -35,6 +35,7 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
   - [Remove kube-fledged](#remove-kube-fledged)
 - [How it works](#how-it-works)
 - [Configuration Flags](#configuration-flags)
+- [Supported Container Runtimes](#supported-container-runtimes)
 - [Supported Platforms](#supported-platforms)
 - [Built With](#built-with)
 - [Contributing](#contributing)
