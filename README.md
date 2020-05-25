@@ -14,6 +14,7 @@ of images and onto which worker nodes those images should be cached (i.e. pre-pu
 _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable parameters to customize the functioning as per one's needs. 
 
 ## Table of contents
+<!-- https://github.com/thlorenz/doctoc -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -52,8 +53,7 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 
 - A functioning kubernetes cluster (v1.9 or above). It could be a simple development cluster like minikube or a large production cluster.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- Supported container runtimes: docker, containerd, cri-o
-- git, make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
+- git, make, go, docker engine (>= 19.03) and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
 
 ## Quick Install using YAML manifests
 
@@ -70,7 +70,7 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
 - Deploy _kube-fledged_ to the cluster
 
   ```
-  $ make deploy
+  $ make deploy-using-yaml
   ```
 
 - Verify if _kube-fledged_ deployed successfully
@@ -133,9 +133,9 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
   ```
   $ export RELEASE_VERSION=<your_tag>
   $ export FLEDGED_IMAGE_REPO=<your_docker_hub_username>/fledged
-  $ export FLEDGED_DOCKER_CLIENT_IMAGE_REPO=<your_docker_hub_username>/fledged-docker-client
   $ docker login -u <username> -p <password>
-  $ make fledged-image && make client-image && make push-images
+  $ export DOCKER_CLI_EXPERIMENTAL=enabled
+  $ sudo make install-buildx && sudo make fledged-image
   ```
 
 ### Deploy
@@ -266,6 +266,12 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 `--image-pull-policy:` Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled.
 
 `--stderrthreshold:` Log level. set the value of this flag to INFO
+
+## Supported Container Runtimes
+
+- docker
+- containerd
+- cri-o
 
 ## Supported Platforms
 
