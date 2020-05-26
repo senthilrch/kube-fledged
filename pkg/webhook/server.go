@@ -76,10 +76,12 @@ const (
 	componentLabel                        = "app.kubernetes.io/component"
 	partOfLabel                           = "app.kubernetes.io/part-of"
 	managedByLabel                        = "app.kubernetes.io/managed-by"
-	NA                                    = "not_available"
+	// NA denotes Not applicable
+	NA = "not_available"
 )
 
-type WebhookServer struct {
+// Server denotes a webhook https server listening to validating and mutating webhooks from api-server
+type Server struct {
 	server *http.Server
 }
 
@@ -106,7 +108,7 @@ func CreateAndStartWebHookServer(stopCh <-chan struct{}, port int) error {
 		return err
 	}
 
-	whsvr := &WebhookServer{
+	whsvr := &Server{
 		server: &http.Server{
 			Addr:      fmt.Sprintf(":%v", port),
 			TLSConfig: &tls.Config{Certificates: []tls.Certificate{pair}},
@@ -130,7 +132,7 @@ func CreateAndStartWebHookServer(stopCh <-chan struct{}, port int) error {
 }
 
 // Serve method for webhook server
-func (whsvr *WebhookServer) serve(w http.ResponseWriter, r *http.Request) {
+func (whsvr *Server) serve(w http.ResponseWriter, r *http.Request) {
 	var body []byte
 	if r.Body != nil {
 		if data, err := ioutil.ReadAll(r.Body); err == nil {

@@ -28,7 +28,7 @@ import (
 )
 
 // main mutation process
-func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
+func (whsvr *Server) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	req := ar.Request
 	var (
 		availableLabels, availableAnnotations map[string]string
