@@ -3,16 +3,17 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: kubefledged
 webhooks:
-  - name: validate-image-cache
+  - name: validate-image-cache.fledged.k8s.io
     admissionReviewVersions: ["v1"]
     timeoutSeconds: 1
     failurePolicy: Fail
+    sideEffects: None
     clientConfig:
       service:
         namespace: kube-fledged
         name: kubefledged-webhook-server
         path: "/validate-image-cache"
-        port: 443
+        port: 3443
     rules:
       - operations: ["CREATE", "UPDATE"]
         apiGroups: ["fledged.k8s.io"]

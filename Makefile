@@ -172,12 +172,15 @@ test:
 
 deploy-using-yaml:
 	-kubectl apply -f deploy/kubefledged-namespace.yaml
+	bash deploy/create-cert-key-secret.sh --namespace kube-fledged --service kubefledged-webhook-server --secret kubefledged-webhook-server && \
 	kubectl apply -f deploy/kubefledged-crd.yaml && \
 	kubectl apply -f deploy/kubefledged-serviceaccount.yaml && \
 	kubectl apply -f deploy/kubefledged-clusterrole.yaml && \
 	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml && \
 	kubectl apply -f deploy/kubefledged-deployment-fledged-controller.yaml && \
-	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml
+	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml && \
+	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml && \
+	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
 
 deploy-using-operator:
 	# Deploy the operator to a separate namespace called "operators"
@@ -205,7 +208,8 @@ remove:
 	kubectl delete -f deploy/kubefledged-namespace.yaml && \
 	kubectl delete -f deploy/kubefledged-clusterrolebinding.yaml && \
 	kubectl delete -f deploy/kubefledged-clusterrole.yaml && \
-	kubectl delete -f deploy/kubefledged-crd.yaml
+	kubectl delete -f deploy/kubefledged-crd.yaml && \
+	kubectl delete -f deploy/kubefledged-validatingwebhook.yaml
 
 remove-all:
 	# Remove kube-fledged and the namespace "kube-fledged"

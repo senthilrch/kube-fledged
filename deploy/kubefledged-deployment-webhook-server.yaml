@@ -7,17 +7,16 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kubefledged
+      app: kubefledged-webhook-server
   template:
     metadata:
       labels:
-        app: kubefledged
+        app: kubefledged-webhook-server
     spec:
       containers:
       - image: senthilrch/fledged-webhook-server:v0.7.0
         command: ["/opt/bin/fledged-webhook-server"]
         args:
-        - "--stderrthreshold=INFO"
         - "--cert-file=/var/run/secrets/webhook-server/cert.pem"
         - "--key-file=/var/run/secrets/webhook-server/key.pem"
         - "--port=443"
