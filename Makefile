@@ -24,6 +24,7 @@ else
 endif
 
 GOARM=7
+DOCKER_CLI_EXPERIMENTAL=enabled
 
 ifndef FLEDGED_IMAGE_REPO
   FLEDGED_IMAGE_REPO=docker.io/senthilrch/fledged
