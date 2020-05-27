@@ -28,11 +28,10 @@ import (
 
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"github.com/senthilrch/kube-fledged/cmd/app"
+	"github.com/senthilrch/kube-fledged/cmd/fledged/app"
 	clientset "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
 	informers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions"
 	"github.com/senthilrch/kube-fledged/pkg/signals"
-	"github.com/senthilrch/kube-fledged/pkg/webhook"
 )
 
 var (
@@ -85,11 +84,6 @@ func main() {
 	if err = controller.Run(1, stopCh); err != nil {
 		glog.Fatalf("Error running controller: %s", err.Error())
 	}
-
-	if err := webhook.CreateAndStartWebHookServer(stopCh, webhookServerPort); err != nil {
-		glog.Fatalf("Error creating webhook server: %s", err.Error())
-	}
-
 }
 
 func init() {
@@ -100,5 +94,4 @@ func init() {
 	if fledgedNameSpace = os.Getenv("KUBEFLEDGED_NAMESPACE"); fledgedNameSpace == "" {
 		fledgedNameSpace = "kube-fledged"
 	}
-	flag.IntVar(&webhookServerPort, "webhook-server-port", 3443, "Webhook server port.")
 }
