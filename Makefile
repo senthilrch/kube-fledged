@@ -29,6 +29,10 @@ ifndef FLEDGED_IMAGE_REPO
   FLEDGED_IMAGE_REPO=docker.io/senthilrch/fledged
 endif
 
+ifndef WEBHOOK_SERVER_IMAGE_REPO
+  WEBHOOK_SERVER_IMAGE_REPO=docker.io/senthilrch/fledged-webhook-server
+endif
+
 ifndef FLEDGED_DOCKER_CLIENT_IMAGE_REPO
   FLEDGED_DOCKER_CLIENT_IMAGE_REPO=docker.io/senthilrch/fledged-docker-client
 endif
@@ -89,11 +93,16 @@ endif
 
 
 ### BUILD
-clean: clean-fledged clean-client clean-operator
+clean: clean-fledged clean-webhook-server clean-client clean-operator
 
 clean-fledged:
 	-rm -f build/fledged
 	-docker image rm ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION}
+	-docker image rm `docker image ls -f dangling=true -q`
+
+clean-webhook-server:
+	-rm -f build/webhook-server
+	-docker image rm ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION}
 	-docker image rm `docker image ls -f dangling=true -q`
 
 clean-client:
@@ -115,6 +124,11 @@ fledged-dev: fledged-amd64
 fledged-image: clean-fledged
 	cd build && docker buildx build --platform=${TARGET_PLATFORMS} -t ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION} \
 	-f Dockerfile.fledged ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} --build-arg GIT_BRANCH=${GIT_BRANCH} \
+	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
+
+webhook-server-image: clean-webhook-server
+	cd build && docker buildx build --platform=${TARGET_PLATFORMS} -t ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION} \
+	-f Dockerfile.webhook_server ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} --build-arg GIT_BRANCH=${GIT_BRANCH} \
 	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
 
 client-image: clean-client

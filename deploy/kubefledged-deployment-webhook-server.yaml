@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubefledged-webhook-server
+  namespace: kube-fledged
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubefledged
+  template:
+    metadata:
+      labels:
+        app: kubefledged
+    spec:
+      containers:
+      - image: senthilrch/fledged-webhook-server:v0.7.0
+        command: ["/opt/bin/fledged-webhook-server"]
+        args:
+        - "--stderrthreshold=INFO"
+        - "--cert-file=/var/run/secrets/webhook-server/cert.pem"
+        - "--key-file=/var/run/secrets/webhook-server/key.pem"
+        - "--port=443"
+        imagePullPolicy: Always
+        name: webhook-server
+        env:
+        - name: KUBEFLEDGED_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        volumeMounts:
+        - name: secret-volume
+          mountPath: "/var/run/secrets/webhook-server"
+          readOnly: true
+      volumes:
+      - name: secret-volume
+        secret:
+          secretName: kubefledged-webhook-server

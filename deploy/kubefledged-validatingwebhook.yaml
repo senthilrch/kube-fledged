@@ -10,7 +10,7 @@ webhooks:
     clientConfig:
       service:
         namespace: kube-fledged
-        name: kubefledged-webhook-svc
+        name: kubefledged-webhook-server
         path: "/validate-image-cache"
         port: 443
     rules:
