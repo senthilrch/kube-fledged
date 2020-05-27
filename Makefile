@@ -115,7 +115,7 @@ clean-operator:
 	-docker image rm `docker image ls -f dangling=true -q`
 
 fledged-amd64: clean-fledged
-	CGO_ENABLED=0 go build -o build/fledged -ldflags '-s -w -extldflags "-static"' cmd/fledged.go && \
+	CGO_ENABLED=0 go build -o build/fledged -ldflags '-s -w -extldflags "-static"' cmd/fledged/main.go && \
 	cd build && docker build -t ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION} -f Dockerfile.fledged_dev \
 	--build-arg ALPINE_VERSION=${ALPINE_VERSION} .
 
