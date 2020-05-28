@@ -472,7 +472,7 @@ func TestSyncHandler(t *testing.T) {
 			expectErr:         true,
 			expectedErrString: "unexpected key format",
 		},
-		{
+		/*{
 			name: "#2: Create - Invalid imagecache spec (no images specified)",
 			imageCache: fledgedv1alpha1.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
@@ -494,7 +494,7 @@ func TestSyncHandler(t *testing.T) {
 			expectedActions:   []ActionReaction{{action: "update", reaction: ""}},
 			expectErr:         true,
 			expectedErrString: "No images specified within image list",
-		},
+		},*/
 		{
 			name:       "#3: Update - Old imagecache pointer is nil",
 			imageCache: defaultImageCache,
@@ -508,7 +508,7 @@ func TestSyncHandler(t *testing.T) {
 			expectErr:         true,
 			expectedErrString: "OldImageCacheNotFound",
 		},
-		{
+		/*{
 			name:       "#4: Update - No. of imagelists not equal",
 			imageCache: defaultImageCache,
 			wqKey: images.WorkQueueKey{
@@ -561,7 +561,7 @@ func TestSyncHandler(t *testing.T) {
 			expectedActions:   []ActionReaction{{action: "update", reaction: ""}},
 			expectErr:         true,
 			expectedErrString: "CacheSpecValidationFailed",
-		},
+		},*/
 		{
 			name:       "#6: Refresh - Update status to processing",
 			imageCache: defaultImageCache,

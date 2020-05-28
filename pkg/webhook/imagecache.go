@@ -37,6 +37,7 @@ const (
 )
 
 // MutateImageCache modifies image cache resource
+/*
 func MutateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 	glog.V(4).Info("mutating custom resource")
 	cr := struct {
@@ -66,6 +67,7 @@ func MutateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 	}
 	return &reviewResponse
 }
+*/
 
 // ValidateImageCache validates image cache resource
 func ValidateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {

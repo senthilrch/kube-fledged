@@ -17,7 +17,7 @@ ARG ALPINE_VERSION
 FROM alpine:$ALPINE_VERSION
 LABEL maintainer="senthilrch <senthilrch@gmail.com>"
 
-COPY fledged /opt/bin/fledged
-RUN chmod 755 /opt/bin/fledged
+COPY build/kubefledged-controller /opt/bin/kubefledged-controller
+RUN chmod 755 /opt/bin/kubefledged-controller
 
-ENTRYPOINT ["/opt/bin/fledged"]
+ENTRYPOINT ["/opt/bin/kubefledged-controller"]

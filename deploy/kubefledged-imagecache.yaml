@@ -1,5 +1,5 @@
 ---
-apiVersion: fledged.k8s.io/v1alpha1
+apiVersion: kubefledged.k8s.io/v1alpha1
 kind: ImageCache
 metadata:
   # Name of the image cache. A cluster can have multiple image cache objects

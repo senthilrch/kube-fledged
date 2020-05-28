@@ -17,7 +17,7 @@ ARG ALPINE_VERSION
 FROM alpine:$ALPINE_VERSION
 LABEL maintainer="senthilrch <senthilrch@gmail.com>"
 
-COPY fledged-webhook-server /opt/bin/fledged-webhook-server
-RUN chmod 755 /opt/bin/fledged-webhook-server
+COPY build/kubefledged-webhook-server /opt/bin/kubefledged-webhook-server
+RUN chmod 755 /opt/bin/kubefledged-webhook-server
 
-ENTRYPOINT ["/opt/bin/fledged-webhook-server"]
+ENTRYPOINT ["/opt/bin/kubefledged-webhook-server"]

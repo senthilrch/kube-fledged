@@ -17,14 +17,13 @@ ARG ALPINE_VERSION
 
 FROM golang:$GOLANG_VERSION AS builder
 LABEL stage=builder
-ARG GIT_BRANCH
-RUN mkdir -p /go/src/github.com/senthilrch && \
-    git clone --depth=1 --single-branch --branch=$GIT_BRANCH https://github.com/senthilrch/kube-fledged.git /go/src/github.com/senthilrch/kube-fledged && \
-    cd /go/src/github.com/senthilrch/kube-fledged && \
-    CGO_ENABLED=0 go build -o build/fledged -ldflags '-s -w -extldflags "-static"' cmd/fledged/main.go
+RUN mkdir -p /go/src/github.com/senthilrch/kube-fledged
+COPY . /go/src/github.com/senthilrch/kube-fledged
+WORKDIR /go/src/github.com/senthilrch/kube-fledged
+RUN CGO_ENABLED=0 go build -o build/kubefledged-controller -ldflags '-s -w -extldflags "-static"' cmd/controller/main.go
 
 FROM alpine:$ALPINE_VERSION
 LABEL maintainer="senthilrch <senthilrch@gmail.com>"
-COPY --from=builder /go/src/github.com/senthilrch/kube-fledged/build/fledged /opt/bin/fledged
-RUN chmod 755 /opt/bin/fledged
-ENTRYPOINT ["/opt/bin/fledged"]
+COPY --from=builder /go/src/github.com/senthilrch/kube-fledged/build/kubefledged-controller /opt/bin/kubefledged-controller
+RUN chmod 755 /opt/bin/kubefledged-controller
+ENTRYPOINT ["/opt/bin/kubefledged-controller"]

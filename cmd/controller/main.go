@@ -28,7 +28,7 @@ import (
 
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
-	"github.com/senthilrch/kube-fledged/cmd/fledged/app"
+	"github.com/senthilrch/kube-fledged/cmd/controller/app"
 	clientset "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
 	informers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions"
 	"github.com/senthilrch/kube-fledged/pkg/signals"
@@ -89,7 +89,7 @@ func main() {
 func init() {
 	flag.DurationVar(&imagePullDeadlineDuration, "image-pull-deadline-duration", time.Minute*5, "Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed")
 	flag.DurationVar(&imageCacheRefreshFrequency, "image-cache-refresh-frequency", time.Minute*15, "The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to 0s will disable refresh")
-	flag.StringVar(&dockerClientImage, "docker-client-image", "senthilrch/fledged-docker-client:latest", "The image name of the docker client. the docker client is used when deleting images during purging the cache")
+	flag.StringVar(&dockerClientImage, "cri-client-image", "senthilrch/kubefledged-cri-client:latest", "The image name of the cri client. the cri client is used when deleting images during purging the cache")
 	flag.StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Image pull policy for pulling images into the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Images with no or ':latest' tag are always pulled")
 	if fledgedNameSpace = os.Getenv("KUBEFLEDGED_NAMESPACE"); fledgedNameSpace == "" {
 		fledgedNameSpace = "kube-fledged"

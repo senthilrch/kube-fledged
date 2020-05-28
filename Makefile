@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: clean clean-fledged clean-client clean-operator fledged-amd64 fledged-image client-image operator-image build-images push-images test deploy update remove
+.PHONY: clean clean-controller clean-cri-client clean-operator controller-amd64 controller-image cri-client-image operator-image build-images push-images test deploy update remove
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
@@ -26,16 +26,16 @@ endif
 GOARM=7
 DOCKER_CLI_EXPERIMENTAL=enabled
 
-ifndef FLEDGED_IMAGE_REPO
-  FLEDGED_IMAGE_REPO=docker.io/senthilrch/fledged
+ifndef CONTROLLER_IMAGE_REPO
+  CONTROLLER_IMAGE_REPO=docker.io/senthilrch/kubefledged-controller
 endif
 
-ifndef FLEDGED_WEBHOOK_SERVER_IMAGE_REPO
-  FLEDGED_WEBHOOK_SERVER_IMAGE_REPO=docker.io/senthilrch/fledged-webhook-server
+ifndef WEBHOOK_SERVER_IMAGE_REPO
+  WEBHOOK_SERVER_IMAGE_REPO=docker.io/senthilrch/kubefledged-webhook-server
 endif
 
-ifndef FLEDGED_DOCKER_CLIENT_IMAGE_REPO
-  FLEDGED_DOCKER_CLIENT_IMAGE_REPO=docker.io/senthilrch/fledged-docker-client
+ifndef CRI_CLIENT_IMAGE_REPO
+  CRI_CLIENT_IMAGE_REPO=docker.io/senthilrch/kubefledged-cri-client
 endif
 
 ifndef OPERATOR_IMAGE_REPO
@@ -66,10 +66,6 @@ ifndef OPERATORSDK_VERSION
   OPERATORSDK_VERSION=v0.17.0
 endif
 
-ifndef GIT_BRANCH
-  GIT_BRANCH=master
-endif
-
 ifndef TARGET_PLATFORMS
   TARGET_PLATFORMS=linux/amd64,linux/arm/v7,linux/arm64/v8
 endif
@@ -94,70 +90,66 @@ endif
 
 
 ### BUILD
-clean: clean-fledged clean-webhook-server clean-client clean-operator
+clean: clean-controller clean-webhook-server clean-cri-client clean-operator
 
-clean-fledged:
-	-rm -f build/fledged
-	-docker image rm ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION}
+clean-controller:
+	-rm -f build/kubefledged-controller
+	-docker image rm ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION}
 	-docker image rm `docker image ls -f dangling=true -q`
 
 clean-webhook-server:
-	-rm -f build/webhook-server
-	-docker image rm ${FLEDGED_WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION}
+	-rm -f build/kubefledged-webhook-server
+	-docker image rm ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION}
 	-docker image rm `docker image ls -f dangling=true -q`
 
-clean-client:
-	-docker image rm ${FLEDGED_DOCKER_CLIENT_IMAGE_REPO}:${RELEASE_VERSION}
+clean-cri-client:
+	-docker image rm ${CRI_CLIENT_IMAGE_REPO}:${RELEASE_VERSION}
 	-docker image rm `docker image ls -f dangling=true -q`
 
 clean-operator:
 	-docker image rm ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION}
 	-docker image rm `docker image ls -f dangling=true -q`
 
-fledged-amd64: clean-fledged
-	CGO_ENABLED=0 go build -o build/fledged -ldflags '-s -w -extldflags "-static"' cmd/fledged/main.go && \
-	cd build && docker build -t ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION} -f Dockerfile.fledged_dev \
-	--build-arg ALPINE_VERSION=${ALPINE_VERSION} .
-
-fledged-dev: fledged-amd64
-	docker push ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION}
-
-webhook-server-amd64: clean-webhook-server
-	CGO_ENABLED=0 go build -o build/fledged-webhook-server -ldflags '-s -w -extldflags "-static"' cmd/webhook-server/main.go && \
-	cd build && docker build -t ${FLEDGED_WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION} -f Dockerfile.webhook_server_dev \
-	--build-arg ALPINE_VERSION=${ALPINE_VERSION} .
-
-webhook-server-dev: webhook-server-amd64
-	docker push ${FLEDGED_WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION}
-
-fledged-image: clean-fledged
-	cd build && docker buildx build --platform=${TARGET_PLATFORMS} -t ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION} \
-	-f Dockerfile.fledged ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} --build-arg GIT_BRANCH=${GIT_BRANCH} \
+controller-image: clean-controller
+	docker buildx build --platform=${TARGET_PLATFORMS} -t ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION} \
+	-f build/Dockerfile.controller ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
 	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
+
+controller-amd64: TARGET_PLATFORMS=linux/amd64
+controller-amd64: install-buildx controller-image
+
+controller-dev: clean-controller
+	CGO_ENABLED=0 go build -o build/kubefledged-controller -ldflags '-s -w -extldflags "-static"' cmd/controller/main.go && \
+	docker build -t ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION} -f build/Dockerfile.controller_dev \
+	--build-arg ALPINE_VERSION=${ALPINE_VERSION} .
+	docker push ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION}
 
 webhook-server-image: clean-webhook-server
-	cd build && docker buildx build --platform=${TARGET_PLATFORMS} -t ${FLEDGED_WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION} \
-	-f Dockerfile.webhook_server ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} --build-arg GIT_BRANCH=${GIT_BRANCH} \
+	docker buildx build --platform=${TARGET_PLATFORMS} -t ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION} \
+	-f build/Dockerfile.webhook_server ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
 	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
 
-client-image: clean-client
-	cd build && docker buildx build --platform=${TARGET_PLATFORMS} -t ${FLEDGED_DOCKER_CLIENT_IMAGE_REPO}:${RELEASE_VERSION} \
-	-f Dockerfile.docker_client  ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
+webhook-server-amd64: TARGET_PLATFORMS=linux/amd64
+webhook-server-amd64: install-buildx webhook-server-image
+
+webhook-server-dev: clean-webhook-server
+	CGO_ENABLED=0 go build -o build/kubefledged-webhook-server -ldflags '-s -w -extldflags "-static"' cmd/webhook-server/main.go && \
+	docker build -t ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION} -f build/Dockerfile.webhook_server_dev \
+	--build-arg ALPINE_VERSION=${ALPINE_VERSION} .
+	docker push ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION}
+
+cri-client-image: clean-cri-client
+	docker buildx build --platform=${TARGET_PLATFORMS} -t ${CRI_CLIENT_IMAGE_REPO}:${RELEASE_VERSION} \
+	-f build/Dockerfile.cri_client ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
 	--build-arg DOCKER_VERSION=${DOCKER_VERSION} --build-arg CRICTL_VERSION=${CRICTL_VERSION} \
 	--build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
 
 operator-image: clean-operator
 	cd deploy/kubefledged-operator && \
 	docker buildx build --platform=${OPERATOR_TARGET_PLATFORMS} -t ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION} \
-	-f ./build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --progress=plain ${BUILD_OUTPUT} .
+	-f build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --progress=plain ${BUILD_OUTPUT} .
 
-push-images:
-	-docker push ${FLEDGED_IMAGE_REPO}:${RELEASE_VERSION}
-	-docker push ${FLEDGED_WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION}
-	-docker push ${FLEDGED_DOCKER_CLIENT_IMAGE_REPO}:${RELEASE_VERSION}
-	-docker push ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION}
-
-release: install-buildx fledged-image webhook-server-image client-image operator-image
+release: install-buildx controller-image webhook-server-image cri-client-image operator-image
 
 install-buildx:
 	docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
@@ -178,7 +170,7 @@ deploy-using-yaml:
 	kubectl apply -f deploy/kubefledged-serviceaccount.yaml && \
 	kubectl apply -f deploy/kubefledged-clusterrole.yaml && \
 	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml && \
-	kubectl apply -f deploy/kubefledged-deployment-fledged-controller.yaml && \
+	kubectl apply -f deploy/kubefledged-deployment-controller.yaml && \
 	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml && \
 	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml && \
 	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml

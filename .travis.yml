@@ -39,16 +39,17 @@ jobs:
         - hack/verify-gofmt.sh
         - hack/verify-golint.sh
         - hack/verify-govet.sh
-        - make fledged-amd64
+        # BUILD_OUTPUT is left empty to indicate buildx to leave the built images in it's cache
+        - travis_wait 30 make BUILD_OUTPUT= controller-amd64 webhook-server-amd64 
         - make test
         - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
     - stage: build_multiarch
       script:
         # BUILD_OUTPUT is left empty to indicate buildx to leave the built images in it's cache
-        - travis_wait 60 make GIT_BRANCH=${TRAVIS_BRANCH} BUILD_OUTPUT= release 
+        - travis_wait 60 make BUILD_OUTPUT= release 
     - stage: build_release
       script:
         - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PSWD}
         # BUILD_OUTPUT=--push requests buildx to push the built images to docker hub
-        - travis_wait 60 make GIT_BRANCH=${TRAVIS_BRANCH} BUILD_OUTPUT=--push release 
+        - travis_wait 60 make BUILD_OUTPUT=--push release 
 

@@ -3,7 +3,7 @@ kind: ValidatingWebhookConfiguration
 metadata:
   name: kubefledged
 webhooks:
-  - name: validate-image-cache.fledged.k8s.io
+  - name: validate-image-cache.kubefledged.k8s.io
     admissionReviewVersions: ["v1"]
     timeoutSeconds: 1
     failurePolicy: Fail
@@ -17,7 +17,7 @@ webhooks:
       caBundle: ${CA_BUNDLE}
     rules:
       - operations: ["CREATE", "UPDATE"]
-        apiGroups: ["fledged.k8s.io"]
+        apiGroups: ["kubefledged.k8s.io"]
         apiVersions: ["v1alpha1"]
         resources: ["imagecaches"]
         scope: "Namespaced"

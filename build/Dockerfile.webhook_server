@@ -17,14 +17,13 @@ ARG ALPINE_VERSION
 
 FROM golang:$GOLANG_VERSION AS builder
 LABEL stage=builder
-ARG GIT_BRANCH
-RUN mkdir -p /go/src/github.com/senthilrch && \
-    git clone --depth=1 --single-branch --branch=$GIT_BRANCH https://github.com/senthilrch/kube-fledged.git /go/src/github.com/senthilrch/kube-fledged && \
-    cd /go/src/github.com/senthilrch/kube-fledged && \
-    CGO_ENABLED=0 go build -o build/fledged-webhook-server -ldflags '-s -w -extldflags "-static"' cmd/webhook-server/main.go
+RUN mkdir -p /go/src/github.com/senthilrch/kube-fledged
+COPY . /go/src/github.com/senthilrch/kube-fledged
+WORKDIR /go/src/github.com/senthilrch/kube-fledged
+RUN CGO_ENABLED=0 go build -o build/kubefledged-webhook-server -ldflags '-s -w -extldflags "-static"' cmd/webhook-server/main.go
 
 FROM alpine:$ALPINE_VERSION
 LABEL maintainer="senthilrch <senthilrch@gmail.com>"
-COPY --from=builder /go/src/github.com/senthilrch/kube-fledged/build/fledged-webhook-server /opt/bin/fledged-webhook-server
-RUN chmod 755 /opt/bin/fledged-webhook-server
-ENTRYPOINT ["/opt/bin/fledged-webhook-server"]
+COPY --from=builder /go/src/github.com/senthilrch/kube-fledged/build/kubefledged-webhook-server /opt/bin/kubefledged-webhook-server
+RUN chmod 755 /opt/bin/kubefledged-webhook-server
+ENTRYPOINT ["/opt/bin/kubefledged-webhook-server"]

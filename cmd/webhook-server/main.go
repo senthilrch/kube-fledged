@@ -262,7 +262,7 @@ func validateImageCache(w http.ResponseWriter, r *http.Request) {
 }
 
 func mutateImageCache(w http.ResponseWriter, r *http.Request) {
-	serve(w, r, newDelegateToV1AdmitHandler(webhook.MutateImageCache))
+	// serve(w, r, newDelegateToV1AdmitHandler(webhook.MutateImageCache))
 }
 
 func main() {
