@@ -201,8 +201,10 @@ deploy-using-operator:
 	kubectl create -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
 
 update:
-	kubectl scale deployment kubefledged --replicas=0 -n kube-fledged && sleep 1 && \
+	kubectl scale deployment kubefledged --replicas=0 -n kube-fledged && \
+	kubectl scale deployment kubefledged-webhook-server --replicas=0 -n kube-fledged && sleep 1 && \
 	kubectl scale deployment kubefledged --replicas=1 -n kube-fledged && sleep 1 && \
+	kubectl scale deployment kubefledged-webhook-server --replicas=1 -n kube-fledged && sleep 1 && \
 	kubectl get pods -l app=kubefledged -n kube-fledged
 
 remove:

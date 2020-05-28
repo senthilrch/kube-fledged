@@ -452,20 +452,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			return err
 		}
 
-		err = validateCacheSpec(c, imageCache)
-		if err != nil {
-			status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
-			status.Reason = fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed
-			status.Message = err.Error()
-
-			if err := c.updateImageCacheStatus(imageCache, status); err != nil {
-				glog.Errorf("Error updating imagecache status to %s: %v", status.Status, err)
-				return err
-			}
-
-			return err
-		}
-
 		if wqKey.WorkType == images.ImageCacheUpdate && wqKey.OldImageCache == nil {
 			status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
 			status.Reason = fledgedv1alpha1.ImageCacheReasonOldImageCacheNotFound
@@ -477,36 +463,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			}
 			glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonOldImageCacheNotFound, fledgedv1alpha1.ImageCacheMessageOldImageCacheNotFound)
 			return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonOldImageCacheNotFound, fledgedv1alpha1.ImageCacheMessageOldImageCacheNotFound)
-		}
-
-		if wqKey.WorkType == images.ImageCacheUpdate {
-			if len(wqKey.OldImageCache.Spec.CacheSpec) != len(imageCache.Spec.CacheSpec) {
-				status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
-				status.Reason = fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed
-				status.Message = fledgedv1alpha1.ImageCacheMessageNotSupportedUpdates
-
-				if err = c.updateImageCacheSpecAndStatus(imageCache, wqKey.OldImageCache.Spec, status); err != nil {
-					glog.Errorf("Error updating imagecache spec and status to %s: %v", status.Status, err)
-					return err
-				}
-				glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed, "Mismatch in no. of image lists")
-				return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed, "Mismatch in no. of image lists")
-			}
-
-			for i := range wqKey.OldImageCache.Spec.CacheSpec {
-				if !reflect.DeepEqual(wqKey.OldImageCache.Spec.CacheSpec[i].NodeSelector, imageCache.Spec.CacheSpec[i].NodeSelector) {
-					status.Status = fledgedv1alpha1.ImageCacheActionStatusFailed
-					status.Reason = fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed
-					status.Message = fledgedv1alpha1.ImageCacheMessageNotSupportedUpdates
-
-					if err = c.updateImageCacheSpecAndStatus(imageCache, wqKey.OldImageCache.Spec, status); err != nil {
-						glog.Errorf("Error updating imagecache spec and status to %s: %v", status.Status, err)
-						return err
-					}
-					glog.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed, "Mismatch in node selector")
-					return fmt.Errorf("%s: %s", fledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed, "Mismatch in node selector")
-				}
-			}
 		}
 
 		cacheSpec := imageCache.Spec.CacheSpec

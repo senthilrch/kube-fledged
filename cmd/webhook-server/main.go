@@ -24,6 +24,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/golang/glog"
 	"github.com/senthilrch/kube-fledged/pkg/webhook"
 
 	admissionv1 "k8s.io/api/admission/v1"
@@ -36,7 +37,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"k8s.io/klog"
 	// TODO: try this library to see if it generates correct json patch
 	// https://github.com/mattbaird/jsonpatch
 )
@@ -89,7 +89,7 @@ type Config struct {
 func configTLS(config Config) *tls.Config {
 	sCert, err := tls.LoadX509KeyPair(config.CertFile, config.KeyFile)
 	if err != nil {
-		klog.Fatal(err)
+		glog.Fatal(err)
 	}
 	return &tls.Config{
 		Certificates: []tls.Certificate{sCert},
@@ -126,17 +126,17 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitHandler) {
 	// verify the content type is accurate
 	contentType := r.Header.Get("Content-Type")
 	if contentType != "application/json" {
-		klog.Errorf("contentType=%s, expect application/json", contentType)
+		glog.Errorf("contentType=%s, expect application/json", contentType)
 		return
 	}
 
-	klog.V(2).Info(fmt.Sprintf("handling request: %s", body))
+	glog.V(2).Info(fmt.Sprintf("handling request: %s", body))
 
 	deserializer := codecs.UniversalDeserializer()
 	obj, gvk, err := deserializer.Decode(body, nil, nil)
 	if err != nil {
 		msg := fmt.Sprintf("Request could not be decoded: %v", err)
-		klog.Error(msg)
+		glog.Error(msg)
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
@@ -146,7 +146,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitHandler) {
 	case v1beta1.SchemeGroupVersion.WithKind("AdmissionReview"):
 		requestedAdmissionReview, ok := obj.(*v1beta1.AdmissionReview)
 		if !ok {
-			klog.Errorf("Expected v1beta1.AdmissionReview but got: %T", obj)
+			glog.Errorf("Expected v1beta1.AdmissionReview but got: %T", obj)
 			return
 		}
 		responseAdmissionReview := &v1beta1.AdmissionReview{}
@@ -157,7 +157,7 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitHandler) {
 	case v1.SchemeGroupVersion.WithKind("AdmissionReview"):
 		requestedAdmissionReview, ok := obj.(*v1.AdmissionReview)
 		if !ok {
-			klog.Errorf("Expected v1.AdmissionReview but got: %T", obj)
+			glog.Errorf("Expected v1.AdmissionReview but got: %T", obj)
 			return
 		}
 		responseAdmissionReview := &v1.AdmissionReview{}
@@ -167,21 +167,21 @@ func serve(w http.ResponseWriter, r *http.Request, admit admitHandler) {
 		responseObj = responseAdmissionReview
 	default:
 		msg := fmt.Sprintf("Unsupported group version kind: %v", gvk)
-		klog.Error(msg)
+		glog.Error(msg)
 		http.Error(w, msg, http.StatusBadRequest)
 		return
 	}
 
-	klog.V(2).Info(fmt.Sprintf("sending response: %v", responseObj))
+	glog.V(2).Info(fmt.Sprintf("sending response: %v", responseObj))
 	respBytes, err := json.Marshal(responseObj)
 	if err != nil {
-		klog.Error(err)
+		glog.Error(err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	if _, err := w.Write(respBytes); err != nil {
-		klog.Error(err)
+		glog.Error(err)
 	}
 }
 
@@ -279,6 +279,7 @@ func main() {
 		Addr:      fmt.Sprintf(":%d", port),
 		TLSConfig: configTLS(config),
 	}
+	glog.Infof("Wehook server listening on :%d", port)
 	err := server.ListenAndServeTLS("", "")
 	if err != nil {
 		panic(err)
