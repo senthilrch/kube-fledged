@@ -14,6 +14,7 @@ webhooks:
         name: kubefledged-webhook-server
         path: "/validate-image-cache"
         port: 3443
+      caBundle: ${CA_BUNDLE}
     rules:
       - operations: ["CREATE", "UPDATE"]
         apiGroups: ["fledged.k8s.io"]

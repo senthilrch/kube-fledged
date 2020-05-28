@@ -172,7 +172,8 @@ test:
 
 deploy-using-yaml:
 	-kubectl apply -f deploy/kubefledged-namespace.yaml
-	bash deploy/create-cert-key-secret.sh --namespace kube-fledged --service kubefledged-webhook-server --secret kubefledged-webhook-server && \
+	bash deploy/webhook-create-signed-cert.sh --namespace kube-fledged --service kubefledged-webhook-server --secret kubefledged-webhook-server && \
+	bash deploy/webhook-patch-ca-bundle.sh && \
 	kubectl apply -f deploy/kubefledged-crd.yaml && \
 	kubectl apply -f deploy/kubefledged-serviceaccount.yaml && \
 	kubectl apply -f deploy/kubefledged-clusterrole.yaml && \
