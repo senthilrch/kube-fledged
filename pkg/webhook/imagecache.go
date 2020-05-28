@@ -35,7 +35,7 @@ const (
 
 // MutateImageCache modifies image cache resource
 func MutateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
-	klog.V(2).Info("mutating custom resource")
+	klog.Info("mutating custom resource")
 	cr := struct {
 		metav1.ObjectMeta
 		Data map[string]string
@@ -66,7 +66,7 @@ func MutateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 
 // ValidateImageCache validates image cache resource
 func ValidateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
-	klog.V(2).Info("admitting custom resource")
+	klog.Info("admitting custom resource")
 	cr := struct {
 		metav1.ObjectMeta
 		Data map[string]string
