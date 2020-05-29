@@ -21,10 +21,10 @@ package v1alpha1
 import (
 	time "time"
 
-	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
+	kubefledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha1"
 	versioned "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/listers/fledged/v1alpha1"
+	v1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/listers/kubefledged/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -70,7 +70,7 @@ func NewFilteredImageCacheInformer(client versioned.Interface, namespace string,
 				return client.FledgedV1alpha1().ImageCaches(namespace).Watch(options)
 			},
 		},
-		&fledgedv1alpha1.ImageCache{},
+		&kubefledgedv1alpha1.ImageCache{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,7 +81,7 @@ func (f *imageCacheInformer) defaultInformer(client versioned.Interface, resyncP
 }
 
 func (f *imageCacheInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&fledgedv1alpha1.ImageCache{}, f.defaultInformer)
+	return f.factory.InformerFor(&kubefledgedv1alpha1.ImageCache{}, f.defaultInformer)
 }
 
 func (f *imageCacheInformer) Lister() v1alpha1.ImageCacheLister {

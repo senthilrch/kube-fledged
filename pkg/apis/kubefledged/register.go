@@ -14,8 +14,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package fledged
+package kubefledged
 
 const (
-	GroupName = "fledged.k8s.io"
+	//GroupName denotes the api group of the resource
+	GroupName = "kubefledged.k8s.io"
 )

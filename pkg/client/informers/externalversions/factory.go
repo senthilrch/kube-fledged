@@ -24,8 +24,8 @@ import (
 	time "time"
 
 	versioned "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
-	fledged "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/fledged"
 	internalinterfaces "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/internalinterfaces"
+	kubefledged "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/kubefledged"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -172,9 +172,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Fledged() fledged.Interface
+	Fledged() kubefledged.Interface
 }
 
-func (f *sharedInformerFactory) Fledged() fledged.Interface {
-	return fledged.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Fledged() kubefledged.Interface {
+	return kubefledged.New(f, f.namespace, f.tweakListOptions)
 }

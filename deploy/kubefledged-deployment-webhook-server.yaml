@@ -7,11 +7,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kubefledged-webhook-server
+      kubefledged: kubefledged-webhook-server
   template:
     metadata:
       labels:
-        app: kubefledged-webhook-server
+        kubefledged: kubefledged-webhook-server
+        app: kubefledged
     spec:
       containers:
       - image: senthilrch/kubefledged-webhook-server:v0.7.0

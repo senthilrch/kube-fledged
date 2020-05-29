@@ -19,7 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
+	v1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha1"
 	"github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )

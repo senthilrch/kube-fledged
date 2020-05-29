@@ -7,11 +7,12 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: kubefledged-controller
+      kubefledged: kubefledged-controller
   template:
     metadata:
       labels:
-        app: kubefledged-controller
+        kubefledged: kubefledged-controller
+        app: kubefledged
     spec:
       containers:
       - image: senthilrch/kubefledged-controller:v0.7.0
