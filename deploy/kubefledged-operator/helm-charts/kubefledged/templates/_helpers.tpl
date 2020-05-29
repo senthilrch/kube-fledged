@@ -83,3 +83,32 @@ Create the name of the cluster role binding to use
     {{ default "default" .Values.clusterRoleBinding.name }}
 {{- end -}}
 {{- end -}}
+
+{{/*
+Create the name of the validating webhook configuration to use
+*/}}
+{{- define "kubefledged.validatingWebhookName" -}}
+{{- if .Values.validatingWebhook.create -}}
+    {{ default (include "kubefledged.fullname" .) .Values.validatingWebhook.name }}
+{{- else -}}
+    {{ default "default" .Values.validatingWebhook.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create the name of the service for the webhook server to use
+*/}}
+{{- define "kubefledged.webhookServiceName" -}}
+{{- if .Values.webhookService.create -}}
+    {{ default (include "kubefledged.fullname" .) .Values.webhookService.name }}
+{{- else -}}
+    {{ default "default" .Values.webhookService.name }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Create the name of the secret containing the webhook server's keypair
+*/}}
+{{- define "kubefledged.secretName" -}}
+{{ default (include "kubefledged.fullname" .) .Values.secret.name }}
+{{- end -}}
