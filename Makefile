@@ -159,6 +159,20 @@ operator-image: clean-operator
 
 release: install-buildx controller-image webhook-server-image cri-client-image operator-image
 
+latest-tag:
+	docker pull ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION}
+	docker tag  ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION} ${CONTROLLER_IMAGE_REPO}:latest
+	docker push ${CONTROLLER_IMAGE_REPO}:latest
+	docker pull ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION}
+	docker tag  ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION} ${WEBHOOK_SERVER_IMAGE_REPO}:latest
+	docker push ${WEBHOOK_SERVER_IMAGE_REPO}:latest
+	docker pull ${CRI_CLIENT_IMAGE_REPO}:${RELEASE_VERSION}
+	docker tag  ${CRI_CLIENT_IMAGE_REPO}:${RELEASE_VERSION} ${CRI_CLIENT_IMAGE_REPO}:latest
+	docker push ${CRI_CLIENT_IMAGE_REPO}:latest
+	docker pull ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION}
+	docker tag  ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION} ${OPERATOR_IMAGE_REPO}:latest
+	docker push ${OPERATOR_IMAGE_REPO}:latest
+
 install-buildx:
 	docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
 	-docker buildx rm multibuilder
