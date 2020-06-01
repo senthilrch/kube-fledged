@@ -999,28 +999,30 @@ func TestEnqueueImageCache(t *testing.T) {
 			oldImageCache:  defaultImageCache,
 			expectedResult: true,
 		},
-		{
-			name:          "#9: Update - CacheSpec restoration",
-			workType:      images.ImageCacheUpdate,
-			oldImageCache: defaultImageCache,
-			newImageCache: kubefledgedv1alpha1.ImageCache{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "foo",
-					Namespace: "kube-fledged",
-					Annotations: map[string]string{
-						fledgedCacheSpecValidationKey: "failed",
+		/*
+			{
+				name:          "#9: Update - CacheSpec restoration",
+				workType:      images.ImageCacheUpdate,
+				oldImageCache: defaultImageCache,
+				newImageCache: kubefledgedv1alpha1.ImageCache{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "foo",
+						Namespace: "kube-fledged",
+						Annotations: map[string]string{
+							fledgedCacheSpecValidationKey: "failed",
+						},
 					},
-				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
-						{
-							Images: []string{"foo", "bar"},
+					Spec: kubefledgedv1alpha1.ImageCacheSpec{
+						CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+							{
+								Images: []string{"foo", "bar"},
+							},
 						},
 					},
 				},
+				expectedResult: false,
 			},
-			expectedResult: false,
-		},
+		*/
 		{
 			name:          "#10: Update - Imagecache refresh. Successful queueing",
 			workType:      images.ImageCacheUpdate,

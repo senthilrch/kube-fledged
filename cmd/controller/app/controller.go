@@ -45,7 +45,6 @@ import (
 )
 
 const controllerAgentName = "kubefledged-controller"
-const fledgedCacheSpecValidationKey = "kubefledged.k8s.io/cachespecvalidation"
 const imageCachePurgeAnnotationKey = "kubefledged.k8s.io/purge-imagecache"
 const imageCacheRefreshAnnotationKey = "kubefledged.k8s.io/refresh-imagecache"
 
@@ -293,16 +292,7 @@ func (c *Controller) enqueueImageCache(workType images.WorkType, old, new interf
 				break
 			}
 		}
-		if !reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
-			if validation, ok := newImageCache.Annotations[fledgedCacheSpecValidationKey]; ok {
-				if validation == "failed" {
-					if err := c.removeAnnotation(newImageCache, fledgedCacheSpecValidationKey); err != nil {
-						glog.Errorf("Error removing Annotation %s from imagecache(%s): %v", fledgedCacheSpecValidationKey, newImageCache.Name, err)
-					}
-					return false
-				}
-			}
-		} else {
+		if reflect.DeepEqual(newImageCache.Spec, oldImageCache.Spec) {
 			return false
 		}
 	case images.ImageCacheDelete:
@@ -662,38 +652,12 @@ func (c *Controller) updateImageCacheStatus(imageCache *v1alpha1.ImageCache, sta
 	return err
 }
 
-func (c *Controller) updateImageCacheSpecAndStatus(imageCache *v1alpha1.ImageCache, spec v1alpha1.ImageCacheSpec, status *v1alpha1.ImageCacheStatus) error {
-	// NEVER modify objects from the store. It's a read-only, local cache.
-	// You can use DeepCopy() to make a deep copy of original object and modify this copy
-	// Or create a copy manually for better performance
-	imageCacheCopy := imageCache.DeepCopy()
-	imageCacheCopy.Spec = spec
-	imageCacheCopy.Status = *status
-
-	if status.Status == v1alpha1.ImageCacheActionStatusFailed &&
-		status.Reason == v1alpha1.ImageCacheReasonCacheSpecValidationFailed {
-		imageCacheCopy.Annotations = make(map[string]string)
-		imageCacheCopy.Annotations[fledgedCacheSpecValidationKey] = "failed"
-	}
-
-	if imageCacheCopy.Status.Status != v1alpha1.ImageCacheActionStatusProcessing {
-		completionTime := metav1.Now()
-		imageCacheCopy.Status.CompletionTime = &completionTime
-	}
-	// If the CustomResourceSubresources feature gate is not enabled,
-	// we must use Update instead of UpdateStatus to update the Status block of the ImageCache resource.
-	// UpdateStatus will not allow changes to the Spec of the resource,
-	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
-	return err
-}
-
 func (c *Controller) removeAnnotation(imageCache *v1alpha1.ImageCache, annotationKey string) error {
 	imageCacheCopy := imageCache.DeepCopy()
 	delete(imageCacheCopy.Annotations, annotationKey)
 	_, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
 	if err == nil {
-		glog.Infof("Annotation %s removed from imagecache(%s)", fledgedCacheSpecValidationKey, imageCache.Name)
+		glog.Infof("Annotation %s removed from imagecache(%s)", annotationKey, imageCache.Name)
 	}
 	return err
 }
