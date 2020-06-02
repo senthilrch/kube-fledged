@@ -54,7 +54,7 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 
 - A functioning kubernetes cluster (v1.16 or above). It could be a simple development cluster like minikube or a large production cluster.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- git, make, go, docker engine (>= 19.03) and kubectl installed on a local linux machine. kubectl configured properly to access the cluster with cluster-admin privileges.
+- git, make, go, docker engine (>= 19.03), openssl and kubectl installed on a local linux machine. kubectl configured properly to access the cluster with cluster-admin privileges.
 
 ## Quick Install using YAML manifests
 

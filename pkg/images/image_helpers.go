@@ -232,6 +232,9 @@ func checkIfImageNeedsToBePulled(imagePullPolicy string, image string, node *cor
 		if !strings.Contains(image, ":") && !strings.Contains(image, "@sha") {
 			return true, nil
 		}
+		if strings.Contains(image, ":latest") {
+			return true, nil
+		}
 		imageAlreadyPresent, err := imageAlreadyPresentInNode(image, node)
 		if err != nil {
 			return false, err

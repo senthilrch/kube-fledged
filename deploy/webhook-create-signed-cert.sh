@@ -60,12 +60,17 @@ while [[ $# -gt 0 ]]; do
     shift
 done
 
-[ -z ${service} ] && service=admission-webhook-example-svc
-[ -z ${secret} ] && secret=admission-webhook-example-certs
-[ -z ${namespace} ] && namespace=default
+[ -z ${service} ] && service=kubefledged-webhook-server
+[ -z ${secret} ] && secret=kubefledged-webhook-server
+[ -z ${namespace} ] && namespace=kube-fledged
 
 if [ ! -x "$(command -v openssl)" ]; then
     echo "openssl not found"
+    exit 1
+fi
+
+if [ ! -x "$(command -v kubectl)" ]; then
+    echo "kubectl not found"
     exit 1
 fi
 

@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "kubefledged.webhookServiceName" . }}-webhook-server
+  name: kubefledged-webhook-server
   labels:
     {{ include "kubefledged.labels" . | nindent 4 }}
   namespace: {{ .Values.kubefledgedNameSpace }}

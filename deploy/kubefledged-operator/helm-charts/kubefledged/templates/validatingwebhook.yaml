@@ -5,14 +5,14 @@ metadata:
   name: {{ include "kubefledged.validatingWebhookName" . }}
 webhooks:
   - name: validate-image-cache.kubefledged.k8s.io
-    admissionReviewVersions: ["v1"]
+    admissionReviewVersions: ["v1beta1", "v1"]
     timeoutSeconds: 1
     failurePolicy: Fail
     sideEffects: None
     clientConfig:
       service:
-        namespace: kube-fledged
-        name: {{ include "kubefledged.webhookServiceName" . }}-webhook-server
+        namespace: {{ .Values.kubefledgedNameSpace }}
+        name: kubefledged-webhook-server
         path: "/validate-image-cache"
         port: {{ .Values.webhookService.port }}
       caBundle: {{ .Values.validatingWebhookCABundle }}
