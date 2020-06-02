@@ -31,7 +31,7 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 $GOPATH/pkg/mod/k8s.io/
 chmod u+x ${CODEGEN_PKG}/generate-groups.sh
 ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/senthilrch/kube-fledged/pkg/client github.com/senthilrch/kube-fledged/pkg/apis \
-  fledged:v1alpha1 \
+  kubefledged:v1alpha1 \
   --output-base "$(dirname ${BASH_SOURCE})/../../../.." \
   --go-header-file ${SCRIPT_ROOT}/hack/boilerplate/boilerplate.generatego.txt
 

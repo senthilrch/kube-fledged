@@ -1,0 +1,23 @@
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: kubefledged
+webhooks:
+  - name: validate-image-cache.kubefledged.k8s.io
+    admissionReviewVersions: ["v1beta1", "v1"]
+    timeoutSeconds: 1
+    failurePolicy: Fail
+    sideEffects: None
+    clientConfig:
+      service:
+        namespace: kube-fledged
+        name: kubefledged-webhook-server
+        path: "/validate-image-cache"
+        port: 3443
+      caBundle: {{CA_BUNDLE}}
+    rules:
+      - operations: ["CREATE", "UPDATE"]
+        apiGroups: ["kubefledged.k8s.io"]
+        apiVersions: ["v1alpha1"]
+        resources: ["imagecaches"]
+        scope: "Namespaced"

@@ -5,7 +5,7 @@ metadata:
 subjects:
 - kind: ServiceAccount
   name: kubefledged-operator
-  namespace: OPERATOR_NAMESPACE
+  namespace: {{OPERATOR_NAMESPACE}}
 roleRef:
   kind: ClusterRole
   name: kubefledged-operator

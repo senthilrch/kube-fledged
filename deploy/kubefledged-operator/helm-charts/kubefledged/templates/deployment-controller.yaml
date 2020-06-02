@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kubefledged.fullname" . }}-controller
+  labels:
+    {{- include "kubefledged.labels" . | nindent 4 }}
+  namespace: {{ .Values.kubefledgedNameSpace }}
+spec:
+  replicas: {{ .Values.controllerReplicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kubefledged.selectorLabels" . | nindent 6 }}-controller
+  template:
+    metadata:
+      labels:
+        {{- include "kubefledged.selectorLabels" . | nindent 8 }}-controller
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      serviceAccountName: {{ include "kubefledged.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ .Values.image.kubefledgedControllerRepository }}:{{ .Chart.AppVersion }}
+          command: {{ .Values.command.kubefledgedControllerCommand }}
+          args:
+            - "--stderrthreshold={{ .Values.args.controllerLogLevel }}"
+            - "--image-pull-deadline-duration={{ .Values.args.controllerImagePullDeadlineDuration }}"
+            - "--image-cache-refresh-frequency={{ .Values.args.controllerImageCacheRefreshFrequency }}"
+            - "--cri-client-image={{ .Values.image.kubefledgedCRIClientRepository }}:{{ .Chart.AppVersion }}"
+            - "--image-pull-policy={{ .Values.args.controllerImagePullPolicy }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: KUBEFLEDGED_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

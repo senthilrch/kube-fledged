@@ -14,6 +14,7 @@ of images and onto which worker nodes those images should be cached (i.e. pre-pu
 _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable parameters to customize the functioning as per one's needs. 
 
 ## Table of contents
+<!-- https://github.com/thlorenz/doctoc -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
@@ -34,6 +35,7 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
   - [Remove kube-fledged](#remove-kube-fledged)
 - [How it works](#how-it-works)
 - [Configuration Flags](#configuration-flags)
+- [Supported Container Runtimes](#supported-container-runtimes)
 - [Supported Platforms](#supported-platforms)
 - [Built With](#built-with)
 - [Contributing](#contributing)
@@ -50,10 +52,9 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 
 ## Prerequisites
 
-- A functioning kubernetes cluster (v1.9 or above). It could be a simple development cluster like minikube or a large production cluster.
+- A functioning kubernetes cluster (v1.16 or above). It could be a simple development cluster like minikube or a large production cluster.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- Supported container runtimes: docker, containerd, cri-o
-- git, make, go, docker and kubectl installed on a local linux machine. kubectl configured properly to access the cluster.
+- git, make, go, docker engine (>= 19.03), openssl and kubectl installed on a local linux machine. kubectl configured properly to access the cluster with cluster-admin privileges.
 
 ## Quick Install using YAML manifests
 
@@ -70,7 +71,7 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
 - Deploy _kube-fledged_ to the cluster
 
   ```
-  $ make deploy
+  $ make deploy-using-yaml
   ```
 
 - Verify if _kube-fledged_ deployed successfully
@@ -93,7 +94,7 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ cd $HOME/src/github.com/senthilrch/kube-fledged
   ```
 
-- Deploy the operator to a separate namespace called "operators" and _kube-fledged_ to a separate namespace called "kube-fledged"
+- Deploy the helm operator to a separate namespace called "operators" and _kube-fledged_ to a separate namespace called "kube-fledged". If you need to deploy to a different namespace, export the variables OPERATOR_NAMESPACE and KUBEFLEDGED_NAMESPACE
 
   ```
   $ make deploy-using-operator
@@ -132,36 +133,44 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
 
   ```
   $ export RELEASE_VERSION=<your_tag>
-  $ export FLEDGED_IMAGE_REPO=<your_docker_hub_username>/fledged
-  $ export FLEDGED_DOCKER_CLIENT_IMAGE_REPO=<your_docker_hub_username>/fledged-docker-client
+  $ export CONTROLLER_IMAGE_REPO=docker.io/<your_dockerhub_username>/kubefledged-controller
+  $ export WEBHOOK_SERVER_IMAGE_REPO=docker.io/<your_dockerhub_username>/kubefledged-webhook-server
   $ docker login -u <username> -p <password>
-  $ make fledged-image && make client-image && make push-images
+  $ export DOCKER_CLI_EXPERIMENTAL=enabled
+  $ make install-buildx && make controller-image && make webhook-server-image
   ```
 
 ### Deploy
 
 _Note:- You need to have 'cluster-admin' privileges to deploy_
 
-- All manifests required for deploying _kube-fledged_ are present in 'kube-fledged/deploy' directory. Edit "kubefledged-deployment.yaml".
+- All manifests required for deploying _kube-fledged_ are present in 'kube-fledged/deploy' directory.
+- Edit "kubefledged-deployment-controller.yaml".
 
-  Set "image" to "<your_docker_hub_username>/fledged:<your_tag>"
+  Set "image" to "<your_docker_hub_username>/kubefledged-controller:<your_tag>"
 
   ```
-  image: <your_docker_hub_username>/fledged:<your_tag>
+  image: <your_docker_hub_username>/kubefledged-controller:<your_tag>
   ```
 
-- If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "kubefledged-deployment.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod). The secret <your_registry_key> should be created in "kube-fledged" namespace.
+- If you pushed the image to a private repository, add 'imagePullSecrets' to the end of "kubefledged-deployment-controller.yaml". Refer to kubernetes documentation on [Specifying ImagePullSecrets on a Pod](https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod). The secret <your_registry_key> should be created in "kube-fledged" namespace.
 
   ```
   serviceAccountName: kubefledged
   imagePullSecrets:
     - name: <your_registry_key>
   ```
+- Edit "kubefledged-deployment-webhook-server.yaml".
 
+  Set "image" to "<your_docker_hub_username>/kubefledged-webhook-server:<your_tag>"
+
+  ```
+  image: <your_docker_hub_username>/kubefledged-webhook-server:<your_tag>
+  ```
 - Deploy _kube-fledged_ to the cluster
 
   ```
-  $ make deploy
+  $ make deploy-using-yaml
   ```
 
 - Verify if _kube-fledged_ deployed successfully
@@ -214,7 +223,7 @@ $ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 _kube-fledged_ supports both automatic and on-demand refresh of image cache. Auto refresh is enabled using the flag `--image-cache-refresh-frequency:`. To request for an on-demand refresh, run the following command:-
 
 ```
-$ kubectl annotate imagecaches imagecache1 -n kube-fledged fledged.k8s.io/refresh-imagecache=
+$ kubectl annotate imagecaches imagecache1 -n kube-fledged kubefledged.k8s.io/refresh-imagecache=
 ```
 
 ### Delete image cache
@@ -222,7 +231,7 @@ $ kubectl annotate imagecaches imagecache1 -n kube-fledged fledged.k8s.io/refres
 Before you could delete the image cache, you need to purge the images in the cache using the following command. This will remove all cached images from the worker nodes.
 
 ```
-$ kubectl annotate imagecaches imagecache1 -n kube-fledged fledged.k8s.io/purge-imagecache=
+$ kubectl annotate imagecaches imagecache1 -n kube-fledged kubefledged.k8s.io/purge-imagecache=
 ```
 
 View the status of purging the image cache. If any failures, such images should be removed manually or you could decide to leave the images in the worker nodes.
@@ -248,24 +257,30 @@ $ make remove-all (if you deployed using Helm Operator)
 
 ## How it works
 
-Kubernetes allows developers to extend the kubernetes api via [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/). _kube-fledged_ defines a custom resource of kind “ImageCache” and implements a custom controller (named _fledged_). _fledged_ does the heavy-lifting for managing image cache. Users can use kubectl commands for creation and deletion of ImageCache resources.
+Kubernetes allows developers to extend the kubernetes api via [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/). _kube-fledged_ defines a custom resource of kind “ImageCache” and implements a custom controller (named _kubefledged-controller_). _kubefledged-controller_ does the heavy-lifting for managing image cache. Users can use kubectl commands for creation and deletion of ImageCache resources.
 
-_fledged_ has a built-in image manager routine that is responsible for pulling and deleting images. Images are pulled or deleted using kubernetes jobs. If enabled, image cache is refreshed periodically by the refresh worker. _fledged_ updates the status of image pulls, refreshes and image deletions in the status field of ImageCache resource.
+_kubefledged-controller_ has a built-in image manager routine that is responsible for pulling and deleting images. Images are pulled or deleted using kubernetes jobs. If enabled, image cache is refreshed periodically by the refresh worker. _kubefledged-controller_ updates the status of image pulls, refreshes and image deletions in the status field of ImageCache resource.
 
 For more detailed description, go through _kube-fledged's_ [design proposal](docs/cluster-image-cache.md).
 
 
-## Configuration Flags
+## Configuration Flags for Kubefledged Controller
 
 `--image-pull-deadline-duration:` Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed. default "5m"
 
 `--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. default "15m"
 
-`--docker-client-image:` The image name of the docker client. The docker client is used when deleting images during purging the cache".
+`--cri-client-image:` The image name of the cri client. The cri client is used when deleting images during purging the cache".
 
 `--image-pull-policy:` Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled.
 
 `--stderrthreshold:` Log level. set the value of this flag to INFO
+
+## Supported Container Runtimes
+
+- docker
+- containerd
+- cri-o
 
 ## Supported Platforms
 

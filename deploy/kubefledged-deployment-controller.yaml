@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubefledged-controller
+  namespace: kube-fledged
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      kubefledged: kubefledged-controller
+  template:
+    metadata:
+      labels:
+        kubefledged: kubefledged-controller
+        app: kubefledged
+    spec:
+      containers:
+      - image: senthilrch/kubefledged-controller:v0.7.0
+        command: ["/opt/bin/kubefledged-controller"]
+        args:
+        - "--stderrthreshold=INFO"
+        - "--image-pull-deadline-duration=5m"
+        - "--image-cache-refresh-frequency=15m"
+        - "--cri-client-image=senthilrch/kubefledged-cri-client:v0.7.0"
+        - "--image-pull-policy=IfNotPresent"
+        imagePullPolicy: Always
+        name: controller
+        env:
+        - name: KUBEFLEDGED_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+      serviceAccountName: kubefledged-controller

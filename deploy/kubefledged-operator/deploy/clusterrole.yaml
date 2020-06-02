@@ -1,7 +1,6 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: kubefledged-operator
 rules:
 - apiGroups:
@@ -104,7 +103,7 @@ rules:
   - get
   - patch
 - apiGroups:
-    - "fledged.k8s.io"
+    - "kubefledged.k8s.io"
   resources:
     - imagecaches
   verbs:
@@ -114,7 +113,7 @@ rules:
     - update
     - patch      
 - apiGroups:
-    - "fledged.k8s.io"
+    - "kubefledged.k8s.io"
   resources:
     - imagecaches/status
   verbs:
@@ -146,4 +145,14 @@ rules:
     - list
     - create
     - delete
-    
+- apiGroups:
+    - "admissionregistration.k8s.io"
+  resources:
+    - validatingwebhookconfigurations
+  verbs:
+    - get
+    - list
+    - create
+    - update
+    - patch
+    - delete    

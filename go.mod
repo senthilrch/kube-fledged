@@ -12,4 +12,5 @@ require (
 	k8s.io/apiserver v0.17.2
 	k8s.io/client-go v0.17.2
 	k8s.io/code-generator v0.17.2 // indirect
+	k8s.io/klog v1.0.0
 )

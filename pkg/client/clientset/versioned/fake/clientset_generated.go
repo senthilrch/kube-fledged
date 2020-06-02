@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
-	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/fledged/v1alpha1"
-	fakefledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/fledged/v1alpha1/fake"
+	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/kubefledged/v1alpha1"
+	fakefledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/kubefledged/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

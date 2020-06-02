@@ -1,0 +1,18 @@
+{{- if .Values.webhookService.create -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubefledged-webhook-server
+  labels:
+    {{ include "kubefledged.labels" . | nindent 4 }}
+  namespace: {{ .Values.kubefledgedNameSpace }}
+spec:
+  ports:
+  - name: webhook-server
+    port: {{ .Values.webhookService.port }}
+    protocol: TCP
+    targetPort: {{ .Values.webhookService.targetPort }}
+  selector:
+    {{- include "kubefledged.selectorLabels" . | nindent 4 }}-webhook-server
+  type: ClusterIP
+{{- end -}}

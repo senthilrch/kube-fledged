@@ -1,0 +1,25 @@
+{{- if .Values.validatingWebhook.create -}}
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: {{ include "kubefledged.validatingWebhookName" . }}
+webhooks:
+  - name: validate-image-cache.kubefledged.k8s.io
+    admissionReviewVersions: ["v1beta1", "v1"]
+    timeoutSeconds: 1
+    failurePolicy: Fail
+    sideEffects: None
+    clientConfig:
+      service:
+        namespace: {{ .Values.kubefledgedNameSpace }}
+        name: kubefledged-webhook-server
+        path: "/validate-image-cache"
+        port: {{ .Values.webhookService.port }}
+      caBundle: {{ .Values.validatingWebhookCABundle }}
+    rules:
+      - operations: ["CREATE", "UPDATE"]
+        apiGroups: ["kubefledged.k8s.io"]
+        apiVersions: ["v1alpha1"]
+        resources: ["imagecaches"]
+        scope: "Namespaced"
+{{- end -}}

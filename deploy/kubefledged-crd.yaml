@@ -1,9 +1,9 @@
 apiVersion: apiextensions.k8s.io/v1beta1
 kind: CustomResourceDefinition
 metadata:
-  name: imagecaches.fledged.k8s.io
+  name: imagecaches.kubefledged.k8s.io
 spec:
-  group: fledged.k8s.io
+  group: kubefledged.k8s.io
   versions:
   - name: v1alpha1
     served: true

@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
+	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"

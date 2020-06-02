@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kubefledged-operator
-  namespace: OPERATOR_NAMESPACE
+  namespace: {{OPERATOR_NAMESPACE}}
 spec:
   replicas: 1
   selector:

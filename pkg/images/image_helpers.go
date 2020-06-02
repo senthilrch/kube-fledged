@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/fledged/v1alpha1"
+	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -230,6 +230,9 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, nod
 func checkIfImageNeedsToBePulled(imagePullPolicy string, image string, node *corev1.Node) (bool, error) {
 	if imagePullPolicy == string(corev1.PullIfNotPresent) {
 		if !strings.Contains(image, ":") && !strings.Contains(image, "@sha") {
+			return true, nil
+		}
+		if strings.Contains(image, ":latest") {
 			return true, nil
 		}
 		imageAlreadyPresent, err := imageAlreadyPresentInNode(image, node)

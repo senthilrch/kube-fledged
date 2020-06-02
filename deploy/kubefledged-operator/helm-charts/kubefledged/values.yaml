@@ -2,18 +2,27 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
-replicaCount: 1
+controllerReplicaCount: 1
+webhookServerReplicaCount: 1
 kubefledgedNameSpace: kube-fledged
 image:
-  fledgedRepository: docker.io/senthilrch/fledged
-  dockerClientRepository: docker.io/senthilrch/fledged-docker-client
+  kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
+  kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client
+  kubefledgedWebhookServerRepository: docker.io/senthilrch/kubefledged-webhook-server
   pullPolicy: Always
-command: ["/opt/bin/fledged"]
+command: 
+  kubefledgedControllerCommand: ["/opt/bin/kubefledged-controller"]
+  kubefledgedWebhookServerCommand: ["/opt/bin/kubefledged-webhook-server"]
 args:
-  logLevel: INFO
-  imagePullDeadlineDuration: 5m
-  imageCacheRefreshFrequency: 15m
-  imagePullPolicy: IfNotPresent
+  controllerLogLevel: INFO
+  controllerImagePullDeadlineDuration: 5m
+  controllerImageCacheRefreshFrequency: 15m
+  controllerImagePullPolicy: IfNotPresent
+  webhookServerLogLevel: INFO
+  webhookServerCertFile: /var/run/secrets/webhook-server/cert.pem
+  webhookServerKeyFile: /var/run/secrets/webhook-server/key.pem
+  webhookServerPort: 443
+validatingWebhookCABundle:
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
@@ -39,6 +48,16 @@ clusterRoleBinding:
   # If not set and create is true, a name is generated using the fullname template
   name:
 
+validatingWebhook:
+  # Specifies whether a validating webhook configuration should be created
+  create: true
+  # The name of the validating webhook configuration to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name:
+
+secret:
+  name:
+
 podSecurityContext: {}
   # fsGroup: 2000
 
@@ -53,6 +72,13 @@ securityContext: {}
 service:
   type: ClusterIP
   port: 80
+
+webhookService:
+  create: true
+  type: ClusterIP
+  port: 3443
+  targetPort: 443
+  name:
 
 ingress:
   enabled: false
