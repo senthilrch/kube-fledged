@@ -251,8 +251,8 @@ $ kubectl delete imagecaches imagecache1 -n kube-fledged
 Run the following command to remove _kube-fledged_ from the cluster. 
 
 ```
-$ make remove (if you deployed using YAML manifests)
-$ make remove-all (if you deployed using Helm Operator)
+$ make remove-kubefledged (if you deployed using YAML manifests)
+$ make remove-operator-and-kubefledged (if you deployed using Helm Operator)
 ```
 
 ## How it works
