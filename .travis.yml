@@ -49,7 +49,7 @@ jobs:
         - travis_wait 60 make BUILD_OUTPUT= release 
     - stage: build_release
       script:
-        - docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PSWD}
+        - echo "$DOCKERHUB_PSWD" | docker login --username "$DOCKERHUB_USER" --password-stdin
         # BUILD_OUTPUT=--push requests buildx to push the built images to docker hub
         - travis_wait 60 make BUILD_OUTPUT=--push release
         - make latest-tag
