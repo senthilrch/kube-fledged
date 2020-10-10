@@ -22,8 +22,9 @@ install:
   - go get github.com/mattn/goveralls
   - go get -u golang.org/x/lint/golint
 stages:
-  # This stage builds fledged controller image, performs tests in "hack" and runs unit tests with coverage      
-  - build_amd64
+  # This stage builds controller and webhook-server images, performs tests in "hack" and runs unit tests with coverage      
+  - name: build_amd64
+    if: type = push
   # This stage builds all four multi-arch images and pushes them to docker hub (only for PR builds)
   - name: build_multiarch
     if: type = pull_request
