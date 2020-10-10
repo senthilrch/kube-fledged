@@ -6,10 +6,7 @@ services:
   - docker
 env:
   # Enable docker buildx plugin
-  - DOCKER_CLI_EXPERIMENTAL=enabled
-  # Fix for issue #61
-  - COVERALLS_SERVICE_JOB_ID=$( TRAVIS_JOB_ID )
-  - COVERALLS_SERVICE_NAME="kube-fledged code coverage"
+  - DOCKER_CLI_EXPERIMENTAL=enabled COVERALLS_SERVICE_JOB_ID=$TRAVIS_JOB_ID COVERALLS_SERVICE_NAME="kube-fledged code coverage"
 before_install:
   # Install latest stable version of docker-engine as described in docker documentation:-
   # https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
