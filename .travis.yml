@@ -27,10 +27,10 @@ install:
 stages:
   # This stage builds fledged controller image, performs tests in "hack" and runs unit tests with coverage      
   - build_amd64
-  # This stage builds multi-arch images for fledged controller, fledged client and operator (only for PR builds)
+  # This stage builds all four multi-arch images and pushes them to docker hub (only for PR builds)
   - name: build_multiarch
     if: type = pull_request
-  # This stage builds all three multi-arch images and pushes them to docker hub (only for release tags)  
+  # This stage builds all four multi-arch images and pushes them to docker hub (only for release tags)  
   - name: build_release
     if: tag IS present
 jobs:
@@ -48,10 +48,11 @@ jobs:
         - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
     - stage: build_multiarch
       script:
-        # BUILD_OUTPUT is left empty to indicate buildx to leave the built images in it's cache
-        - travis_wait 60 make BUILD_OUTPUT= release 
+        - echo "$DOCKERHUB_PSWD" | docker login --username "$DOCKERHUB_USER" --password-stdin
+        # BUILD_OUTPUT=--push requests buildx to push the built images to docker hub
+        - travis_wait 60 make release
     - stage: build_release
       script:
         - echo "$DOCKERHUB_PSWD" | docker login --username "$DOCKERHUB_USER" --password-stdin
         # BUILD_OUTPUT=--push requests buildx to push the built images to docker hub
-        - travis_wait 60 make BUILD_OUTPUT=--push release
+        - travis_wait 60 make release
