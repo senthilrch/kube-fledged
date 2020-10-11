@@ -43,7 +43,7 @@ ifndef OPERATOR_IMAGE_REPO
 endif
 
 ifndef RELEASE_VERSION
-  RELEASE_VERSION=v0.7.0
+  RELEASE_VERSION=v0.7.1
 endif
 
 ifndef DOCKER_VERSION
@@ -120,7 +120,7 @@ clean-operator:
 
 controller-image: clean-controller
 	docker buildx build --platform=${TARGET_PLATFORMS} -t ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION} \
-	-f build/Dockerfile.controller ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
+	-t ${CONTROLLER_IMAGE_REPO}:latest -f build/Dockerfile.controller ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
 	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
 
 controller-amd64: TARGET_PLATFORMS=linux/amd64
@@ -134,7 +134,7 @@ controller-dev: clean-controller
 
 webhook-server-image: clean-webhook-server
 	docker buildx build --platform=${TARGET_PLATFORMS} -t ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION} \
-	-f build/Dockerfile.webhook_server ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
+	-t ${WEBHOOK_SERVER_IMAGE_REPO}:latest -f build/Dockerfile.webhook_server ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
 	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
 
 webhook-server-amd64: TARGET_PLATFORMS=linux/amd64
@@ -148,30 +148,16 @@ webhook-server-dev: clean-webhook-server
 
 cri-client-image: clean-cri-client
 	docker buildx build --platform=${TARGET_PLATFORMS} -t ${CRI_CLIENT_IMAGE_REPO}:${RELEASE_VERSION} \
-	-f build/Dockerfile.cri_client ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
+	-t ${CRI_CLIENT_IMAGE_REPO}:latest -f build/Dockerfile.cri_client ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
 	--build-arg DOCKER_VERSION=${DOCKER_VERSION} --build-arg CRICTL_VERSION=${CRICTL_VERSION} \
 	--build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
 
 operator-image: clean-operator
 	cd deploy/kubefledged-operator && \
 	docker buildx build --platform=${OPERATOR_TARGET_PLATFORMS} -t ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION} \
-	-f build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --progress=plain ${BUILD_OUTPUT} .
+	-t ${OPERATOR_IMAGE_REPO}:latest -f build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --progress=plain ${BUILD_OUTPUT} .
 
 release: install-buildx controller-image webhook-server-image cri-client-image operator-image
-
-latest-tag:
-	docker pull ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION}
-	docker tag  ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION} ${CONTROLLER_IMAGE_REPO}:latest
-	docker push ${CONTROLLER_IMAGE_REPO}:latest
-	docker pull ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION}
-	docker tag  ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION} ${WEBHOOK_SERVER_IMAGE_REPO}:latest
-	docker push ${WEBHOOK_SERVER_IMAGE_REPO}:latest
-	docker pull ${CRI_CLIENT_IMAGE_REPO}:${RELEASE_VERSION}
-	docker tag  ${CRI_CLIENT_IMAGE_REPO}:${RELEASE_VERSION} ${CRI_CLIENT_IMAGE_REPO}:latest
-	docker push ${CRI_CLIENT_IMAGE_REPO}:latest
-	docker pull ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION}
-	docker tag  ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION} ${OPERATOR_IMAGE_REPO}:latest
-	docker push ${OPERATOR_IMAGE_REPO}:latest
 
 install-buildx:
 	docker run --rm --privileged multiarch/qemu-user-static --reset -p yes

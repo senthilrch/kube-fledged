@@ -15,7 +15,7 @@ spec:
         app: kubefledged
     spec:
       containers:
-      - image: senthilrch/kubefledged-webhook-server:v0.7.0
+      - image: senthilrch/kubefledged-webhook-server:v0.7.1
         command: ["/opt/bin/kubefledged-webhook-server"]
         args:
         - "--stderrthreshold=INFO"
