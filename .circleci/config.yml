@@ -14,7 +14,7 @@ _setup_steps: &setup_steps
   - helm-tools/regenerate_public_index
   - run: helm dependency update deploy/kubefledged-operator/helm-charts
 _setup_steps_internal: &setup_steps_internal
-  - run: helm lint deploy/kubefledged-operator/helm-charts
+  - run: helm lint deploy/kubefledged-operator/helm-charts/kubefledged
   - run: helm repo add stable https://kubernetes-charts.storage.googleapis.com
   - run: helm repo add paperspace https://charts.paperspace.io --username ${PAPERSPACE_HELM_USERNAME} --password ${PAPERSPACE_HELM_PASSWORD}
   - run: helm dependency update deploy/kubefledged-operator/helm-charts
