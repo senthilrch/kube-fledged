@@ -1,4 +1,88 @@
 version: 2.1
+description: Gradient Processing Chart
+
+orbs:
+  helm-tools: paperspace/helm-tools@0.0.12
+
+_workspace_root: &workspace_root .
+_chart_name: &chart_name kubefledged
+_ssh_key_fingerprint: &ssh_key_fingerprint a7:64:43:0c:16:ad:61:cf:78:2f:df:30:0d:9a:2a:15
+_setup_steps: &setup_steps
+  - run: helm lint deploy/kubefledged-operator/helm-charts
+  - run: helm repo add stable https://kubernetes-charts.storage.googleapis.com
+  - run: helm repo add paperspace https://infrastructure-public-chart-museum-repository.storage.googleapis.com
+  - helm-tools/regenerate_public_index
+  - run: helm dependency update deploy/kubefledged-operator/helm-charts
+_setup_steps_internal: &setup_steps_internal
+  - run: helm lint deploy/kubefledged-operator/helm-charts
+  - run: helm repo add stable https://kubernetes-charts.storage.googleapis.com
+  - run: helm repo add paperspace https://charts.paperspace.io --username ${PAPERSPACE_HELM_USERNAME} --password ${PAPERSPACE_HELM_PASSWORD}
+  - run: helm dependency update deploy/kubefledged-operator/helm-charts
+
+
+workflows:
+  version: 2.1
+  pipeline:
+    jobs:
+      - helm-tools/package_and_publish:
+          name: helm_package_and_publish
+          context: helm-deploy
+          chart_name: *chart_name
+          chart_version: 0.0.0-${CIRCLE_SHA1}
+          chart_path: deploy/kubefledged-operator/helm-charts
+          workspace_root: *workspace_root
+          chart_registry_url: ${CHART_REGISTRY_URL}
+          chart_registry_username: ${CHART_REGISTRY_USERNAME}
+          chart_registry_password: ${CHART_REGISTRY_PASSWORD}
+          setup_steps: *setup_steps_internal
+          is_public_chart: false
+          filters:
+            branches:
+              ignore: master
+
+      - helm-tools/package_and_publish:
+          name: helm_package_and_publish_master
+          context: helm-deploy
+          chart_name: *chart_name
+          chart_version: 0.0.0-${CIRCLE_SHA1}
+          additional_chart_version: 0.0.0-latest
+          chart_path: deploy/kubefledged-operator/helm-charts
+          workspace_root: *workspace_root
+          chart_registry_url: ${CHART_REGISTRY_URL}
+          chart_registry_username: ${CHART_REGISTRY_USERNAME}
+          chart_registry_password: ${CHART_REGISTRY_PASSWORD}
+          setup_steps: *setup_steps_internal
+          is_public_chart: false
+          filters:
+            branches:
+              only: master
+
+      - helm-tools/package_and_publish:
+          name: helm_package_and_publish_tag
+          context: helm-deploy
+          chart_name: *chart_name
+          chart_version: ${CIRCLE_TAG}
+          chart_path: deploy/kubefledged-operator/helm-charts
+          workspace_root: *workspace_root
+          chart_registry_url: ${CHART_REGISTRY_URL}
+          chart_registry_username: ${CHART_REGISTRY_USERNAME}
+          chart_registry_password: ${CHART_REGISTRY_PASSWORD}
+          setup_steps: *setup_steps
+          is_public_chart: true
+          should_regenerate_index: true
+          filters:
+            tags:
+              only: /.*/
+            branches:
+              ignore: /.*/
+
+
+
+
+
+
+
+version: 2.1
 
 orbs:
   helm-tools: paperspace/helm-tools@0.0.5
