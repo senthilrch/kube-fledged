@@ -8,7 +8,7 @@ _workspace_root: &workspace_root .
 _chart_name: &chart_name kubefledged
 _ssh_key_fingerprint: &ssh_key_fingerprint a7:64:43:0c:16:ad:61:cf:78:2f:df:30:0d:9a:2a:15
 _setup_steps: &setup_steps
-  - run: helm lint deploy/kubefledged-operator/helm-charts
+  - run: helm lint deploy/kubefledged-operator/helm-charts/kubefledged
   - run: helm repo add stable https://kubernetes-charts.storage.googleapis.com
   - run: helm repo add paperspace https://infrastructure-public-chart-museum-repository.storage.googleapis.com
   - helm-tools/regenerate_public_index
