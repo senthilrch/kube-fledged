@@ -24,10 +24,10 @@ install:
 stages:
   # This stage builds controller and webhook-server images, performs tests in "hack" and runs unit tests with coverage      
   - name: build_amd64
-    if: type = push
+    if: (type = push AND branch = develop) or (type = pull_request)
   # This stage builds all four multi-arch images and pushes them to docker hub (only for PR builds)
   - name: build_multiarch
-    if: type = pull_request
+    if: type = push and branch = master
   # This stage builds all four multi-arch images and pushes them to docker hub (only for release tags)  
   - name: build_release
     if: tag IS present
