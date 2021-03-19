@@ -28,7 +28,7 @@ stages:
   # This stage builds all four multi-arch images and pushes them to docker hub (only for PR builds)
   - name: build_multiarch
     if: type = push and branch = master
-  # This stage builds all four multi-arch images and pushes them to docker hub (only for release tags)  
+  # This stage is a placeholder for future (only for release tags)  
   - name: build_release
     if: tag IS present
 jobs:
@@ -51,6 +51,4 @@ jobs:
         - travis_wait 60 make release
     - stage: build_release
       script:
-        - echo "$DOCKERHUB_PSWD" | docker login --username "$DOCKERHUB_USER" --password-stdin
-        # BUILD_OUTPUT=--push requests buildx to push the built images to docker hub
-        - travis_wait 60 make release
+        - echo "Release tag pushed. nothing to do!!"
