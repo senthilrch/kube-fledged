@@ -1,3 +1,4 @@
 # ignore build output
 build/fledged
 build/fledged-latest.tar.gz
+scp.sh
