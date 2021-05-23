@@ -47,23 +47,23 @@ ifndef RELEASE_VERSION
 endif
 
 ifndef DOCKER_VERSION
-  DOCKER_VERSION=19.03.8
+  DOCKER_VERSION=20.10.6
 endif
 
 ifndef CRICTL_VERSION
-  CRICTL_VERSION=v1.18.0
+  CRICTL_VERSION=v1.21.0
 endif
 
 ifndef GOLANG_VERSION
-  GOLANG_VERSION=1.14.2
+  GOLANG_VERSION=1.16.4
 endif
 
 ifndef ALPINE_VERSION
-  ALPINE_VERSION=3.11.6
+  ALPINE_VERSION=3.13.5
 endif
 
 ifndef OPERATORSDK_VERSION
-  OPERATORSDK_VERSION=v0.17.1
+  OPERATORSDK_VERSION=v1.7.2
 endif
 
 ifndef TARGET_PLATFORMS
@@ -76,6 +76,10 @@ endif
 
 ifndef BUILD_OUTPUT
   BUILD_OUTPUT=--push
+endif
+
+ifndef PROGRESS
+  PROGRESS=auto
 endif
 
 ifndef OPERATOR_NAMESPACE
@@ -121,7 +125,7 @@ clean-operator:
 controller-image: clean-controller
 	docker buildx build --platform=${TARGET_PLATFORMS} -t ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION} \
 	-t ${CONTROLLER_IMAGE_REPO}:latest -f build/Dockerfile.controller ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
-	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
+	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=${PROGRESS} ${BUILD_OUTPUT} .
 
 controller-amd64: TARGET_PLATFORMS=linux/amd64
 controller-amd64: install-buildx controller-image
@@ -135,7 +139,7 @@ controller-dev: clean-controller
 webhook-server-image: clean-webhook-server
 	docker buildx build --platform=${TARGET_PLATFORMS} -t ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION} \
 	-t ${WEBHOOK_SERVER_IMAGE_REPO}:latest -f build/Dockerfile.webhook_server ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
-	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
+	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=${PROGRESS} ${BUILD_OUTPUT} .
 
 webhook-server-amd64: TARGET_PLATFORMS=linux/amd64
 webhook-server-amd64: install-buildx webhook-server-image
@@ -150,12 +154,12 @@ cri-client-image: clean-cri-client
 	docker buildx build --platform=${TARGET_PLATFORMS} -t ${CRI_CLIENT_IMAGE_REPO}:${RELEASE_VERSION} \
 	-t ${CRI_CLIENT_IMAGE_REPO}:latest -f build/Dockerfile.cri_client ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
 	--build-arg DOCKER_VERSION=${DOCKER_VERSION} --build-arg CRICTL_VERSION=${CRICTL_VERSION} \
-	--build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
+	--build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=${PROGRESS} ${BUILD_OUTPUT} .
 
 operator-image: clean-operator
 	cd deploy/kubefledged-operator && \
 	docker buildx build --platform=${OPERATOR_TARGET_PLATFORMS} -t ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION} \
-	-t ${OPERATOR_IMAGE_REPO}:latest -f build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --progress=plain ${BUILD_OUTPUT} .
+	-t ${OPERATOR_IMAGE_REPO}:latest -f build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --progress=${PROGRESS} ${BUILD_OUTPUT} .
 
 release: install-buildx controller-image webhook-server-image cri-client-image operator-image
 

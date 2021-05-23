@@ -41,14 +41,14 @@ jobs:
         - hack/verify-golint.sh
         - hack/verify-govet.sh
         # BUILD_OUTPUT is left empty to indicate buildx to leave the built images in it's cache
-        - travis_wait 30 make BUILD_OUTPUT= controller-amd64 webhook-server-amd64 
+        - travis_wait 30 make BUILD_OUTPUT= PROGRESS=plain controller-amd64 webhook-server-amd64 
         - make test
         - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
     - stage: build_multiarch
       script:
         - echo "$DOCKERHUB_PSWD" | docker login --username "$DOCKERHUB_USER" --password-stdin
         # BUILD_OUTPUT=--push requests buildx to push the built images to docker hub
-        - travis_wait 60 make release
+        - travis_wait 60 make PROGRESS=plain release
     - stage: build_release
       script:
         - echo "Release tag pushed. nothing to do!!"
