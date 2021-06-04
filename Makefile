@@ -156,10 +156,19 @@ cri-client-image: clean-cri-client
 	--build-arg DOCKER_VERSION=${DOCKER_VERSION} --build-arg CRICTL_VERSION=${CRICTL_VERSION} \
 	--build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=${PROGRESS} ${BUILD_OUTPUT} .
 
+cri-client-amd64: TARGET_PLATFORMS=linux/amd64
+cri-client-amd64: install-buildx cri-client-image
+
 operator-image: clean-operator
 	cd deploy/kubefledged-operator && \
 	docker buildx build --platform=${OPERATOR_TARGET_PLATFORMS} -t ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION} \
 	-t ${OPERATOR_IMAGE_REPO}:latest -f build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --progress=${PROGRESS} ${BUILD_OUTPUT} .
+
+operator-amd64: TARGET_PLATFORMS=linux/amd64
+operator-amd64: install-buildx operator-image
+
+release-amd64: TARGET_PLATFORMS=linux/amd64
+release-amd64: release
 
 release: install-buildx controller-image webhook-server-image cri-client-image operator-image
 

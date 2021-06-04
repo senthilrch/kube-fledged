@@ -23,7 +23,7 @@ install:
   - go get github.com/mattn/goveralls
   - go get -u golang.org/x/lint/golint
 stages:
-  # This stage builds controller and webhook-server images, performs tests in "hack" and runs unit tests with coverage      
+  # This stage builds all four amd64 images, performs tests in "hack" and runs unit tests with coverage      
   - name: build_amd64
     if: (type = push AND branch = develop) or (type = pull_request)
   # This stage builds all four multi-arch images and pushes them to docker hub (only for PR builds)
@@ -43,7 +43,7 @@ jobs:
         - hack/verify-govet.sh
         - echo "$DOCKERHUB_PSWD" | docker login --username "$DOCKERHUB_USER" --password-stdin
         # BUILD_OUTPUT is left empty to indicate buildx to leave the built images in it's cache
-        - travis_wait 30 make BUILD_OUTPUT= PROGRESS=plain controller-amd64 webhook-server-amd64 
+        - travis_wait 30 make BUILD_OUTPUT= PROGRESS=plain release-amd64 
         - make test
         - $(go env GOPATH | awk 'BEGIN{FS=":"} {print $1}')/bin/goveralls -coverprofile=coverage.out -service=travis-ci
     - stage: build_multiarch
