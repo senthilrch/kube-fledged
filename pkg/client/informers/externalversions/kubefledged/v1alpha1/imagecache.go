@@ -19,6 +19,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"context"
 	time "time"
 
 	kubefledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha1"
@@ -61,13 +62,13 @@ func NewFilteredImageCacheInformer(client versioned.Interface, namespace string,
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.FledgedV1alpha1().ImageCaches(namespace).List(options)
+				return client.FledgedV1alpha1().ImageCaches(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.FledgedV1alpha1().ImageCaches(namespace).Watch(options)
+				return client.FledgedV1alpha1().ImageCaches(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&kubefledgedv1alpha1.ImageCache{},

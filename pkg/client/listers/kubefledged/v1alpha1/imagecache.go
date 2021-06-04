@@ -26,8 +26,10 @@ import (
 )
 
 // ImageCacheLister helps list ImageCaches.
+// All objects returned here must be treated as read-only.
 type ImageCacheLister interface {
 	// List lists all ImageCaches in the indexer.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ImageCache, err error)
 	// ImageCaches returns an object that can list and get ImageCaches.
 	ImageCaches(namespace string) ImageCacheNamespaceLister
@@ -58,10 +60,13 @@ func (s *imageCacheLister) ImageCaches(namespace string) ImageCacheNamespaceList
 }
 
 // ImageCacheNamespaceLister helps list and get ImageCaches.
+// All objects returned here must be treated as read-only.
 type ImageCacheNamespaceLister interface {
 	// List lists all ImageCaches in the indexer for a given namespace.
+	// Objects returned here must be treated as read-only.
 	List(selector labels.Selector) (ret []*v1alpha1.ImageCache, err error)
 	// Get retrieves the ImageCache from the indexer for a given namespace and name.
+	// Objects returned here must be treated as read-only.
 	Get(name string) (*v1alpha1.ImageCache, error)
 	ImageCacheNamespaceListerExpansion
 }

@@ -17,6 +17,7 @@ limitations under the License.
 package app
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"time"
@@ -32,7 +33,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes"
@@ -95,7 +95,7 @@ func NewController(
 	dockerClientImage string,
 	imagePullPolicy string) *Controller {
 
-	utilruntime.Must(fledgedscheme.AddToScheme(scheme.Scheme))
+	runtime.Must(fledgedscheme.AddToScheme(scheme.Scheme))
 	glog.V(4).Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(glog.Infof)
@@ -148,7 +148,7 @@ func (c *Controller) PreFlightChecks() error {
 
 // danglingJobs finds and removes dangling or stuck jobs
 func (c *Controller) danglingJobs() error {
-	joblist, err := c.kubeclientset.BatchV1().Jobs(c.fledgedNameSpace).List(metav1.ListOptions{})
+	joblist, err := c.kubeclientset.BatchV1().Jobs(c.fledgedNameSpace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("Error listing jobs: %v", err)
 		return err
@@ -161,7 +161,7 @@ func (c *Controller) danglingJobs() error {
 	deletePropagation := metav1.DeletePropagationBackground
 	for _, job := range joblist.Items {
 		err := c.kubeclientset.BatchV1().Jobs(c.fledgedNameSpace).
-			Delete(job.Name, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation})
+			Delete(context.TODO(), job.Name, metav1.DeleteOptions{PropagationPolicy: &deletePropagation})
 		if err != nil {
 			glog.Errorf("Error deleting job(%s): %v", job.Name, err)
 			return err
@@ -175,7 +175,7 @@ func (c *Controller) danglingJobs() error {
 // image caches will get refreshed in the next cycle
 func (c *Controller) danglingImageCaches() error {
 	dangling := false
-	imagecachelist, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(c.fledgedNameSpace).List(metav1.ListOptions{})
+	imagecachelist, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(c.fledgedNameSpace).List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("Error listing imagecaches: %v", err)
 		return err
@@ -357,7 +357,7 @@ func (c *Controller) processNextWorkItem() bool {
 			// Forget here else we'd go into a loop of attempting to
 			// process a work item that is invalid.
 			c.workqueue.Forget(obj)
-			runtime.HandleError(fmt.Errorf("Unexpected type in workqueue: %#v", obj))
+			runtime.HandleError(fmt.Errorf("unexpected type in workqueue: %#v", obj))
 			return nil
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
@@ -481,7 +481,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			status.Message = v1alpha1.ImageCacheMessagePurgeCache
 		}
 
-		imageCache, err = c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
+		imageCache, err = c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			glog.Errorf("Error getting imagecache(%s) from api server: %v", name, err)
 			return err
@@ -554,7 +554,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		// Finally, we update the status block of the ImageCache resource to reflect the
 		// current state of the world
 		// Get the ImageCache resource with this namespace/name
-		imageCache, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
+		imageCache, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 		if err != nil {
 			glog.Errorf("Error getting image cache %s: %v", name, err)
 			return err
@@ -602,7 +602,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 		}
 
 		if imageCache.Status.Reason == v1alpha1.ImageCacheReasonImageCachePurge || imageCache.Status.Reason == v1alpha1.ImageCacheReasonImageCacheRefresh {
-			imageCache, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(name, metav1.GetOptions{})
+			imageCache, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(namespace).Get(context.TODO(), name, metav1.GetOptions{})
 			if err != nil {
 				glog.Errorf("Error getting image cache %s: %v", name, err)
 				return err
@@ -648,14 +648,14 @@ func (c *Controller) updateImageCacheStatus(imageCache *v1alpha1.ImageCache, sta
 	// we must use Update instead of UpdateStatus to update the Status block of the ImageCache resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
+	_, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(context.TODO(), imageCacheCopy, metav1.UpdateOptions{})
 	return err
 }
 
 func (c *Controller) removeAnnotation(imageCache *v1alpha1.ImageCache, annotationKey string) error {
 	imageCacheCopy := imageCache.DeepCopy()
 	delete(imageCacheCopy.Annotations, annotationKey)
-	_, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(imageCacheCopy)
+	_, err := c.kubefledgedclientset.FledgedV1alpha1().ImageCaches(imageCache.Namespace).Update(context.TODO(), imageCacheCopy, metav1.UpdateOptions{})
 	if err == nil {
 		glog.Infof("Annotation %s removed from imagecache(%s)", annotationKey, imageCache.Name)
 	}

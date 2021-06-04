@@ -211,9 +211,6 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, nod
 			},
 		},
 	}
-	if strings.Contains(containerRuntimeVersion, "docker") {
-		// Job manifest needs no change
-	}
 	if strings.Contains(containerRuntimeVersion, "containerd") {
 		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///run/containerd/containerd.sock  --image-endpoint=unix:///run/containerd/containerd.sock rmi " + image + " > /dev/termination-log 2>&1"}
 		job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = "/run/containerd/containerd.sock"

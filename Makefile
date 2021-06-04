@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: clean clean-controller clean-cri-client clean-operator controller-amd64 controller-image cri-client-image operator-image build-images push-images test deploy update remove
+.PHONY: clean clean-controller clean-cri-client clean-operator controller-amd64 controller-image cri-client-image operator-image build-images push-images test deploy update remove hack
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
@@ -173,6 +173,14 @@ install-buildx:
 test:
 	-rm -f coverage.out
 	bash hack/run-unit-tests.sh
+
+hack:
+	bash hack/update-codegen.sh
+	bash hack/update-gofmt.sh
+	bash hack/verify-codegen.sh
+	bash hack/verify-gofmt.sh
+	bash hack/verify-golint.sh
+	bash hack/verify-govet.sh
 
 deploy-using-yaml:
 	-kubectl apply -f deploy/kubefledged-namespace.yaml
