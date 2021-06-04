@@ -523,7 +523,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 				},
 			},
 			expectError:         true,
-			expectedErrorString: "No pods matched job",
+			expectedErrorString: "no pods matched job",
 		},
 		{
 			name: "#7: Purge - Unsuccessful",
@@ -558,7 +558,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 				},
 			},
 			expectError:         true,
-			expectedErrorString: "More than one pod matched job",
+			expectedErrorString: "more than one pod matched job",
 		},
 		{
 			name: "#8: Create - Unsuccessful",

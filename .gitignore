@@ -2,3 +2,4 @@
 build/fledged
 build/fledged-latest.tar.gz
 scp.sh
+coverage.out
