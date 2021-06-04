@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha1"
+	fledgedv1alpha2 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -77,7 +77,7 @@ type ImageWorkRequest struct {
 	Node                    *corev1.Node
 	ContainerRuntimeVersion string
 	WorkType                WorkType
-	Imagecache              *fledgedv1alpha1.ImageCache
+	Imagecache              *fledgedv1alpha2.ImageCache
 }
 
 // ImageWorkResult stores the result of pulling and deleting image
@@ -106,7 +106,7 @@ type WorkQueueKey struct {
 	WorkType      WorkType
 	ObjKey        string
 	Status        *map[string]ImageWorkResult
-	OldImageCache *fledgedv1alpha1.ImageCache
+	OldImageCache *fledgedv1alpha2.ImageCache
 }
 
 // NewImageManager returns a new image manager object
@@ -291,7 +291,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 	//m.lock.Unlock()
 	deletePropagation := metav1.DeletePropagationBackground
 	var iwstatusLock sync.RWMutex
-	var imageCache *fledgedv1alpha1.ImageCache
+	var imageCache *fledgedv1alpha2.ImageCache
 	m.lock.Lock()
 	for job, iwres := range m.imageworkstatus {
 		if iwres.ImageWorkRequest.Imagecache.Name == imageCacheName {

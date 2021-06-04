@@ -69,7 +69,7 @@ func main() {
 
 	controller := app.NewController(kubeClient, fledgedClient, fledgedNameSpace,
 		kubeInformerFactory.Core().V1().Nodes(),
-		fledgedInformerFactory.Fledged().V1alpha1().ImageCaches(),
+		fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches(),
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
 
 	glog.Info("Starting pre-flight checks")

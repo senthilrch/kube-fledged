@@ -172,9 +172,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Fledged() kubefledged.Interface
+	Kubefledged() kubefledged.Interface
 }
 
-func (f *sharedInformerFactory) Fledged() kubefledged.Interface {
+func (f *sharedInformerFactory) Kubefledged() kubefledged.Interface {
 	return kubefledged.New(f, f.namespace, f.tweakListOptions)
 }

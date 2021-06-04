@@ -62,7 +62,7 @@ done
 
 [ -z ${service} ] && service=kubefledged-webhook-server
 [ -z ${secret} ] && secret=kubefledged-webhook-server
-[ -z ${namespace} ] && namespace=kube-fledged
+[ -z ${namespace} ] && namespace=mxe-release
 
 if [ ! -x "$(command -v openssl)" ]; then
     echo "openssl not found"
@@ -101,8 +101,9 @@ openssl req -new -key ${tmpdir}/server-key.pem -subj "/CN=${service}.${namespace
 kubectl delete csr ${csrName} 2>/dev/null || true
 
 # create  server cert/key CSR and  send to k8s API
+apiVersion=$(kubectl api-versions | grep certificates.k8s.io | head -1)
 cat <<EOF | kubectl create -f -
-apiVersion: certificates.k8s.io/v1beta1
+apiVersion: ${apiVersion}
 kind: CertificateSigningRequest
 metadata:
   name: ${csrName}
@@ -110,10 +111,11 @@ spec:
   groups:
   - system:authenticated
   request: $(cat ${tmpdir}/server.csr | base64 | tr -d '\n')
+  signerName: kubernetes.io/kube-apiserver-client
   usages:
   - digital signature
   - key encipherment
-  - server auth
+  - client auth
 EOF
 
 # verify CSR has been created
@@ -145,6 +147,6 @@ echo ${serverCert} | openssl base64 -d -A -out ${tmpdir}/server-cert.pem
 kubectl create secret generic ${secret} \
         --from-file=key.pem=${tmpdir}/server-key.pem \
         --from-file=cert.pem=${tmpdir}/server-cert.pem \
-        --dry-run -o yaml |
+        --dry-run=client -o yaml |
     kubectl -n ${namespace} apply -f -
 
