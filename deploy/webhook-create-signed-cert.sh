@@ -62,7 +62,7 @@ done
 
 [ -z ${service} ] && service=kubefledged-webhook-server
 [ -z ${secret} ] && secret=kubefledged-webhook-server
-[ -z ${namespace} ] && namespace=mxe-release
+[ -z ${namespace} ] && namespace=kube-fledged
 
 if [ ! -x "$(command -v openssl)" ]; then
     echo "openssl not found"

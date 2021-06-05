@@ -2,6 +2,9 @@ kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: kubefledged
+  labels:
+    app: kubefledged
+    component: kubefledged-controller
   annotations:
     rbac.authorization.kubernetes.io/autoupdate: "true"
 rules:

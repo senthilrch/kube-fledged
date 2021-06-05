@@ -2,6 +2,9 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: kubefledged
+  labels:
+    app: kubefledged
+    component: kubefledged-webhook-server
 webhooks:
   - name: validate-image-cache.kubefledged.k8s.io
     admissionReviewVersions: ["v1beta1", "v1"]

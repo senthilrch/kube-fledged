@@ -3,6 +3,9 @@ kind: Deployment
 metadata:
   name: kubefledged-controller
   namespace: kube-fledged
+  labels:
+    app: kubefledged
+    component: kubefledged-controller
 spec:
   replicas: 1
   selector:

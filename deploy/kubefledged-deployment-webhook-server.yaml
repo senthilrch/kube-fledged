@@ -3,6 +3,9 @@ kind: Deployment
 metadata:
   name: kubefledged-webhook-server
   namespace: kube-fledged
+  labels:
+    app: kubefledged
+    component: kubefledged-webhook-server
 spec:
   replicas: 1
   selector:
