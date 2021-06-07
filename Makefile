@@ -199,8 +199,9 @@ deploy-using-yaml:
 	kubectl apply -f deploy/kubefledged-serviceaccount.yaml
 	kubectl apply -f deploy/kubefledged-clusterrole.yaml
 	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml
-	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
 	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml
+	kubectl rollout status deployment kubefledged-webhook-server -n kube-fledged --watch
+	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
 	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
 
