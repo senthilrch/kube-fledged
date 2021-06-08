@@ -102,6 +102,8 @@ rules:
   - delete
   - get
   - patch
+  - list
+  - watch
 - apiGroups:
     - "kubefledged.io"
   resources:
@@ -152,6 +154,7 @@ rules:
   verbs:
     - get
     - list
+    - watch
     - create
     - update
     - patch
