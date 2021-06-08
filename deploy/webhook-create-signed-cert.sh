@@ -111,11 +111,11 @@ spec:
   groups:
   - system:authenticated
   request: $(cat ${tmpdir}/server.csr | base64 | tr -d '\n')
-  signerName: kubernetes.io/kube-apiserver-client
+  signerName: kubernetes.io/legacy-unknown
   usages:
   - digital signature
   - key encipherment
-  - client auth
+  - server auth
 EOF
 
 # verify CSR has been created
