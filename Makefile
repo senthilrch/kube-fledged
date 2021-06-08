@@ -210,7 +210,7 @@ deploy-using-operator:
 	-kubectl create namespace ${OPERATOR_NAMESPACE}
 	-kubectl create namespace ${KUBEFLEDGED_NAMESPACE}
 	# Deploy the operator to a separate namespace
-	sed -i 's|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g' deploy/kubefledged-operator/deploy/service_account.yaml
+	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/service_account.yaml
 	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
 	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/operator.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_kubefledgeds_crd.yaml
@@ -219,11 +219,11 @@ deploy-using-operator:
 	kubectl apply -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/operator.yaml
 	# Deploy kube-fledged to a separate namespace
-	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
-	sed -i "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
+	sed -i "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 	bash deploy/webhook-create-signed-cert.sh --namespace ${KUBEFLEDGED_NAMESPACE}
 	bash deploy/webhook-patch-ca-bundle.sh
-	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 
 update:
 	kubectl scale deployment kubefledged-controller --replicas=0 -n kube-fledged
@@ -239,14 +239,14 @@ remove-kubefledged:
 	-kubectl delete -f deploy/kubefledged-crd.yaml
 	-kubectl delete -f deploy/kubefledged-validatingwebhook.yaml
 	-git checkout deploy/kubefledged-validatingwebhook.yaml
-	-git checkout deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	-git checkout deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 
 remove-operator-and-kubefledged:
 	# Remove kubefledged and the namespace
-	-kubectl delete -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	-kubectl delete -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 	-kubectl delete namespace ${KUBEFLEDGED_NAMESPACE}
 	-git checkout deploy/kubefledged-validatingwebhook.yaml
-	-git checkout deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	-git checkout deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 	# Remove the kubefledged operator and the namespace
 	-kubectl delete -f deploy/kubefledged-operator/deploy/operator.yaml
 	-kubectl delete -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml

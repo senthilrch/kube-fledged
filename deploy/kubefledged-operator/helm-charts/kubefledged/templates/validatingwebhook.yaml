@@ -19,7 +19,7 @@ webhooks:
     rules:
       - operations: ["CREATE", "UPDATE"]
         apiGroups: ["kubefledged.io"]
-        apiVersions: ["v1alpha1"]
+        apiVersions: ["v1alpha2"]
         resources: ["imagecaches"]
         scope: "Namespaced"
 {{- end -}}

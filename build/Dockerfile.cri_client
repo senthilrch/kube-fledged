@@ -15,7 +15,7 @@
 ARG ALPINE_VERSION
 FROM alpine:$ALPINE_VERSION
 
-RUN apk add --no-cache bash curl openssh-client
+RUN apk update && apk add --no-cache bash curl openssh-client
 
 ARG DOCKER_VERSION
 ARG CRICTL_VERSION

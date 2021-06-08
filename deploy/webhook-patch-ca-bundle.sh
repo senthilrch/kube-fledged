@@ -23,4 +23,4 @@ export CA_BUNDLE=$(kubectl config view --raw --flatten -o json | jq -r '.cluster
 #CA_DECODED=$(echo ${CA_BUNDLE} | base64 -d -)
 sed -i "s|{{CA_BUNDLE}}|${CA_BUNDLE}|g" deploy/kubefledged-validatingwebhook.yaml
 #sed -i "s|{{CA_BUNDLE}}|${CA_DECODED}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
-sed -i "s|{{CA_BUNDLE}}|${CA_BUNDLE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+sed -i "s|{{CA_BUNDLE}}|${CA_BUNDLE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
