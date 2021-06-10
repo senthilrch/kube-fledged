@@ -82,6 +82,35 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
 
+## Quick Install using Helm chart
+
+- Create the namespace where kube-fledged will be installed
+
+  ```
+  $ export KUBEFLEDGED_NAMESPACE=kube-fledged
+  $ kubectl create namespace ${KUBEFLEDGED_NAMESPACE}
+  ```
+
+- Create secret containing cert/key for kubefledged-webhook-server
+
+  ```
+  $ curl -fsSL https://raw.githubusercontent.com/senthilrch/kube-fledged/master/deploy/webhook-create-signed-cert.sh | bash -s -- --namespace ${KUBEFLEDGED_NAMESPACE}
+  ```
+
+- Retrieve the certifica-authoity-data of the kubernetes cluster
+
+  ```
+  $ CLUSTER=$(kubectl config view --raw --flatten -o json | jq -r '.contexts[] | select(.name == "'$(kubectl config current-context)'") | .context.cluster')
+
+  $ export CA_BUNDLE=$(kubectl config view --raw --flatten -o json | jq -r '.clusters[] | select(.name == "'${CLUSTER}'") | .cluster."certificate-authority-data"')
+  ```
+
+- Install kube-fledged helm chart
+
+  ```
+  helm install image-cacher ./deploy/kubefledged-operator/helm-charts/kubefledged -n ${KUBEFLEDGED_NAMESPACE} --wait --set validatingWebhookCABundle=${CA_BUNDLE}
+  ```
+
 ## Quick Install using Helm operator
 
 These instructions install _kube-fledged_ to a separate namespace called "kube-fledged", using Helm operator and pre-built images in [Docker Hub.](https://hub.docker.com/u/senthilrch)
