@@ -1,4 +1,4 @@
-apiVersion: v3
+apiVersion: v2
 name: kube-fledged
 description: A Helm chart for deploying kube-fledged
 
