@@ -22,7 +22,7 @@ import (
 	"reflect"
 
 	"github.com/golang/glog"
-	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha1"
+	fledgedv1alpha2 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha2"
 	v1 "k8s.io/api/admission/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -73,7 +73,7 @@ func MutateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 func ValidateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 	glog.V(4).Info("admitting image cache")
 	var raw, oldraw []byte
-	var imageCache, oldImageCache fledgedv1alpha1.ImageCache
+	var imageCache, oldImageCache fledgedv1alpha2.ImageCache
 
 	reviewResponse := v1.AdmissionResponse{}
 	reviewResponse.Allowed = true

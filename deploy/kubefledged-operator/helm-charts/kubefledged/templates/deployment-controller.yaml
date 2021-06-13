@@ -22,6 +22,21 @@ spec:
       serviceAccountName: {{ include "kubefledged.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: wait
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: {{ .Values.image.kubefledgedCRIClientRepository }}:{{ .Chart.AppVersion }}
+          command: ["curl"]
+          args:
+            - "--insecure"
+            - "--retry-all-errors"
+            - "--retry"
+            - "60"
+            - "--retry-delay"
+            - "1"
+            - "https://{{ include "kubefledged.fullname" . }}-webhook-server:{{ .Values.webhookService.port }}/readyz"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:

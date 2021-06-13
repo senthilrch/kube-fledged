@@ -17,13 +17,14 @@ limitations under the License.
 package images
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/golang/glog"
-	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha1"
+	fledgedv1alpha2 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,7 +77,7 @@ type ImageWorkRequest struct {
 	Node                    *corev1.Node
 	ContainerRuntimeVersion string
 	WorkType                WorkType
-	Imagecache              *fledgedv1alpha1.ImageCache
+	Imagecache              *fledgedv1alpha2.ImageCache
 }
 
 // ImageWorkResult stores the result of pulling and deleting image
@@ -105,7 +106,7 @@ type WorkQueueKey struct {
 	WorkType      WorkType
 	ObjKey        string
 	Status        *map[string]ImageWorkResult
-	OldImageCache *fledgedv1alpha1.ImageCache
+	OldImageCache *fledgedv1alpha2.ImageCache
 }
 
 // NewImageManager returns a new image manager object
@@ -191,7 +192,6 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 	m.lock.Lock()
 	m.imageworkstatus[pod.Labels["job-name"]] = iwres
 	m.lock.Unlock()
-	return
 }
 
 func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) error {
@@ -208,11 +208,11 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 				}
 				if len(pods) == 0 {
 					glog.Errorf("No pods matched job %s", job)
-					return fmt.Errorf("No pods matched job %s", job)
+					return fmt.Errorf("no pods matched job %s", job)
 				}
 				if len(pods) > 1 {
 					glog.Errorf("More than one pod matched job %s", job)
-					return fmt.Errorf("More than one pod matched job %s", job)
+					return fmt.Errorf("more than one pod matched job %s", job)
 				}
 				iwres.Status = ImageWorkResultStatusFailed
 				if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
@@ -244,7 +244,7 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 					}.AsSelector().String()
 
 					eventlist, err := m.kubeclientset.CoreV1().Events(m.fledgedNameSpace).
-						List(metav1.ListOptions{FieldSelector: fieldSelector})
+						List(context.TODO(), metav1.ListOptions{FieldSelector: fieldSelector})
 					if err != nil {
 						glog.Errorf("Error listing events for pod (%s): %v", pods[0].Name, err)
 						return err
@@ -291,7 +291,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 	//m.lock.Unlock()
 	deletePropagation := metav1.DeletePropagationBackground
 	var iwstatusLock sync.RWMutex
-	var imageCache *fledgedv1alpha1.ImageCache
+	var imageCache *fledgedv1alpha2.ImageCache
 	m.lock.Lock()
 	for job, iwres := range m.imageworkstatus {
 		if iwres.ImageWorkRequest.Imagecache.Name == imageCacheName {
@@ -303,7 +303,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 			// delete jobs
 			if !strings.HasPrefix(job, fakeJobPrefix) {
 				if err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).
-					Delete(job, &metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
+					Delete(context.TODO(), job, metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
 					glog.Errorf("Error deleting job %s: %v", job, err)
 					m.lock.Unlock()
 					errCh <- err
@@ -315,7 +315,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 	m.lock.Unlock()
 	if imageCache == nil {
 		glog.Errorf("Unable to obtain reference to image cache")
-		errCh <- fmt.Errorf("Unable to obtain reference to image cache")
+		errCh <- fmt.Errorf("unable to obtain reference to image cache")
 		return
 	}
 	objKey, err := cache.MetaNamespaceKeyFunc(imageCache)
@@ -331,7 +331,6 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 	})
 
 	errCh <- nil
-	return
 }
 
 // Run starts the Image Manager go routine
@@ -390,7 +389,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 			// Forget here else we'd go into a loop of attempting to
 			// process a work item that is invalid.
 			m.imageworkqueue.Forget(obj)
-			runtime.HandleError(fmt.Errorf("Unexpected type in workqueue: %#v", obj))
+			runtime.HandleError(fmt.Errorf("unexpected type in workqueue: %#v", obj))
 			return nil
 		}
 
@@ -417,7 +416,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 			pull, err = checkIfImageNeedsToBePulled(m.imagePullPolicy, iwr.Image, iwr.Node)
 			if err != nil {
 				glog.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
-				return fmt.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
+				return fmt.Errorf("error from checkIfImageNeedsToBePulled(): %+v", err)
 			}
 			if pull {
 				job, err = m.pullImage(iwr)
@@ -460,7 +459,7 @@ func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 		return nil, err
 	}
 	// Create a Job to pull the image into the node
-	job, err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).Create(newjob)
+	job, err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).Create(context.TODO(), newjob, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("Error creating job in node %s: %v", iwr.Node, err)
 		return nil, err
@@ -477,7 +476,7 @@ func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 		return nil, err
 	}
 	// Create a Job to delete the image from the node
-	job, err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).Create(newjob)
+	job, err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).Create(context.TODO(), newjob, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("Error creating job in node %s: %v", iwr.Node, err)
 		return nil, err

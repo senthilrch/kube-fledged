@@ -19,10 +19,10 @@ set -o nounset
 set -o pipefail
 
 export GOPATH=${HOME}/go
-go get -d k8s.io/code-generator@v0.17.2
+go get -d k8s.io/code-generator@v0.21.1
 
 SCRIPT_ROOT=$(dirname ${BASH_SOURCE})/..
-CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 $GOPATH/pkg/mod/k8s.io/code-generator@v0.17.2 2>/dev/null || echo ../code-generator)}
+CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 $GOPATH/pkg/mod/k8s.io/code-generator@v0.21.1 2>/dev/null || echo ../code-generator)}
 
 # generate the code with:
 # --output-base    because this script should also be able to run inside the vendor dir of
@@ -31,7 +31,7 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 $GOPATH/pkg/mod/k8s.io/
 chmod u+x ${CODEGEN_PKG}/generate-groups.sh
 ${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
   github.com/senthilrch/kube-fledged/pkg/client github.com/senthilrch/kube-fledged/pkg/apis \
-  kubefledged:v1alpha1 \
+  kubefledged:v1alpha2 \
   --output-base "$(dirname ${BASH_SOURCE})/../../../.." \
   --go-header-file ${SCRIPT_ROOT}/hack/boilerplate/boilerplate.generatego.txt
 

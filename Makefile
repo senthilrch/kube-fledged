@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.PHONY: clean clean-controller clean-cri-client clean-operator controller-amd64 controller-image cri-client-image operator-image build-images push-images test deploy update remove
+.PHONY: clean clean-controller clean-cri-client clean-operator controller-amd64 controller-image cri-client-image operator-image build-images push-images test deploy update remove hack
 # Default tag and architecture. Can be overridden
 TAG?=$(shell git describe --tags --dirty)
 ARCH?=amd64
@@ -43,27 +43,27 @@ ifndef OPERATOR_IMAGE_REPO
 endif
 
 ifndef RELEASE_VERSION
-  RELEASE_VERSION=v0.7.1
+  RELEASE_VERSION=v0.8.0
 endif
 
 ifndef DOCKER_VERSION
-  DOCKER_VERSION=19.03.8
+  DOCKER_VERSION=20.10.6
 endif
 
 ifndef CRICTL_VERSION
-  CRICTL_VERSION=v1.18.0
+  CRICTL_VERSION=v1.21.0
 endif
 
 ifndef GOLANG_VERSION
-  GOLANG_VERSION=1.14.2
+  GOLANG_VERSION=1.16.4
 endif
 
 ifndef ALPINE_VERSION
-  ALPINE_VERSION=3.11.6
+  ALPINE_VERSION=3.13.5
 endif
 
 ifndef OPERATORSDK_VERSION
-  OPERATORSDK_VERSION=v0.17.1
+  OPERATORSDK_VERSION=v1.7.2
 endif
 
 ifndef TARGET_PLATFORMS
@@ -76,6 +76,10 @@ endif
 
 ifndef BUILD_OUTPUT
   BUILD_OUTPUT=--push
+endif
+
+ifndef PROGRESS
+  PROGRESS=auto
 endif
 
 ifndef OPERATOR_NAMESPACE
@@ -121,7 +125,7 @@ clean-operator:
 controller-image: clean-controller
 	docker buildx build --platform=${TARGET_PLATFORMS} -t ${CONTROLLER_IMAGE_REPO}:${RELEASE_VERSION} \
 	-t ${CONTROLLER_IMAGE_REPO}:latest -f build/Dockerfile.controller ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
-	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
+	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=${PROGRESS} ${BUILD_OUTPUT} .
 
 controller-amd64: TARGET_PLATFORMS=linux/amd64
 controller-amd64: install-buildx controller-image
@@ -135,7 +139,7 @@ controller-dev: clean-controller
 webhook-server-image: clean-webhook-server
 	docker buildx build --platform=${TARGET_PLATFORMS} -t ${WEBHOOK_SERVER_IMAGE_REPO}:${RELEASE_VERSION} \
 	-t ${WEBHOOK_SERVER_IMAGE_REPO}:latest -f build/Dockerfile.webhook_server ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
-	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
+	--build-arg GOLANG_VERSION=${GOLANG_VERSION} --build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=${PROGRESS} ${BUILD_OUTPUT} .
 
 webhook-server-amd64: TARGET_PLATFORMS=linux/amd64
 webhook-server-amd64: install-buildx webhook-server-image
@@ -150,12 +154,21 @@ cri-client-image: clean-cri-client
 	docker buildx build --platform=${TARGET_PLATFORMS} -t ${CRI_CLIENT_IMAGE_REPO}:${RELEASE_VERSION} \
 	-t ${CRI_CLIENT_IMAGE_REPO}:latest -f build/Dockerfile.cri_client ${HTTP_PROXY_CONFIG} ${HTTPS_PROXY_CONFIG} \
 	--build-arg DOCKER_VERSION=${DOCKER_VERSION} --build-arg CRICTL_VERSION=${CRICTL_VERSION} \
-	--build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=plain ${BUILD_OUTPUT} .
+	--build-arg ALPINE_VERSION=${ALPINE_VERSION} --progress=${PROGRESS} ${BUILD_OUTPUT} .
+
+cri-client-amd64: TARGET_PLATFORMS=linux/amd64
+cri-client-amd64: install-buildx cri-client-image
 
 operator-image: clean-operator
 	cd deploy/kubefledged-operator && \
 	docker buildx build --platform=${OPERATOR_TARGET_PLATFORMS} -t ${OPERATOR_IMAGE_REPO}:${RELEASE_VERSION} \
-	-t ${OPERATOR_IMAGE_REPO}:latest -f build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --progress=plain ${BUILD_OUTPUT} .
+	-t ${OPERATOR_IMAGE_REPO}:latest -f build/Dockerfile --build-arg OPERATORSDK_VERSION=${OPERATORSDK_VERSION} --progress=${PROGRESS} ${BUILD_OUTPUT} .
+
+operator-amd64: TARGET_PLATFORMS=linux/amd64
+operator-amd64: install-buildx operator-image
+
+release-amd64: TARGET_PLATFORMS=linux/amd64
+release-amd64: release
 
 release: install-buildx controller-image webhook-server-image cri-client-image operator-image
 
@@ -170,6 +183,14 @@ test:
 	-rm -f coverage.out
 	bash hack/run-unit-tests.sh
 
+hack:
+	bash hack/update-codegen.sh
+	bash hack/update-gofmt.sh
+	bash hack/verify-codegen.sh
+	bash hack/verify-gofmt.sh
+	bash hack/verify-golint.sh
+	bash hack/verify-govet.sh
+
 deploy-using-yaml:
 	-kubectl apply -f deploy/kubefledged-namespace.yaml
 	bash deploy/webhook-create-signed-cert.sh
@@ -178,8 +199,9 @@ deploy-using-yaml:
 	kubectl apply -f deploy/kubefledged-serviceaccount.yaml
 	kubectl apply -f deploy/kubefledged-clusterrole.yaml
 	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml
-	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
 	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml
+	kubectl rollout status deployment kubefledged-webhook-server -n kube-fledged --watch
+	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
 	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
 
@@ -188,7 +210,7 @@ deploy-using-operator:
 	-kubectl create namespace ${OPERATOR_NAMESPACE}
 	-kubectl create namespace ${KUBEFLEDGED_NAMESPACE}
 	# Deploy the operator to a separate namespace
-	sed -i 's|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g' deploy/kubefledged-operator/deploy/service_account.yaml
+	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/service_account.yaml
 	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
 	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/operator.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_kubefledgeds_crd.yaml
@@ -197,11 +219,11 @@ deploy-using-operator:
 	kubectl apply -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/operator.yaml
 	# Deploy kube-fledged to a separate namespace
-	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
-	sed -i "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
+	sed -i "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 	bash deploy/webhook-create-signed-cert.sh --namespace ${KUBEFLEDGED_NAMESPACE}
 	bash deploy/webhook-patch-ca-bundle.sh
-	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 
 update:
 	kubectl scale deployment kubefledged-controller --replicas=0 -n kube-fledged
@@ -217,14 +239,14 @@ remove-kubefledged:
 	-kubectl delete -f deploy/kubefledged-crd.yaml
 	-kubectl delete -f deploy/kubefledged-validatingwebhook.yaml
 	-git checkout deploy/kubefledged-validatingwebhook.yaml
-	-git checkout deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	-git checkout deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 
 remove-operator-and-kubefledged:
 	# Remove kubefledged and the namespace
-	-kubectl delete -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	-kubectl delete -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 	-kubectl delete namespace ${KUBEFLEDGED_NAMESPACE}
 	-git checkout deploy/kubefledged-validatingwebhook.yaml
-	-git checkout deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha1_kubefledged_cr.yaml
+	-git checkout deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 	# Remove the kubefledged operator and the namespace
 	-kubectl delete -f deploy/kubefledged-operator/deploy/operator.yaml
 	-kubectl delete -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml

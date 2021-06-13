@@ -2,8 +2,11 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: kubefledged
+  labels:
+    app: kubefledged
+    component: kubefledged-webhook-server
 webhooks:
-  - name: validate-image-cache.kubefledged.k8s.io
+  - name: validate-image-cache.kubefledged.io
     admissionReviewVersions: ["v1beta1", "v1"]
     timeoutSeconds: 1
     failurePolicy: Fail
@@ -17,7 +20,7 @@ webhooks:
       caBundle: {{CA_BUNDLE}}
     rules:
       - operations: ["CREATE", "UPDATE"]
-        apiGroups: ["kubefledged.k8s.io"]
-        apiVersions: ["v1alpha1"]
+        apiGroups: ["kubefledged.io"]
+        apiVersions: ["v1alpha2"]
         resources: ["imagecaches"]
         scope: "Namespaced"

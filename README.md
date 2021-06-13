@@ -18,10 +18,10 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-
 - [Use cases](#use-cases)
 - [Prerequisites](#prerequisites)
 - [Quick Install using YAML manifests](#quick-install-using-yaml-manifests)
+- [Quick Install using Helm chart](#quick-install-using-helm-chart)
 - [Quick Install using Helm operator](#quick-install-using-helm-operator)
 - [Build and Deploy](#build-and-deploy)
   - [Build](#build)
@@ -34,7 +34,7 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
   - [Delete image cache](#delete-image-cache)
   - [Remove kube-fledged](#remove-kube-fledged)
 - [How it works](#how-it-works)
-- [Configuration Flags](#configuration-flags)
+- [Configuration Flags for Kubefledged Controller](#configuration-flags-for-kubefledged-controller)
 - [Supported Container Runtimes](#supported-container-runtimes)
 - [Supported Platforms](#supported-platforms)
 - [Built With](#built-with)
@@ -53,8 +53,9 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 ## Prerequisites
 
 - A functioning kubernetes cluster (v1.16 or above). It could be a simple development cluster like minikube or a large production cluster.
+- Cluster-admin privileges to the kubernetes cluster.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- git, make, go, docker engine (>= 19.03), openssl and kubectl installed on a local linux machine. kubectl configured properly to access the cluster with cluster-admin privileges.
+- git, make, go, docker engine (>= 19.03), openssl, kubectl, helm, gpg and gnu-sed installed on a local linux or mac machine. kubectl configured properly to access the cluster.
 
 ## Quick Install using YAML manifests
 
@@ -82,6 +83,37 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
 
+## Quick Install using Helm chart
+
+- Create the namespace where kube-fledged will be installed
+
+  ```
+  $ export KUBEFLEDGED_NAMESPACE=kube-fledged
+  $ kubectl create namespace ${KUBEFLEDGED_NAMESPACE}
+  ```
+
+- Create secret containing cert/key for kubefledged-webhook-server
+
+  ```
+  $ curl -fsSL https://raw.githubusercontent.com/senthilrch/kube-fledged/master/deploy/webhook-create-signed-cert.sh | bash -s -- --namespace ${KUBEFLEDGED_NAMESPACE}
+  ```
+
+- Retrieve the certificate-authoity-data of the kubernetes cluster
+
+  ```
+  $ CLUSTER=$(kubectl config view --raw --flatten -o json | jq -r '.contexts[] | select(.name == "'$(kubectl config current-context)'") | .context.cluster')
+  $ export CA_BUNDLE=$(kubectl config view --raw --flatten -o json | jq -r '.clusters[] | select(.name == "'${CLUSTER}'") | .cluster."certificate-authority-data"')
+  ```
+
+- Verify and install latest version of kube-fledged helm chart
+
+  ```
+  $ helm repo add kubefledged-charts https://senthilrch.github.io/kubefledged-charts/
+  $ gpg --keyserver keyserver.ubuntu.com --recv-keys 92D793FA3A6460ED (or) gpg --keyserver pgp.mit.edu --recv-keys 92D793FA3A6460ED
+  $ gpg --export >~/.gnupg/pubring.gpg
+  $ helm install --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --set validatingWebhookCABundle=${CA_BUNDLE} --wait
+  ```
+
 ## Quick Install using Helm operator
 
 These instructions install _kube-fledged_ to a separate namespace called "kube-fledged", using Helm operator and pre-built images in [Docker Hub.](https://hub.docker.com/u/senthilrch)
@@ -94,7 +126,7 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ cd $HOME/src/github.com/senthilrch/kube-fledged
   ```
 
-- Deploy the helm operator to a separate namespace called "operators" and _kube-fledged_ to a separate namespace called "kube-fledged". If you need to deploy to a different namespace, export the variables OPERATOR_NAMESPACE and KUBEFLEDGED_NAMESPACE
+- Deploy the helm operator to a separate namespace called "kubefledged-operator" and _kube-fledged_ to a separate namespace called "kube-fledged". If you need to deploy to a different namespace, export the variables OPERATOR_NAMESPACE and KUBEFLEDGED_NAMESPACE
 
   ```
   $ make deploy-using-operator
@@ -135,9 +167,11 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
   $ export RELEASE_VERSION=<your_tag>
   $ export CONTROLLER_IMAGE_REPO=docker.io/<your_dockerhub_username>/kubefledged-controller
   $ export WEBHOOK_SERVER_IMAGE_REPO=docker.io/<your_dockerhub_username>/kubefledged-webhook-server
+  $ export CRI_CLIENT_IMAGE_REPO=docker.io/<your_dockerhub_username>/kubefledged-cri-client
+  $ export OPERATOR_IMAGE_REPO=docker.io/<your_dockerhub_username>/kubefledged-operator
   $ docker login -u <username> -p <password>
   $ export DOCKER_CLI_EXPERIMENTAL=enabled
-  $ make install-buildx && make controller-image && make webhook-server-image
+  $ make install-buildx && make release-amd64
   ```
 
 ### Deploy

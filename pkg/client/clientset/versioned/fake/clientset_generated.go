@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
-	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/kubefledged/v1alpha1"
-	fakefledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/kubefledged/v1alpha1/fake"
+	kubefledgedv1alpha2 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/kubefledged/v1alpha2"
+	fakekubefledgedv1alpha2 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/kubefledged/v1alpha2/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -76,7 +76,7 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 
 var _ clientset.Interface = &Clientset{}
 
-// FledgedV1alpha1 retrieves the FledgedV1alpha1Client
-func (c *Clientset) FledgedV1alpha1() fledgedv1alpha1.FledgedV1alpha1Interface {
-	return &fakefledgedv1alpha1.FakeFledgedV1alpha1{Fake: &c.Fake}
+// KubefledgedV1alpha2 retrieves the KubefledgedV1alpha2Client
+func (c *Clientset) KubefledgedV1alpha2() kubefledgedv1alpha2.KubefledgedV1alpha2Interface {
+	return &fakekubefledgedv1alpha2.FakeKubefledgedV1alpha2{Fake: &c.Fake}
 }

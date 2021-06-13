@@ -102,8 +102,10 @@ rules:
   - delete
   - get
   - patch
+  - list
+  - watch
 - apiGroups:
-    - "kubefledged.k8s.io"
+    - "kubefledged.io"
   resources:
     - imagecaches
   verbs:
@@ -113,7 +115,7 @@ rules:
     - update
     - patch      
 - apiGroups:
-    - "kubefledged.k8s.io"
+    - "kubefledged.io"
   resources:
     - imagecaches/status
   verbs:
@@ -152,6 +154,7 @@ rules:
   verbs:
     - get
     - list
+    - watch
     - create
     - update
     - patch

@@ -1,3 +1,5 @@
 # ignore build output
-build/fledged
-build/fledged-latest.tar.gz
+build/kubefledged-controller
+build/kubefledged-webhook-server
+scp.sh
+coverage.out

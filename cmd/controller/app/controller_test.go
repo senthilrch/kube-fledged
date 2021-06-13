@@ -22,11 +22,11 @@ import (
 	"testing"
 	"time"
 
-	kubefledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha1"
+	kubefledgedv1alpha2 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha2"
 	clientset "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned"
 	kubefledgedclientsetfake "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/fake"
 	informers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions"
-	kubefledgedinformers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/kubefledged/v1alpha1"
+	kubefledgedinformers "github.com/senthilrch/kube-fledged/pkg/client/informers/externalversions/kubefledged/v1alpha2"
 	"github.com/senthilrch/kube-fledged/pkg/images"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -57,7 +57,7 @@ func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clie
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeclientset, noResyncPeriodFunc())
 	fledgedInformerFactory := informers.NewSharedInformerFactory(fledgedclientset, noResyncPeriodFunc())
 	nodeInformer := kubeInformerFactory.Core().V1().Nodes()
-	imagecacheInformer := fledgedInformerFactory.Fledged().V1alpha1().ImageCaches()
+	imagecacheInformer := fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches()
 	imageCacheRefreshFrequency := time.Second * 0
 	imagePullDeadlineDuration := time.Second * 5
 	dockerClientImage := "senthilrch/fledged-docker-client:latest"
@@ -84,7 +84,7 @@ func TestPreFlightChecks(t *testing.T) {
 		jobList               *batchv1.JobList
 		jobListError          error
 		jobDeleteError        error
-		imageCacheList        *kubefledgedv1alpha1.ImageCacheList
+		imageCacheList        *kubefledgedv1alpha2.ImageCacheList
 		imageCacheListError   error
 		imageCacheUpdateError error
 		expectErr             bool
@@ -95,7 +95,7 @@ func TestPreFlightChecks(t *testing.T) {
 			jobList:               &batchv1.JobList{Items: []batchv1.Job{}},
 			jobListError:          nil,
 			jobDeleteError:        nil,
-			imageCacheList:        &kubefledgedv1alpha1.ImageCacheList{Items: []kubefledgedv1alpha1.ImageCache{}},
+			imageCacheList:        &kubefledgedv1alpha2.ImageCacheList{Items: []kubefledgedv1alpha2.ImageCache{}},
 			imageCacheListError:   nil,
 			imageCacheUpdateError: nil,
 			expectErr:             false,
@@ -106,14 +106,14 @@ func TestPreFlightChecks(t *testing.T) {
 			jobList:        &batchv1.JobList{Items: []batchv1.Job{}},
 			jobListError:   nil,
 			jobDeleteError: nil,
-			imageCacheList: &kubefledgedv1alpha1.ImageCacheList{
-				Items: []kubefledgedv1alpha1.ImageCache{
+			imageCacheList: &kubefledgedv1alpha2.ImageCacheList{
+				Items: []kubefledgedv1alpha2.ImageCache{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "foo",
 						},
-						Status: kubefledgedv1alpha1.ImageCacheStatus{
-							Status: kubefledgedv1alpha1.ImageCacheActionStatusSucceeded,
+						Status: kubefledgedv1alpha2.ImageCacheStatus{
+							Status: kubefledgedv1alpha2.ImageCacheActionStatusSucceeded,
 						},
 					},
 				},
@@ -137,14 +137,14 @@ func TestPreFlightChecks(t *testing.T) {
 			},
 			jobListError:   nil,
 			jobDeleteError: nil,
-			imageCacheList: &kubefledgedv1alpha1.ImageCacheList{
-				Items: []kubefledgedv1alpha1.ImageCache{
+			imageCacheList: &kubefledgedv1alpha2.ImageCacheList{
+				Items: []kubefledgedv1alpha2.ImageCache{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "foo",
 						},
-						Status: kubefledgedv1alpha1.ImageCacheStatus{
-							Status: kubefledgedv1alpha1.ImageCacheActionStatusProcessing,
+						Status: kubefledgedv1alpha2.ImageCacheStatus{
+							Status: kubefledgedv1alpha2.ImageCacheActionStatusProcessing,
 						},
 					},
 				},
@@ -194,14 +194,14 @@ func TestPreFlightChecks(t *testing.T) {
 			jobList:        &batchv1.JobList{Items: []batchv1.Job{}},
 			jobListError:   nil,
 			jobDeleteError: nil,
-			imageCacheList: &kubefledgedv1alpha1.ImageCacheList{
-				Items: []kubefledgedv1alpha1.ImageCache{
+			imageCacheList: &kubefledgedv1alpha2.ImageCacheList{
+				Items: []kubefledgedv1alpha2.ImageCache{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "foo",
 						},
-						Status: kubefledgedv1alpha1.ImageCacheStatus{
-							Status: kubefledgedv1alpha1.ImageCacheActionStatusProcessing,
+						Status: kubefledgedv1alpha2.ImageCacheStatus{
+							Status: kubefledgedv1alpha2.ImageCacheActionStatusProcessing,
 						},
 					},
 				},
@@ -276,14 +276,14 @@ func TestPreFlightChecks(t *testing.T) {
 func TestRunRefreshWorker(t *testing.T) {
 	tests := []struct {
 		name                string
-		imageCacheList      *kubefledgedv1alpha1.ImageCacheList
+		imageCacheList      *kubefledgedv1alpha2.ImageCacheList
 		imageCacheListError error
 		workqueueItems      int
 	}{
 		{
 			name: "#1: Do not refresh if status is not yet updated",
-			imageCacheList: &kubefledgedv1alpha1.ImageCacheList{
-				Items: []kubefledgedv1alpha1.ImageCache{
+			imageCacheList: &kubefledgedv1alpha2.ImageCacheList{
+				Items: []kubefledgedv1alpha2.ImageCache{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
@@ -297,15 +297,15 @@ func TestRunRefreshWorker(t *testing.T) {
 		},
 		{
 			name: "#2: Do not refresh if image cache is already under processing",
-			imageCacheList: &kubefledgedv1alpha1.ImageCacheList{
-				Items: []kubefledgedv1alpha1.ImageCache{
+			imageCacheList: &kubefledgedv1alpha2.ImageCacheList{
+				Items: []kubefledgedv1alpha2.ImageCache{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
 							Namespace: "kube-fledged",
 						},
-						Status: kubefledgedv1alpha1.ImageCacheStatus{
-							Status: kubefledgedv1alpha1.ImageCacheActionStatusProcessing,
+						Status: kubefledgedv1alpha2.ImageCacheStatus{
+							Status: kubefledgedv1alpha2.ImageCacheActionStatusProcessing,
 						},
 					},
 				},
@@ -315,16 +315,16 @@ func TestRunRefreshWorker(t *testing.T) {
 		},
 		{
 			name: "#3: Do not refresh image cache if cache spec validation failed",
-			imageCacheList: &kubefledgedv1alpha1.ImageCacheList{
-				Items: []kubefledgedv1alpha1.ImageCache{
+			imageCacheList: &kubefledgedv1alpha2.ImageCacheList{
+				Items: []kubefledgedv1alpha2.ImageCache{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
 							Namespace: "kube-fledged",
 						},
-						Status: kubefledgedv1alpha1.ImageCacheStatus{
-							Status: kubefledgedv1alpha1.ImageCacheActionStatusFailed,
-							Reason: kubefledgedv1alpha1.ImageCacheReasonCacheSpecValidationFailed,
+						Status: kubefledgedv1alpha2.ImageCacheStatus{
+							Status: kubefledgedv1alpha2.ImageCacheActionStatusFailed,
+							Reason: kubefledgedv1alpha2.ImageCacheReasonCacheSpecValidationFailed,
 						},
 					},
 				},
@@ -334,15 +334,15 @@ func TestRunRefreshWorker(t *testing.T) {
 		},
 		{
 			name: "#4: Do not refresh if image cache has been purged",
-			imageCacheList: &kubefledgedv1alpha1.ImageCacheList{
-				Items: []kubefledgedv1alpha1.ImageCache{
+			imageCacheList: &kubefledgedv1alpha2.ImageCacheList{
+				Items: []kubefledgedv1alpha2.ImageCache{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
 							Namespace: "kube-fledged",
 						},
-						Status: kubefledgedv1alpha1.ImageCacheStatus{
-							Reason: kubefledgedv1alpha1.ImageCacheReasonImageCachePurge,
+						Status: kubefledgedv1alpha2.ImageCacheStatus{
+							Reason: kubefledgedv1alpha2.ImageCacheReasonImageCachePurge,
 						},
 					},
 				},
@@ -352,15 +352,15 @@ func TestRunRefreshWorker(t *testing.T) {
 		},
 		{
 			name: "#5: Successfully queued 1 imagecache for refresh",
-			imageCacheList: &kubefledgedv1alpha1.ImageCacheList{
-				Items: []kubefledgedv1alpha1.ImageCache{
+			imageCacheList: &kubefledgedv1alpha2.ImageCacheList{
+				Items: []kubefledgedv1alpha2.ImageCache{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
 							Namespace: "kube-fledged",
 						},
-						Status: kubefledgedv1alpha1.ImageCacheStatus{
-							Status: kubefledgedv1alpha1.ImageCacheActionStatusSucceeded,
+						Status: kubefledgedv1alpha2.ImageCacheStatus{
+							Status: kubefledgedv1alpha2.ImageCacheActionStatusSucceeded,
 						},
 					},
 				},
@@ -370,15 +370,15 @@ func TestRunRefreshWorker(t *testing.T) {
 		},
 		{
 			name: "#6: Successfully queued 2 imagecaches for refresh",
-			imageCacheList: &kubefledgedv1alpha1.ImageCacheList{
-				Items: []kubefledgedv1alpha1.ImageCache{
+			imageCacheList: &kubefledgedv1alpha2.ImageCacheList{
+				Items: []kubefledgedv1alpha2.ImageCache{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "foo",
 							Namespace: "kube-fledged",
 						},
-						Status: kubefledgedv1alpha1.ImageCacheStatus{
-							Status: kubefledgedv1alpha1.ImageCacheActionStatusSucceeded,
+						Status: kubefledgedv1alpha2.ImageCacheStatus{
+							Status: kubefledgedv1alpha2.ImageCacheActionStatusSucceeded,
 						},
 					},
 					{
@@ -386,8 +386,8 @@ func TestRunRefreshWorker(t *testing.T) {
 							Name:      "bar",
 							Namespace: "kube-fledged",
 						},
-						Status: kubefledgedv1alpha1.ImageCacheStatus{
-							Status: kubefledgedv1alpha1.ImageCacheActionStatusFailed,
+						Status: kubefledgedv1alpha2.ImageCacheStatus{
+							Status: kubefledgedv1alpha2.ImageCacheActionStatusFailed,
 						},
 					},
 				},
@@ -431,13 +431,13 @@ func TestSyncHandler(t *testing.T) {
 		reaction string
 	}
 	now := metav1.Now()
-	defaultImageCache := kubefledgedv1alpha1.ImageCache{
+	defaultImageCache := kubefledgedv1alpha2.ImageCache{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "kube-fledged",
 		},
-		Spec: kubefledgedv1alpha1.ImageCacheSpec{
-			CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+		Spec: kubefledgedv1alpha2.ImageCacheSpec{
+			CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 				{
 					Images: []string{"foo"},
 				},
@@ -457,7 +457,7 @@ func TestSyncHandler(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		imageCache        kubefledgedv1alpha1.ImageCache
+		imageCache        kubefledgedv1alpha2.ImageCache
 		wqKey             images.WorkQueueKey
 		nodeList          *corev1.NodeList
 		expectedActions   []ActionReaction
@@ -474,13 +474,13 @@ func TestSyncHandler(t *testing.T) {
 		},
 		/*{
 			name: "#2: Create - Invalid imagecache spec (no images specified)",
-			imageCache: kubefledgedv1alpha1.ImageCache{
+			imageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "kube-fledged",
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{},
 						},
@@ -514,13 +514,13 @@ func TestSyncHandler(t *testing.T) {
 			wqKey: images.WorkQueueKey{
 				ObjKey:   "kube-fledged/foo",
 				WorkType: images.ImageCacheUpdate,
-				OldImageCache: &kubefledgedv1alpha1.ImageCache{
+				OldImageCache: &kubefledgedv1alpha2.ImageCache{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "kube-fledged",
 					},
-					Spec: kubefledgedv1alpha1.ImageCacheSpec{
-						CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+					Spec: kubefledgedv1alpha2.ImageCacheSpec{
+						CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 							{
 								Images: []string{"foo"},
 							},
@@ -542,13 +542,13 @@ func TestSyncHandler(t *testing.T) {
 			wqKey: images.WorkQueueKey{
 				ObjKey:   "kube-fledged/foo",
 				WorkType: images.ImageCacheUpdate,
-				OldImageCache: &kubefledgedv1alpha1.ImageCache{
+				OldImageCache: &kubefledgedv1alpha2.ImageCache{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "kube-fledged",
 					},
-					Spec: kubefledgedv1alpha1.ImageCacheSpec{
-						CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+					Spec: kubefledgedv1alpha2.ImageCacheSpec{
+						CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 							{
 								Images:       []string{"foo"},
 								NodeSelector: map[string]string{"foo": "bar"},
@@ -579,22 +579,22 @@ func TestSyncHandler(t *testing.T) {
 		},
 		{
 			name: "#7: StatusUpdate - Successful Refresh",
-			imageCache: kubefledgedv1alpha1.ImageCache{
+			imageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "kube-fledged",
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{"foo"},
 						},
 					},
 				},
-				Status: kubefledgedv1alpha1.ImageCacheStatus{
+				Status: kubefledgedv1alpha2.ImageCacheStatus{
 					StartTime: &now,
-					Status:    kubefledgedv1alpha1.ImageCacheActionStatusProcessing,
-					Reason:    kubefledgedv1alpha1.ImageCacheReasonImageCacheRefresh,
+					Status:    kubefledgedv1alpha2.ImageCacheActionStatusProcessing,
+					Reason:    kubefledgedv1alpha2.ImageCacheReasonImageCacheRefresh,
 				},
 			},
 			wqKey: images.WorkQueueKey{
@@ -634,20 +634,20 @@ func TestSyncHandler(t *testing.T) {
 		},
 		{
 			name: "#9: Purge - Successful purge",
-			imageCache: kubefledgedv1alpha1.ImageCache{
+			imageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "kube-fledged",
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{"foo"},
 						},
 					},
 				},
-				Status: kubefledgedv1alpha1.ImageCacheStatus{
-					Reason: kubefledgedv1alpha1.ImageCacheReasonImageCachePurge,
+				Status: kubefledgedv1alpha2.ImageCacheStatus{
+					Reason: kubefledgedv1alpha2.ImageCacheReasonImageCachePurge,
 				},
 			},
 			wqKey: images.WorkQueueKey{
@@ -683,13 +683,13 @@ func TestSyncHandler(t *testing.T) {
 			wqKey: images.WorkQueueKey{
 				ObjKey:   "kube-fledged/foo",
 				WorkType: images.ImageCacheUpdate,
-				OldImageCache: &kubefledgedv1alpha1.ImageCache{
+				OldImageCache: &kubefledgedv1alpha2.ImageCache{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "kube-fledged",
 					},
-					Spec: kubefledgedv1alpha1.ImageCacheSpec{
-						CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+					Spec: kubefledgedv1alpha2.ImageCacheSpec{
+						CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 							{
 								Images: []string{"foo", "bar"},
 							},
@@ -707,19 +707,19 @@ func TestSyncHandler(t *testing.T) {
 		},
 		{
 			name: "#12: StatusUpdate - ImagesPulledSuccessfully",
-			imageCache: kubefledgedv1alpha1.ImageCache{
+			imageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "kube-fledged",
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{"foo"},
 						},
 					},
 				},
-				Status: kubefledgedv1alpha1.ImageCacheStatus{
+				Status: kubefledgedv1alpha2.ImageCacheStatus{
 					StartTime: &now,
 				},
 			},
@@ -745,22 +745,22 @@ func TestSyncHandler(t *testing.T) {
 		},
 		{
 			name: "#13: StatusUpdate - ImagesDeletedSuccessfully",
-			imageCache: kubefledgedv1alpha1.ImageCache{
+			imageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "kube-fledged",
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{"foo"},
 						},
 					},
 				},
-				Status: kubefledgedv1alpha1.ImageCacheStatus{
+				Status: kubefledgedv1alpha2.ImageCacheStatus{
 					StartTime: &now,
-					Status:    kubefledgedv1alpha1.ImageCacheActionStatusProcessing,
-					Reason:    kubefledgedv1alpha1.ImageCacheReasonImageCachePurge,
+					Status:    kubefledgedv1alpha2.ImageCacheActionStatusProcessing,
+					Reason:    kubefledgedv1alpha2.ImageCacheReasonImageCachePurge,
 				},
 			},
 			wqKey: images.WorkQueueKey{
@@ -871,13 +871,13 @@ func TestSyncHandler(t *testing.T) {
 func TestEnqueueImageCache(t *testing.T) {
 	//now := metav1.Now()
 	//nowplus5s := metav1.NewTime(time.Now().Add(time.Second * 5))
-	defaultImageCache := kubefledgedv1alpha1.ImageCache{
+	defaultImageCache := kubefledgedv1alpha2.ImageCache{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "kube-fledged",
 		},
-		Spec: kubefledgedv1alpha1.ImageCacheSpec{
-			CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+		Spec: kubefledgedv1alpha2.ImageCacheSpec{
+			CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 				{
 					Images: []string{"foo"},
 				},
@@ -887,8 +887,8 @@ func TestEnqueueImageCache(t *testing.T) {
 	tests := []struct {
 		name           string
 		workType       images.WorkType
-		oldImageCache  kubefledgedv1alpha1.ImageCache
-		newImageCache  kubefledgedv1alpha1.ImageCache
+		oldImageCache  kubefledgedv1alpha2.ImageCache
+		newImageCache  kubefledgedv1alpha2.ImageCache
 		expectedResult bool
 	}{
 		{
@@ -900,20 +900,20 @@ func TestEnqueueImageCache(t *testing.T) {
 		{
 			name:     "#2: Create - Imagecache with Status field, so no queueing",
 			workType: images.ImageCacheCreate,
-			newImageCache: kubefledgedv1alpha1.ImageCache{
+			newImageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "kube-fledged",
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{"foo"},
 						},
 					},
 				},
-				Status: kubefledgedv1alpha1.ImageCacheStatus{
-					Status: kubefledgedv1alpha1.ImageCacheActionStatusSucceeded,
+				Status: kubefledgedv1alpha2.ImageCacheStatus{
+					Status: kubefledgedv1alpha2.ImageCacheActionStatusSucceeded,
 				},
 			},
 			expectedResult: false,
@@ -922,21 +922,21 @@ func TestEnqueueImageCache(t *testing.T) {
 			name:          "#3: Update - Imagecache purge. Successful queueing",
 			workType:      images.ImageCacheUpdate,
 			oldImageCache: defaultImageCache,
-			newImageCache: kubefledgedv1alpha1.ImageCache{
+			newImageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "foo",
 					Namespace:   "kube-fledged",
 					Annotations: map[string]string{imageCachePurgeAnnotationKey: ""},
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{"foo"},
 						},
 					},
 				},
-				Status: kubefledgedv1alpha1.ImageCacheStatus{
-					Status: kubefledgedv1alpha1.ImageCacheActionStatusSucceeded,
+				Status: kubefledgedv1alpha2.ImageCacheStatus{
+					Status: kubefledgedv1alpha2.ImageCacheActionStatusSucceeded,
 				},
 			},
 			expectedResult: true,
@@ -951,20 +951,20 @@ func TestEnqueueImageCache(t *testing.T) {
 		{
 			name:     "#5: Update - Status processing. Unsuccessful queueing",
 			workType: images.ImageCacheUpdate,
-			oldImageCache: kubefledgedv1alpha1.ImageCache{
+			oldImageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "kube-fledged",
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{"foo"},
 						},
 					},
 				},
-				Status: kubefledgedv1alpha1.ImageCacheStatus{
-					Status: kubefledgedv1alpha1.ImageCacheActionStatusProcessing,
+				Status: kubefledgedv1alpha2.ImageCacheStatus{
+					Status: kubefledgedv1alpha2.ImageCacheActionStatusProcessing,
 				},
 			},
 			expectedResult: false,
@@ -973,13 +973,13 @@ func TestEnqueueImageCache(t *testing.T) {
 			name:          "#6: Update - Successful queueing",
 			workType:      images.ImageCacheUpdate,
 			oldImageCache: defaultImageCache,
-			newImageCache: kubefledgedv1alpha1.ImageCache{
+			newImageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "kube-fledged",
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{"foo", "bar"},
 						},
@@ -1004,7 +1004,7 @@ func TestEnqueueImageCache(t *testing.T) {
 				name:          "#9: Update - CacheSpec restoration",
 				workType:      images.ImageCacheUpdate,
 				oldImageCache: defaultImageCache,
-				newImageCache: kubefledgedv1alpha1.ImageCache{
+				newImageCache: kubefledgedv1alpha2.ImageCache{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "foo",
 						Namespace: "kube-fledged",
@@ -1012,8 +1012,8 @@ func TestEnqueueImageCache(t *testing.T) {
 							fledgedCacheSpecValidationKey: "failed",
 						},
 					},
-					Spec: kubefledgedv1alpha1.ImageCacheSpec{
-						CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+					Spec: kubefledgedv1alpha2.ImageCacheSpec{
+						CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 							{
 								Images: []string{"foo", "bar"},
 							},
@@ -1027,21 +1027,21 @@ func TestEnqueueImageCache(t *testing.T) {
 			name:          "#10: Update - Imagecache refresh. Successful queueing",
 			workType:      images.ImageCacheUpdate,
 			oldImageCache: defaultImageCache,
-			newImageCache: kubefledgedv1alpha1.ImageCache{
+			newImageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:        "foo",
 					Namespace:   "kube-fledged",
 					Annotations: map[string]string{imageCacheRefreshAnnotationKey: ""},
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{"foo"},
 						},
 					},
 				},
-				Status: kubefledgedv1alpha1.ImageCacheStatus{
-					Status: kubefledgedv1alpha1.ImageCacheActionStatusSucceeded,
+				Status: kubefledgedv1alpha2.ImageCacheStatus{
+					Status: kubefledgedv1alpha2.ImageCacheActionStatusSucceeded,
 				},
 			},
 			expectedResult: true,
@@ -1064,13 +1064,13 @@ func TestProcessNextWorkItem(t *testing.T) {
 		action   string
 		reaction string
 	}
-	defaultImageCache := kubefledgedv1alpha1.ImageCache{
+	defaultImageCache := kubefledgedv1alpha2.ImageCache{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "foo",
 			Namespace: "kube-fledged",
 		},
-		Spec: kubefledgedv1alpha1.ImageCacheSpec{
-			CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+		Spec: kubefledgedv1alpha2.ImageCacheSpec{
+			CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 				{
 					Images: []string{"foo"},
 				},
@@ -1080,7 +1080,7 @@ func TestProcessNextWorkItem(t *testing.T) {
 
 	tests := []struct {
 		name              string
-		imageCache        kubefledgedv1alpha1.ImageCache
+		imageCache        kubefledgedv1alpha2.ImageCache
 		wqKey             images.WorkQueueKey
 		expectedActions   []ActionReaction
 		expectErr         bool
@@ -1111,13 +1111,13 @@ func TestProcessNextWorkItem(t *testing.T) {
 		},
 		{
 			name: "#2: Create - Invalid imagecache spec (no images specified)",
-			imageCache: kubefledgedv1alpha1.ImageCache{
+			imageCache: kubefledgedv1alpha2.ImageCache{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "foo",
 					Namespace: "kube-fledged",
 				},
-				Spec: kubefledgedv1alpha1.ImageCacheSpec{
-					CacheSpec: []kubefledgedv1alpha1.CacheSpecImages{
+				Spec: kubefledgedv1alpha2.ImageCacheSpec{
+					CacheSpec: []kubefledgedv1alpha2.CacheSpecImages{
 						{
 							Images: []string{},
 						},

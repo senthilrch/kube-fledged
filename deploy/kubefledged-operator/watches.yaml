@@ -1,5 +1,5 @@
 ---
-- version: v1alpha1
+- version: v1alpha2
   group: charts.helm.k8s.io
   kind: KubeFledged
   chart: helm-charts/kubefledged

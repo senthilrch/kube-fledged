@@ -1,22 +1,25 @@
 ---
-apiVersion: kubefledged.k8s.io/v1alpha1
+apiVersion: kubefledged.io/v1alpha2
 kind: ImageCache
 metadata:
   # Name of the image cache. A cluster can have multiple image cache objects
   name: imagecache1
   # The kubernetes namespace to be used for this image cache. You can choose a different namepace as per your preference
   namespace: kube-fledged
+  labels:
+    app: kubefledged
+    component: imagecache
 spec:
   # The "cacheSpec" field allows a user to define a list of images and onto which worker nodes those images should be cached (i.e. pre-pulled).
   cacheSpec:
-  # Specifies a list of images (nginx and tomcat:10.0.0) with no node selector, hence these images will be cached in all the nodes in the cluster
+  # Specifies a list of images (nginx:1.21.0 and tomcat:10.0.6) with no node selector, hence these images will be cached in all the nodes in the cluster
   - images:
-    - nginx
-    - tomcat:10.0.0
-  # Specifies a list of images (redis:latest and postgres:12.3) with a node selector, hence these images will be cached only on the nodes selected by the node selector
+    - nginx:1.21.0
+    - tomcat:10.0.6
+  # Specifies a list of images (redis:6.2.4 and postgres:13.3) with a node selector, hence these images will be cached only on the nodes selected by the node selector
   - images:
-    - redis:latest
-    - postgres:12.3
+    - redis:6.2.4
+    - postgres:13.3
     nodeSelector:
       tier: backend
   # Specifies a list of image pull secrets to pull images from private repositories into the cache

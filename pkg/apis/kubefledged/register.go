@@ -18,5 +18,5 @@ package kubefledged
 
 const (
 	//GroupName denotes the api group of the resource
-	GroupName = "kubefledged.k8s.io"
+	GroupName = "kubefledged.io"
 )

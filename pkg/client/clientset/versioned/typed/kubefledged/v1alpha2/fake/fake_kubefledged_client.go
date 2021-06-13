@@ -19,22 +19,22 @@ limitations under the License.
 package fake
 
 import (
-	v1alpha1 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/kubefledged/v1alpha1"
+	v1alpha2 "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/typed/kubefledged/v1alpha2"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )
 
-type FakeFledgedV1alpha1 struct {
+type FakeKubefledgedV1alpha2 struct {
 	*testing.Fake
 }
 
-func (c *FakeFledgedV1alpha1) ImageCaches(namespace string) v1alpha1.ImageCacheInterface {
+func (c *FakeKubefledgedV1alpha2) ImageCaches(namespace string) v1alpha2.ImageCacheInterface {
 	return &FakeImageCaches{c, namespace}
 }
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *FakeFledgedV1alpha1) RESTClient() rest.Interface {
+func (c *FakeKubefledgedV1alpha2) RESTClient() rest.Interface {
 	var ret *rest.RESTClient
 	return ret
 }

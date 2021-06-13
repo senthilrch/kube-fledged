@@ -3,6 +3,9 @@ kind: Service
 metadata:
   name: kubefledged-webhook-server
   namespace: kube-fledged
+  labels:
+    app: kubefledged
+    component: kubefledged-webhook-server
 spec:
   ports:
   - name: webhook-server

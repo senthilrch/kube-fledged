@@ -1,13 +1,109 @@
-apiVersion: apiextensions.k8s.io/v1beta1
+apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: imagecaches.kubefledged.k8s.io
+  name: imagecaches.kubefledged.io
+  labels:
+    app: kubefledged
+    component: kubefledged-controller
 spec:
-  group: kubefledged.k8s.io
+  group: kubefledged.io
   versions:
-  - name: v1alpha1
+  - name: v1alpha2
     served: true
     storage: true
+    schema:
+      openAPIV3Schema:
+        description: ImageCache is a specification for a ImageCache resource
+        type: object
+        required:
+        - spec
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ImageCacheSpec is the spec for a ImageCache resource
+            type: object
+            required:
+            - cacheSpec
+            properties:
+              cacheSpec:
+                type: array
+                items:
+                  description: CacheSpecImages specifies the Images to be cached
+                  type: object
+                  required:
+                  - images
+                  properties:
+                    images:
+                      type: array
+                      items:
+                        type: string
+                    nodeSelector:
+                      type: object
+                      additionalProperties:
+                        type: string
+              imagePullSecrets:
+                type: array
+                items:
+                  description: LocalObjectReference contains enough information to let
+                    you locate the referenced object inside the same namespace.
+                  type: object
+                  properties:
+                    name:
+                      description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                        TODO: Add other useful fields. apiVersion, kind, uid?'
+                      type: string
+          status:
+            description: ImageCacheStatus is the status for a ImageCache resource
+            type: object
+            required:
+            - message
+            - reason
+            - startTime
+            - status
+            properties:
+              completionTime:
+                type: string
+                format: date-time
+              failures:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    description: NodeReasonMessage has failure reason and message for
+                      a node
+                    type: object
+                    required:
+                    - message
+                    - node
+                    - reason
+                    properties:
+                      message:
+                        type: string
+                      node:
+                        type: string
+                      reason:
+                        type: string
+              message:
+                type: string
+              reason:
+                type: string
+              startTime:
+                type: string
+                format: date-time
+              status:
+                description: ImageCacheActionStatus defines the status of ImageCacheAction
+                type: string        
   scope: Namespaced
   names:
     plural: imagecaches
@@ -15,96 +111,4 @@ spec:
     kind: ImageCache
     shortNames:
     - ic
-  "validation":
-    "openAPIV3Schema":
-      description: ImageCache is a specification for a ImageCache resource
-      type: object
-      required:
-      - spec
-      properties:
-        apiVersion:
-          description: 'APIVersion defines the versioned schema of this representation
-            of an object. Servers should convert recognized schemas to the latest
-            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
-          type: string
-        kind:
-          description: 'Kind is a string value representing the REST resource this
-            object represents. Servers may infer this from the endpoint the client
-            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
-          type: string
-        metadata:
-          type: object
-        spec:
-          description: ImageCacheSpec is the spec for a ImageCache resource
-          type: object
-          required:
-          - cacheSpec
-          properties:
-            cacheSpec:
-              type: array
-              items:
-                description: CacheSpecImages specifies the Images to be cached
-                type: object
-                required:
-                - images
-                properties:
-                  images:
-                    type: array
-                    items:
-                      type: string
-                  nodeSelector:
-                    type: object
-                    additionalProperties:
-                      type: string
-            imagePullSecrets:
-              type: array
-              items:
-                description: LocalObjectReference contains enough information to let
-                  you locate the referenced object inside the same namespace.
-                type: object
-                properties:
-                  name:
-                    description: 'Name of the referent. More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      TODO: Add other useful fields. apiVersion, kind, uid?'
-                    type: string
-        status:
-          description: ImageCacheStatus is the status for a ImageCache resource
-          type: object
-          required:
-          - message
-          - reason
-          - startTime
-          - status
-          properties:
-            completionTime:
-              type: string
-              format: date-time
-            failures:
-              type: object
-              additionalProperties:
-                type: array
-                items:
-                  description: NodeReasonMessage has failure reason and message for
-                    a node
-                  type: object
-                  required:
-                  - message
-                  - node
-                  - reason
-                  properties:
-                    message:
-                      type: string
-                    node:
-                      type: string
-                    reason:
-                      type: string
-            message:
-              type: string
-            reason:
-              type: string
-            startTime:
-              type: string
-              format: date-time
-            status:
-              description: ImageCacheActionStatus defines the status of ImageCacheAction
-              type: string
+

@@ -11,5 +11,5 @@ spec:
     - name: wget
       image: busybox
       command: ['wget']
-      args:  ['{{ include "kubefledged.fullname" . }}:{{ .Values.service.port }}']
+      args:  ['{{ include "kubefledged.fullname" . }}-webhook-server:{{ .Values.webhookService.port }}']
   restartPolicy: Never

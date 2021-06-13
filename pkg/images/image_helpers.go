@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/golang/glog"
-	fledgedv1alpha1 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha1"
+	fledgedv1alpha2 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,7 +31,7 @@ import (
 )
 
 // newImagePullJob constructs a job manifest for pulling an image to a node
-func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, node *corev1.Node, imagePullPolicy string) (*batchv1.Job, error) {
+func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node, imagePullPolicy string) (*batchv1.Job, error) {
 	var pullPolicy corev1.PullPolicy = corev1.PullIfNotPresent
 	hostname := node.Labels["kubernetes.io/hostname"]
 	if imagecache == nil {
@@ -62,8 +62,8 @@ func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, node 
 			Namespace:    imagecache.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(imagecache, schema.GroupVersionKind{
-					Group:   fledgedv1alpha1.SchemeGroupVersion.Group,
-					Version: fledgedv1alpha1.SchemeGroupVersion.Version,
+					Group:   fledgedv1alpha2.SchemeGroupVersion.Group,
+					Version: fledgedv1alpha2.SchemeGroupVersion.Version,
 					Kind:    "ImageCache",
 				}),
 			},
@@ -132,7 +132,7 @@ func newImagePullJob(imagecache *fledgedv1alpha1.ImageCache, image string, node 
 }
 
 // newImageDeleteJob constructs a job manifest to delete an image from a node
-func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, node *corev1.Node, containerRuntimeVersion string, dockerclientimage string) (*batchv1.Job, error) {
+func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node, containerRuntimeVersion string, dockerclientimage string) (*batchv1.Job, error) {
 	hostname := node.Labels["kubernetes.io/hostname"]
 	if imagecache == nil {
 		glog.Error("imagecache pointer is nil")
@@ -155,8 +155,8 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, nod
 			Namespace:    imagecache.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(imagecache, schema.GroupVersionKind{
-					Group:   fledgedv1alpha1.SchemeGroupVersion.Group,
-					Version: fledgedv1alpha1.SchemeGroupVersion.Version,
+					Group:   fledgedv1alpha2.SchemeGroupVersion.Group,
+					Version: fledgedv1alpha2.SchemeGroupVersion.Version,
 					Kind:    "ImageCache",
 				}),
 			},
@@ -210,9 +210,6 @@ func newImageDeleteJob(imagecache *fledgedv1alpha1.ImageCache, image string, nod
 				},
 			},
 		},
-	}
-	if strings.Contains(containerRuntimeVersion, "docker") {
-		// Job manifest needs no change
 	}
 	if strings.Contains(containerRuntimeVersion, "containerd") {
 		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///run/containerd/containerd.sock  --image-endpoint=unix:///run/containerd/containerd.sock rmi " + image + " > /dev/termination-log 2>&1"}
