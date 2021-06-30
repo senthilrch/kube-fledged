@@ -135,7 +135,7 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
 - Verify if _kube-fledged_ deployed successfully
 
   ```
-  $ kubectl get pods -n kube-fledged -l app.kubernetes.io/name=kubefledged
+  $ kubectl get pods -n kube-fledged -l app.kubernetes.io/name=kube-fledged
   $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
