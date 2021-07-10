@@ -12,7 +12,7 @@ webhooks:
     clientConfig:
       service:
         namespace: {{ .Values.kubefledgedNameSpace }}
-        name: kubefledged-webhook-server
+        name: {{ include "kubefledged.webhookServiceName" . }}
         path: "/validate-image-cache"
         port: {{ .Values.webhookService.port }}
       caBundle: {{ .Values.validatingWebhookCABundle }}
