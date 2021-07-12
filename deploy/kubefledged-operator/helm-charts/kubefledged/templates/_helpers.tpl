@@ -100,7 +100,7 @@ Create the name of the service for the webhook server to use
 */}}
 {{- define "kubefledged.webhookServiceName" -}}
 {{- if .Values.webhookService.create -}}
-    {{ default (include "kubefledged.fullname" .) .Values.webhookService.name }}
+    {{ default ( printf "%s-webhook-server" (include "kubefledged.fullname" .)) .Values.webhookService.name }}
 {{- else -}}
     {{ default "default" .Values.webhookService.name }}
 {{- end -}}
