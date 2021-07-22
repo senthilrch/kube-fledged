@@ -23,7 +23,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"math/big"
@@ -54,7 +53,7 @@ func InitWebhookServer() error {
 		NotBefore:             time.Now(),
 		NotAfter:              time.Now().AddDate(1, 0, 0),
 		IsCA:                  true,
-		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
 		BasicConstraintsValid: true,
 	}
@@ -65,6 +64,7 @@ func InitWebhookServer() error {
 		glog.Errorf("error in generating CA private key: %v", err)
 		return err
 	}
+	glog.Info("success: ca private key created")
 
 	// Self signed CA certificate
 	caBytes, err := x509.CreateCertificate(cryptorand.Reader, caConf, caConf, &caPrivKey.PublicKey, caPrivKey)
@@ -72,6 +72,7 @@ func InitWebhookServer() error {
 		glog.Errorf("error in generating CA certificate: %v", err)
 		return err
 	}
+	glog.Info("success: self-signed ca certificate created")
 
 	// PEM encode CA cert
 	caPEM = new(bytes.Buffer)
@@ -79,6 +80,7 @@ func InitWebhookServer() error {
 		Type:  "CERTIFICATE",
 		Bytes: caBytes,
 	})
+	glog.Info("success: ca certificate encoded to pem format")
 
 	dnsNames := []string{
 		webhookServerService,
@@ -98,7 +100,7 @@ func InitWebhookServer() error {
 		NotBefore:    time.Now(),
 		NotAfter:     time.Now().AddDate(1, 0, 0),
 		SubjectKeyId: []byte{1, 2, 3, 4, 6},
-		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 	}
 
@@ -108,6 +110,7 @@ func InitWebhookServer() error {
 		glog.Errorf("error in generating server private key: %v", err)
 		return err
 	}
+	glog.Info("success: server private key created")
 
 	// sign the server cert
 	serverCertBytes, err := x509.CreateCertificate(cryptorand.Reader, certConf, caConf, &serverPrivKey.PublicKey, caPrivKey)
@@ -115,6 +118,7 @@ func InitWebhookServer() error {
 		glog.Errorf("error in generating server certificate: %v", err)
 		return err
 	}
+	glog.Info("success: server certificate created")
 
 	// PEM encode the  server cert and key
 	serverCertPEM = new(bytes.Buffer)
@@ -122,12 +126,14 @@ func InitWebhookServer() error {
 		Type:  "CERTIFICATE",
 		Bytes: serverCertBytes,
 	})
+	glog.Info("success: server certificate encoded to pem format")
 
 	serverPrivKeyPEM = new(bytes.Buffer)
 	_ = pem.Encode(serverPrivKeyPEM, &pem.Block{
 		Type:  "RSA PRIVATE KEY",
 		Bytes: x509.MarshalPKCS1PrivateKey(serverPrivKey),
 	})
+	glog.Info("success: server private key encoded to pem format")
 
 	err = os.MkdirAll(certKeyPath, 0666)
 	if err != nil {
@@ -139,17 +145,20 @@ func InitWebhookServer() error {
 		glog.Errorf("error in writing tls.crt: %v", err)
 		return err
 	}
+	glog.Infof("success: server cert (tls.crt) copied to %s", certKeyPath)
 
 	err = writeFile(certKeyPath+"tls.key", serverPrivKeyPEM)
 	if err != nil {
 		glog.Errorf("error in writing tls.key: %v", err)
 		return err
 	}
+	glog.Infof("success: server key (tls.key) copied to %s", certKeyPath)
 
 	err = patchValidatingWebhookConfig(caPEM, validatingWebhookConfig)
 	if err != nil {
 		return err
 	}
+	glog.Infof("success: validatingwebhookconfiguration %s patched", validatingWebhookConfig)
 	return nil
 }
 
@@ -193,13 +202,21 @@ func patchValidatingWebhookConfig(caPEM *bytes.Buffer, validatingWebhookConfig s
 	type patchStringValue struct {
 		Op    string `json:"op"`
 		Path  string `json:"path"`
-		Value string `json:"value"`
+		Value []byte `json:"value"`
 	}
+	/*
+		payload := []patchStringValue{{
+			Op:    "replace",
+			Path:  "/webhooks/0/clientConfig/caBundle",
+			Value: base64.StdEncoding.EncodeToString(caPEM.Bytes()),
+		}}
+	*/
 	payload := []patchStringValue{{
 		Op:    "replace",
 		Path:  "/webhooks/0/clientConfig/caBundle",
-		Value: base64.StdEncoding.EncodeToString(caPEM.Bytes()),
+		Value: caPEM.Bytes(),
 	}}
+
 	payloadBytes, _ := json.Marshal(payload)
 
 	_, err = kubeClient.AdmissionregistrationV1().ValidatingWebhookConfigurations().Patch(
