@@ -43,7 +43,7 @@ ifndef OPERATOR_IMAGE_REPO
 endif
 
 ifndef RELEASE_VERSION
-  RELEASE_VERSION=v0.8.0
+  RELEASE_VERSION=v0.8.1
 endif
 
 ifndef DOCKER_VERSION
@@ -193,17 +193,15 @@ hack:
 
 deploy-using-yaml:
 	-kubectl apply -f deploy/kubefledged-namespace.yaml
-	bash deploy/webhook-create-signed-cert.sh
-	bash deploy/webhook-patch-ca-bundle.sh
 	kubectl apply -f deploy/kubefledged-crd.yaml
 	kubectl apply -f deploy/kubefledged-serviceaccount.yaml
 	kubectl apply -f deploy/kubefledged-clusterrole.yaml
 	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml
+	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
 	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml
 	kubectl rollout status deployment kubefledged-webhook-server -n kube-fledged --watch
-	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
 	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml
-	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
+	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
 
 deploy-using-operator:
 	# Create the namespaces for operator and kubefledged
@@ -221,8 +219,6 @@ deploy-using-operator:
 	# Deploy kube-fledged to a separate namespace
 	sed -i "s|{{OPERATOR_NAMESPACE}}|${OPERATOR_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 	sed -i "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
-	bash deploy/webhook-create-signed-cert.sh --namespace ${KUBEFLEDGED_NAMESPACE}
-	bash deploy/webhook-patch-ca-bundle.sh
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.k8s.io_v1alpha2_kubefledged_cr.yaml
 
 update:

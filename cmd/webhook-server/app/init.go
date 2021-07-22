@@ -41,8 +41,8 @@ func InitWebhookServer() error {
 	var caPEM, serverCertPEM, serverPrivKeyPEM *bytes.Buffer
 
 	webhookServerService := os.Getenv("WEBHOOK_SERVER_SERVICE")
-	webhookServerNameSpace := os.Getenv("WEBHOOK_SERVER_NAME_SPACE")
-	certKeyPath := "/etc/webhook/certs/"
+	webhookServerNameSpace := os.Getenv("KUBEFLEDGED_NAMESPACE")
+	certKeyPath := os.Getenv("CERT_KEY_PATH")
 	validatingWebhookConfig := os.Getenv("VALIDATING_WEBHOOK_CONFIG")
 
 	// CA config

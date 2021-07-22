@@ -17,8 +17,31 @@ spec:
         kubefledged: kubefledged-webhook-server
         app: kubefledged
     spec:
+      initContainers:
+      - image: senthilrch/kubefledged-webhook-server:v0.8.1
+        command: ["/opt/bin/kubefledged-webhook-server"]
+        args:
+        - "--stderrthreshold=INFO"
+        - "--init-server"
+        imagePullPolicy: Always
+        name: init
+        env:
+        - name: KUBEFLEDGED_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: WEBHOOK_SERVER_SERVICE
+          value: kubefledged-webhook-server
+        - name: VALIDATING_WEBHOOK_CONFIG
+          value: kubefledged
+        - name: CERT_KEY_PATH
+          value: "/var/run/secrets/webhook-server/"
+        volumeMounts:
+        - name: cert-key-volume
+          mountPath: "/var/run/secrets/webhook-server"
+          readOnly: true
       containers:
-      - image: senthilrch/kubefledged-webhook-server:v0.8.0
+      - image: senthilrch/kubefledged-webhook-server:v0.8.1
         command: ["/opt/bin/kubefledged-webhook-server"]
         args:
         - "--stderrthreshold=INFO"
@@ -33,10 +56,9 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         volumeMounts:
-        - name: secret-volume
+        - name: cert-key-volume
           mountPath: "/var/run/secrets/webhook-server"
           readOnly: true
       volumes:
-      - name: secret-volume
-        secret:
-          secretName: kubefledged-webhook-server
+      - name: cert-key-volume
+        emptyDir: {}
