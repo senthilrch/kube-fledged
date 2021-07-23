@@ -197,11 +197,12 @@ deploy-using-yaml:
 	kubectl apply -f deploy/kubefledged-serviceaccount.yaml
 	kubectl apply -f deploy/kubefledged-clusterrole.yaml
 	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml
+	-kubectl delete validatingwebhookconfigurations -l app=kubefledged,component=kubefledged-webhook-server
 	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
 	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml
-	kubectl rollout status deployment kubefledged-webhook-server -n kube-fledged --watch
 	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
+	kubectl rollout status deployment kubefledged-webhook-server -n kube-fledged --watch
 	kubectl rollout status deployment kubefledged-controller -n kube-fledged --watch
 
 deploy-using-operator:
@@ -233,7 +234,6 @@ remove-kubefledged:
 	-kubectl delete -f deploy/kubefledged-namespace.yaml
 	-kubectl delete -f deploy/kubefledged-clusterrolebinding.yaml
 	-kubectl delete -f deploy/kubefledged-clusterrole.yaml
-	-kubectl delete -f deploy/kubefledged-serviceaccount.yaml
 	-kubectl delete -f deploy/kubefledged-crd.yaml
 	-kubectl delete -f deploy/kubefledged-validatingwebhook.yaml
 
