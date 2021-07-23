@@ -1,4 +1,4 @@
-apiVersion: charts.helm.k8s.io/v1alpha2
+apiVersion: charts.helm.kubefledged.io/v1alpha2
 kind: KubeFledged
 metadata:
   name: kube-fledged
