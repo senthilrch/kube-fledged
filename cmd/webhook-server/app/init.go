@@ -36,6 +36,9 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// InitWebhookServer initialises kube-fledged webhook server:-
+// - generates cert/key pair
+// - patched CA bundle to validatingwebhookconfiguration
 func InitWebhookServer() error {
 	var caPEM, serverCertPEM, serverPrivKeyPEM *bytes.Buffer
 

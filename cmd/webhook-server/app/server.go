@@ -252,6 +252,7 @@ func mutateImageCache(w http.ResponseWriter, r *http.Request) {
 	// serve(w, r, newDelegateToV1AdmitHandler(webhook.MutateImageCache))
 }
 
+// StartWebhookServer starts a new wwebhook server for kube-fledged
 func StartWebhookServer(certFile string, keyFile string, port int) error {
 	config := Config{
 		CertFile: certFile,
