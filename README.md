@@ -92,26 +92,13 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ kubectl create namespace ${KUBEFLEDGED_NAMESPACE}
   ```
 
-- Create secret containing cert/key for kubefledged-webhook-server
-
-  ```
-  $ curl -fsSL https://raw.githubusercontent.com/senthilrch/kube-fledged/master/deploy/webhook-create-signed-cert.sh | bash -s -- --namespace ${KUBEFLEDGED_NAMESPACE}
-  ```
-
-- Retrieve the certificate-authoity-data of the kubernetes cluster
-
-  ```
-  $ CLUSTER=$(kubectl config view --raw --flatten -o json | jq -r '.contexts[] | select(.name == "'$(kubectl config current-context)'") | .context.cluster')
-  $ export CA_BUNDLE=$(kubectl config view --raw --flatten -o json | jq -r '.clusters[] | select(.name == "'${CLUSTER}'") | .cluster."certificate-authority-data"')
-  ```
-
 - Verify and install latest version of kube-fledged helm chart
 
   ```
   $ helm repo add kubefledged-charts https://senthilrch.github.io/kubefledged-charts/
   $ gpg --keyserver keyserver.ubuntu.com --recv-keys 92D793FA3A6460ED (or) gpg --keyserver pgp.mit.edu --recv-keys 92D793FA3A6460ED
   $ gpg --export >~/.gnupg/pubring.gpg
-  $ helm install --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --set validatingWebhookCABundle=${CA_BUNDLE} --wait
+  $ helm install --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
   ```
 
 ## Quick Install using Helm operator
@@ -257,7 +244,7 @@ $ kubectl get imagecaches imagecache1 -n kube-fledged -o json
 _kube-fledged_ supports both automatic and on-demand refresh of image cache. Auto refresh is enabled using the flag `--image-cache-refresh-frequency:`. To request for an on-demand refresh, run the following command:-
 
 ```
-$ kubectl annotate imagecaches imagecache1 -n kube-fledged kubefledged.k8s.io/refresh-imagecache=
+$ kubectl annotate imagecaches imagecache1 -n kube-fledged kubefledged.io/refresh-imagecache=
 ```
 
 ### Delete image cache
@@ -265,7 +252,7 @@ $ kubectl annotate imagecaches imagecache1 -n kube-fledged kubefledged.k8s.io/re
 Before you could delete the image cache, you need to purge the images in the cache using the following command. This will remove all cached images from the worker nodes.
 
 ```
-$ kubectl annotate imagecaches imagecache1 -n kube-fledged kubefledged.k8s.io/purge-imagecache=
+$ kubectl annotate imagecaches imagecache1 -n kube-fledged kubefledged.io/purge-imagecache=
 ```
 
 View the status of purging the image cache. If any failures, such images should be removed manually or you could decide to leave the images in the worker nodes.

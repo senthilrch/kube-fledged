@@ -45,8 +45,8 @@ import (
 )
 
 const controllerAgentName = "kubefledged-controller"
-const imageCachePurgeAnnotationKey = "kubefledged.k8s.io/purge-imagecache"
-const imageCacheRefreshAnnotationKey = "kubefledged.k8s.io/refresh-imagecache"
+const imageCachePurgeAnnotationKey = "kubefledged.io/purge-imagecache"
+const imageCacheRefreshAnnotationKey = "kubefledged.io/refresh-imagecache"
 
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a ImageCache is synced
