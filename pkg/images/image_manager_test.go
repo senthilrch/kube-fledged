@@ -46,13 +46,14 @@ var node = corev1.Node{
 
 func newTestImageManager(kubeclientset kubernetes.Interface, imagepullpolicy string) (*ImageManager, coreinformers.PodInformer) {
 	imagePullDeadlineDuration := time.Millisecond * 10
-	dockerClientImage := "senthilrch/fledged-docker-client:latest"
+	criClientImage := "senthilrch/fledged-docker-client:latest"
+	busyboxImage := "busybox:latest"
 	imagePullPolicy := imagepullpolicy
 	imagecacheworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches")
 	imageworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus")
 
 	imagemanager, podInformer := NewImageManager(imagecacheworkqueue, imageworkqueue, kubeclientset, fledgedNameSpace,
-		imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
+		imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy)
 	imagemanager.podsSynced = func() bool { return true }
 
 	return imagemanager, podInformer

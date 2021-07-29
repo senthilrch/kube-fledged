@@ -66,7 +66,8 @@ type ImageManager struct {
 	podsLister                corelisters.PodLister
 	podsSynced                cache.InformerSynced
 	imagePullDeadlineDuration time.Duration
-	dockerClientImage         string
+	criClientImage            string
+	busyboxImage              string
 	imagePullPolicy           string
 	lock                      sync.RWMutex
 }
@@ -116,7 +117,7 @@ func NewImageManager(
 	kubeclientset kubernetes.Interface,
 	namespace string,
 	imagePullDeadlineDuration time.Duration,
-	dockerClientImage, imagePullPolicy string) (*ImageManager, coreinformers.PodInformer) {
+	criClientImage, busyboxImage, imagePullPolicy string) (*ImageManager, coreinformers.PodInformer) {
 
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(
 		kubeclientset,
@@ -134,7 +135,8 @@ func NewImageManager(
 		podsLister:                podInformer.Lister(),
 		podsSynced:                podInformer.Informer().HasSynced,
 		imagePullDeadlineDuration: imagePullDeadlineDuration,
-		dockerClientImage:         dockerClientImage,
+		criClientImage:            criClientImage,
+		busyboxImage:              busyboxImage,
 		imagePullPolicy:           imagePullPolicy,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -453,7 +455,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 // pullImage pulls the image to the node
 func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
-	newjob, err := newImagePullJob(iwr.Imagecache, iwr.Image, iwr.Node, m.imagePullPolicy)
+	newjob, err := newImagePullJob(iwr.Imagecache, iwr.Image, iwr.Node, m.imagePullPolicy, m.busyboxImage)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err
@@ -470,7 +472,7 @@ func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 // deleteImage deletes the image from the node
 func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
-	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion, m.dockerClientImage)
+	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion, m.criClientImage)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err

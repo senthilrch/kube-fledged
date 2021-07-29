@@ -56,6 +56,8 @@ spec:
                   fieldPath: metadata.namespace
             - name: KUBEFLEDGED_CRI_CLIENT_IMAGE
               value: {{ .Values.image.kubefledgedCRIClientRepository }}:{{ .Chart.AppVersion }}
+            - name: BUSYBOX_IMAGE
+              value: {{ .Values.image.busyboxImageRepository }}:{{ .Values.image.busyboxImageVersion }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

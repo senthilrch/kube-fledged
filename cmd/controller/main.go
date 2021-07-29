@@ -37,7 +37,8 @@ import (
 var (
 	imageCacheRefreshFrequency time.Duration
 	imagePullDeadlineDuration  time.Duration
-	dockerClientImage          string
+	criClientImage             string
+	busyboxImage               string
 	imagePullPolicy            string
 	fledgedNameSpace           string
 	webhookServerPort          int
@@ -70,7 +71,7 @@ func main() {
 	controller := app.NewController(kubeClient, fledgedClient, fledgedNameSpace,
 		kubeInformerFactory.Core().V1().Nodes(),
 		fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches(),
-		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
+		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy)
 
 	glog.Info("Starting pre-flight checks")
 	if err = controller.PreFlightChecks(); err != nil {
@@ -93,7 +94,10 @@ func init() {
 	if fledgedNameSpace = os.Getenv("KUBEFLEDGED_NAMESPACE"); fledgedNameSpace == "" {
 		fledgedNameSpace = "kube-fledged"
 	}
-	if dockerClientImage = os.Getenv("KUBEFLEDGED_CRI_CLIENT_IMAGE"); dockerClientImage == "" {
-		dockerClientImage = "senthilrch/kubefledged-cri-client:latest"
+	if criClientImage = os.Getenv("KUBEFLEDGED_CRI_CLIENT_IMAGE"); criClientImage == "" {
+		criClientImage = "senthilrch/kubefledged-cri-client:latest"
+	}
+	if busyboxImage = os.Getenv("BUSYBOX_IMAGE"); busyboxImage == "" {
+		busyboxImage = "busybox:1.29.2"
 	}
 }

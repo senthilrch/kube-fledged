@@ -47,4 +47,6 @@ spec:
               fieldPath: metadata.namespace
         - name: KUBEFLEDGED_CRI_CLIENT_IMAGE
           value: "senthilrch/kubefledged-cri-client:v0.8.1"
-      serviceAccountName: kubefledged-controller
+        - name: BUSYBOX_IMAGE
+          value: "busybox:1.29.2"
+          serviceAccountName: kubefledged-controller

@@ -60,7 +60,8 @@ func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clie
 	imagecacheInformer := fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches()
 	imageCacheRefreshFrequency := time.Second * 0
 	imagePullDeadlineDuration := time.Second * 5
-	dockerClientImage := "senthilrch/fledged-docker-client:latest"
+	criClientImage := "senthilrch/fledged-docker-client:latest"
+	busyboxImage := "busybox:latest"
 	imagePullPolicy := "IfNotPresent"
 
 	/* 	startInformers := true
@@ -72,7 +73,7 @@ func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clie
 	   	} */
 
 	controller := NewController(kubeclientset, fledgedclientset, fledgedNameSpace, nodeInformer, imagecacheInformer,
-		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
+		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy)
 	controller.nodesSynced = func() bool { return true }
 	controller.imageCachesSynced = func() bool { return true }
 	return controller, nodeInformer, imagecacheInformer

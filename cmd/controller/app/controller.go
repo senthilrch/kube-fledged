@@ -92,7 +92,8 @@ func NewController(
 	imageCacheInformer informers.ImageCacheInformer,
 	imageCacheRefreshFrequency time.Duration,
 	imagePullDeadlineDuration time.Duration,
-	dockerClientImage string,
+	criClientImage string,
+	busyboxImage string,
 	imagePullPolicy string) *Controller {
 
 	runtime.Must(fledgedscheme.AddToScheme(scheme.Scheme))
@@ -116,7 +117,7 @@ func NewController(
 		imageCacheRefreshFrequency: imageCacheRefreshFrequency,
 	}
 
-	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, controller.fledgedNameSpace, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
+	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, controller.fledgedNameSpace, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy)
 	controller.imageManager = imageManager
 
 	glog.Info("Setting up event handlers")

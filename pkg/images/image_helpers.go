@@ -31,7 +31,7 @@ import (
 )
 
 // newImagePullJob constructs a job manifest for pulling an image to a node
-func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node, imagePullPolicy string) (*batchv1.Job, error) {
+func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node, imagePullPolicy string, busyboxImage string) (*batchv1.Job, error) {
 	var pullPolicy corev1.PullPolicy = corev1.PullIfNotPresent
 	hostname := node.Labels["kubernetes.io/hostname"]
 	if imagecache == nil {
@@ -84,7 +84,7 @@ func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node 
 					InitContainers: []corev1.Container{
 						{
 							Name:    "busybox",
-							Image:   "busybox:1.29.2",
+							Image:   busyboxImage,
 							Command: []string{"cp", "/bin/echo", "/tmp/bin"},
 							VolumeMounts: []corev1.VolumeMount{
 								{
