@@ -89,9 +89,11 @@ func main() {
 func init() {
 	flag.DurationVar(&imagePullDeadlineDuration, "image-pull-deadline-duration", time.Minute*5, "Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed")
 	flag.DurationVar(&imageCacheRefreshFrequency, "image-cache-refresh-frequency", time.Minute*15, "The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to 0s will disable refresh")
-	flag.StringVar(&dockerClientImage, "cri-client-image", "senthilrch/kubefledged-cri-client:latest", "The image name of the cri client. the cri client is used when deleting images during purging the cache")
 	flag.StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Image pull policy for pulling images into the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Images with no or ':latest' tag are always pulled")
 	if fledgedNameSpace = os.Getenv("KUBEFLEDGED_NAMESPACE"); fledgedNameSpace == "" {
 		fledgedNameSpace = "kube-fledged"
+	}
+	if dockerClientImage = os.Getenv("KUBEFLEDGED_CRI_CLIENT_IMAGE"); dockerClientImage == "" {
+		dockerClientImage = "senthilrch/kubefledged-cri-client:latest"
 	}
 }

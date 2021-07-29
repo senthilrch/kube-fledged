@@ -79,7 +79,6 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
 
   ```
   $ kubectl get pods -n kube-fledged -l app=kubefledged
-  $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
 
@@ -123,7 +122,6 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
 
   ```
   $ kubectl get pods -n kube-fledged -l app.kubernetes.io/name=kube-fledged
-  $ kubectl logs -f <pod_name_obtained_from_above_command> -n kube-fledged
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
 
@@ -290,8 +288,6 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 `--image-pull-deadline-duration:` Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed. default "5m"
 
 `--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. default "15m"
-
-`--cri-client-image:` The image name of the cri client. The cri client is used when deleting images during purging the cache".
 
 `--image-pull-policy:` Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled.
 
