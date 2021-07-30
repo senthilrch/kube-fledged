@@ -1,0 +1,8 @@
+apiVersion: charts.helm.kubefledged.io/v1alpha2
+kind: KubeFledged
+metadata:
+  name: kube-fledged
+  namespace: kubefledged-operator
+spec:
+  # Defaults defined in <project_dir>/helm-charts/kubefledged/values.yaml
+  kubefledgedNameSpace: kube-fledged

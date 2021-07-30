@@ -8,6 +8,8 @@ kubefledgedNameSpace: kube-fledged
 image:
   kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
   kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client
+  busyboxImageRepository: gcr.io/google-containers/busybox
+  busyboxImageVersion: "1.27.2"
   kubefledgedWebhookServerRepository: docker.io/senthilrch/kubefledged-webhook-server
   pullPolicy: Always
 command: 
@@ -19,8 +21,8 @@ args:
   controllerImageCacheRefreshFrequency: 15m
   controllerImagePullPolicy: IfNotPresent
   webhookServerLogLevel: INFO
-  webhookServerCertFile: /var/run/secrets/webhook-server/cert.pem
-  webhookServerKeyFile: /var/run/secrets/webhook-server/key.pem
+  webhookServerCertFile: /var/run/secrets/webhook-server/tls.crt
+  webhookServerKeyFile: /var/run/secrets/webhook-server/tls.key
   webhookServerPort: 443
 validatingWebhookCABundle:
 imagePullSecrets: []

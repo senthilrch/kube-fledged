@@ -17,14 +17,26 @@ spec:
         kubefledged: kubefledged-controller
         app: kubefledged
     spec:
+      initContainers:
+        - name: wait
+          image: senthilrch/kubefledged-cri-client:v0.8.1
+          command: ["curl"]
+          args:
+            - "--insecure"
+            - "--retry-all-errors"
+            - "--retry"
+            - "60"
+            - "--retry-delay"
+            - "1"
+            - "https://kubefledged-webhook-server.kube-fledged.svc:3443/readyz"
+          imagePullPolicy: Always
       containers:
-      - image: senthilrch/kubefledged-controller:v0.8.0
+      - image: senthilrch/kubefledged-controller:v0.8.1
         command: ["/opt/bin/kubefledged-controller"]
         args:
         - "--stderrthreshold=INFO"
         - "--image-pull-deadline-duration=5m"
         - "--image-cache-refresh-frequency=15m"
-        - "--cri-client-image=senthilrch/kubefledged-cri-client:v0.8.0"
         - "--image-pull-policy=IfNotPresent"
         imagePullPolicy: Always
         name: controller
@@ -33,4 +45,8 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: KUBEFLEDGED_CRI_CLIENT_IMAGE
+          value: "senthilrch/kubefledged-cri-client:v0.8.1"
+        - name: BUSYBOX_IMAGE
+          value: "gcr.io/google-containers/busybox:1.27.2"
       serviceAccountName: kubefledged-controller

@@ -45,8 +45,8 @@ import (
 )
 
 const controllerAgentName = "kubefledged-controller"
-const imageCachePurgeAnnotationKey = "kubefledged.k8s.io/purge-imagecache"
-const imageCacheRefreshAnnotationKey = "kubefledged.k8s.io/refresh-imagecache"
+const imageCachePurgeAnnotationKey = "kubefledged.io/purge-imagecache"
+const imageCacheRefreshAnnotationKey = "kubefledged.io/refresh-imagecache"
 
 const (
 	// SuccessSynced is used as part of the Event 'reason' when a ImageCache is synced
@@ -92,7 +92,8 @@ func NewController(
 	imageCacheInformer informers.ImageCacheInformer,
 	imageCacheRefreshFrequency time.Duration,
 	imagePullDeadlineDuration time.Duration,
-	dockerClientImage string,
+	criClientImage string,
+	busyboxImage string,
 	imagePullPolicy string) *Controller {
 
 	runtime.Must(fledgedscheme.AddToScheme(scheme.Scheme))
@@ -116,7 +117,7 @@ func NewController(
 		imageCacheRefreshFrequency: imageCacheRefreshFrequency,
 	}
 
-	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, controller.fledgedNameSpace, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
+	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, controller.fledgedNameSpace, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy)
 	controller.imageManager = imageManager
 
 	glog.Info("Setting up event handlers")
@@ -635,10 +636,13 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 }
 
 func (c *Controller) updateImageCacheStatus(imageCache *v1alpha2.ImageCache, status *v1alpha2.ImageCacheStatus) error {
+	imageCacheCopy, err := c.kubefledgedclientset.KubefledgedV1alpha2().ImageCaches(imageCache.Namespace).Get(context.TODO(), imageCache.Name, metav1.GetOptions{})
+	if err != nil {
+		return err
+	}
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
-	imageCacheCopy := imageCache.DeepCopy()
 	imageCacheCopy.Status = *status
 	if imageCacheCopy.Status.Status != v1alpha2.ImageCacheActionStatusProcessing {
 		completionTime := metav1.Now()
@@ -648,7 +652,7 @@ func (c *Controller) updateImageCacheStatus(imageCache *v1alpha2.ImageCache, sta
 	// we must use Update instead of UpdateStatus to update the Status block of the ImageCache resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.kubefledgedclientset.KubefledgedV1alpha2().ImageCaches(imageCache.Namespace).Update(context.TODO(), imageCacheCopy, metav1.UpdateOptions{})
+	_, err = c.kubefledgedclientset.KubefledgedV1alpha2().ImageCaches(imageCache.Namespace).Update(context.TODO(), imageCacheCopy, metav1.UpdateOptions{})
 	return err
 }
 

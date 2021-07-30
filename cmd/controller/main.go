@@ -37,7 +37,8 @@ import (
 var (
 	imageCacheRefreshFrequency time.Duration
 	imagePullDeadlineDuration  time.Duration
-	dockerClientImage          string
+	criClientImage             string
+	busyboxImage               string
 	imagePullPolicy            string
 	fledgedNameSpace           string
 	webhookServerPort          int
@@ -70,7 +71,7 @@ func main() {
 	controller := app.NewController(kubeClient, fledgedClient, fledgedNameSpace,
 		kubeInformerFactory.Core().V1().Nodes(),
 		fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches(),
-		imageCacheRefreshFrequency, imagePullDeadlineDuration, dockerClientImage, imagePullPolicy)
+		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy)
 
 	glog.Info("Starting pre-flight checks")
 	if err = controller.PreFlightChecks(); err != nil {
@@ -89,9 +90,14 @@ func main() {
 func init() {
 	flag.DurationVar(&imagePullDeadlineDuration, "image-pull-deadline-duration", time.Minute*5, "Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed")
 	flag.DurationVar(&imageCacheRefreshFrequency, "image-cache-refresh-frequency", time.Minute*15, "The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to 0s will disable refresh")
-	flag.StringVar(&dockerClientImage, "cri-client-image", "senthilrch/kubefledged-cri-client:latest", "The image name of the cri client. the cri client is used when deleting images during purging the cache")
 	flag.StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Image pull policy for pulling images into the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Images with no or ':latest' tag are always pulled")
 	if fledgedNameSpace = os.Getenv("KUBEFLEDGED_NAMESPACE"); fledgedNameSpace == "" {
 		fledgedNameSpace = "kube-fledged"
+	}
+	if criClientImage = os.Getenv("KUBEFLEDGED_CRI_CLIENT_IMAGE"); criClientImage == "" {
+		criClientImage = "senthilrch/kubefledged-cri-client:latest"
+	}
+	if busyboxImage = os.Getenv("BUSYBOX_IMAGE"); busyboxImage == "" {
+		busyboxImage = "busybox:1.29.2"
 	}
 }

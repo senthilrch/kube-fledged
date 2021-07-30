@@ -72,7 +72,7 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - charts.helm.k8s.io
+  - charts.helm.kubefledged.io
   resources:
   - '*'
   verbs:

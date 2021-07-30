@@ -35,7 +35,7 @@ spec:
             - "60"
             - "--retry-delay"
             - "1"
-            - "https://{{ include "kubefledged.fullname" . }}-webhook-server:{{ .Values.webhookService.port }}/readyz"
+            - "https://{{ include "kubefledged.webhookServiceName" . }}:{{ .Values.webhookService.port }}/readyz"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
       containers:
         - name: {{ .Chart.Name }}
@@ -47,7 +47,6 @@ spec:
             - "--stderrthreshold={{ .Values.args.controllerLogLevel }}"
             - "--image-pull-deadline-duration={{ .Values.args.controllerImagePullDeadlineDuration }}"
             - "--image-cache-refresh-frequency={{ .Values.args.controllerImageCacheRefreshFrequency }}"
-            - "--cri-client-image={{ .Values.image.kubefledgedCRIClientRepository }}:{{ .Chart.AppVersion }}"
             - "--image-pull-policy={{ .Values.args.controllerImagePullPolicy }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
@@ -55,6 +54,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: KUBEFLEDGED_CRI_CLIENT_IMAGE
+              value: {{ .Values.image.kubefledgedCRIClientRepository }}:{{ .Chart.AppVersion }}
+            - name: BUSYBOX_IMAGE
+              value: {{ .Values.image.busyboxImageRepository }}:{{ .Values.image.busyboxImageVersion }}
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

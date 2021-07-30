@@ -1,17 +1,36 @@
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: kubefledged
+  name: kubefledged-controller  
   labels:
     app: kubefledged
     component: kubefledged-controller  
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: kubefledged
+  name: kubefledged-controller
 subjects:
 - kind: ServiceAccount
   name: kubefledged-controller
+  namespace: kube-fledged
+- apiGroup: rbac.authorization.k8s.io
+  kind: Group
+  name: system:nodes
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kubefledged-webhook-server 
+  labels:
+    app: kubefledged
+    component: kubefledged-webhook-server   
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubefledged-webhook-server
+subjects:
+- kind: ServiceAccount
+  name: kubefledged-webhook-server
   namespace: kube-fledged
 - apiGroup: rbac.authorization.k8s.io
   kind: Group
