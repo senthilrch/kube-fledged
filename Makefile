@@ -197,7 +197,7 @@ deploy-using-yaml:
 	kubectl apply -f deploy/kubefledged-serviceaccount.yaml
 	kubectl apply -f deploy/kubefledged-clusterrole.yaml
 	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml
-	-kubectl delete validatingwebhookconfigurations -l app=kubefledged,component=kubefledged-webhook-server
+	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
 	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
 	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml
@@ -241,6 +241,7 @@ remove-kubefledged:
 remove-operator-and-kubefledged:
 	# Remove kubefledged and the namespace
 	-kubectl delete -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
+	-kubectl delete validatingwebhookconfigurations -l app.kubernetes.io/name=kube-fledged
 	-kubectl delete namespace ${KUBEFLEDGED_NAMESPACE}
 	# Remove the kubefledged operator and the namespace
 	-kubectl delete -f deploy/kubefledged-operator/deploy/operator.yaml

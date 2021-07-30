@@ -3,8 +3,10 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
   name: {{ include "kubefledged.validatingWebhookName" . }}
+  labels:
+    {{ include "kubefledged.labels" . | nindent 4 }}  
   annotations:
-    helm.sh/hook: "pre-install"
+    helm.sh/hook: "pre-install,pre-upgrade"
 webhooks:
   - name: validate-image-cache.kubefledged.io
     admissionReviewVersions: ["v1beta1", "v1"]

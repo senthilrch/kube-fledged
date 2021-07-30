@@ -49,6 +49,7 @@ Selector labels
 {{- define "kubefledged.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "kubefledged.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/part-of: {{ .Release.Name }}
 {{- end -}}
 
 {{/*
