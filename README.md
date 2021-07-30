@@ -95,6 +95,7 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
 
   ```
   $ helm repo add kubefledged-charts https://senthilrch.github.io/kubefledged-charts/
+  $ helm repo update
   $ gpg --keyserver keyserver.ubuntu.com --recv-keys 92D793FA3A6460ED (or) gpg --keyserver pgp.mit.edu --recv-keys 92D793FA3A6460ED
   $ gpg --export >~/.gnupg/pubring.gpg
   $ helm install --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
