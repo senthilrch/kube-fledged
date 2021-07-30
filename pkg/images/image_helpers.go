@@ -145,7 +145,7 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 		"controller": controllerAgentName,
 	}
 
-	hostpathtype := corev1.HostPathFile
+	hostpathtype := corev1.HostPathSocket
 	backoffLimit := int32(0)
 	activeDeadlineSeconds := int64((time.Hour).Seconds())
 
