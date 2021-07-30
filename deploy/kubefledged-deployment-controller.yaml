@@ -48,5 +48,5 @@ spec:
         - name: KUBEFLEDGED_CRI_CLIENT_IMAGE
           value: "senthilrch/kubefledged-cri-client:v0.8.1"
         - name: BUSYBOX_IMAGE
-          value: "busybox:1.29.2"
-          serviceAccountName: kubefledged-controller
+          value: "gcr.io/google-containers/busybox:1.27.2"
+      serviceAccountName: kubefledged-controller

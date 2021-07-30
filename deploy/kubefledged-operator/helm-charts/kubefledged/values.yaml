@@ -8,8 +8,8 @@ kubefledgedNameSpace: kube-fledged
 image:
   kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
   kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client
-  busyboxImageRepository: docker.io/busybox
-  busyboxImageVersion: "1.29.2"
+  busyboxImageRepository: gcr.io/google-containers/busybox
+  busyboxImageVersion: "1.27.2"
   kubefledgedWebhookServerRepository: docker.io/senthilrch/kubefledged-webhook-server
   pullPolicy: Always
 command: 
