@@ -615,9 +615,11 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 				}
 			}
 			if imageCache.Status.Reason == v1alpha2.ImageCacheReasonImageCacheRefresh {
-				if err := c.removeAnnotation(imageCache, imageCacheRefreshAnnotationKey); err != nil {
-					glog.Errorf("Error removing Annotation %s from imagecache(%s): %v", imageCacheRefreshAnnotationKey, imageCache.Name, err)
-					return err
+				if _, ok := imageCache.Annotations[imageCacheRefreshAnnotationKey]; ok {
+					if err := c.removeAnnotation(imageCache, imageCacheRefreshAnnotationKey); err != nil {
+						glog.Errorf("Error removing Annotation %s from imagecache(%s): %v", imageCacheRefreshAnnotationKey, imageCache.Name, err)
+						return err
+					}
 				}
 			}
 		}
