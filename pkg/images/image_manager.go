@@ -302,14 +302,19 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 			iwstatusLock.Unlock()
 			imageCache = iwres.ImageWorkRequest.Imagecache
 			delete(m.imageworkstatus, job)
-			// delete jobs
+			// delete the job
 			if !strings.HasPrefix(job, fakeJobPrefix) {
 				if err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).
 					Delete(context.TODO(), job, metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
-					glog.Errorf("Error deleting job %s: %v", job, err)
-					m.lock.Unlock()
-					errCh <- err
-					return
+					// if for some reason the job cannot be deleted, we'll not retry. rather we continue processing the remaining jobs
+					if strings.Contains(err.Error(), "not found") {
+						glog.Warningf("Error deleting job %s: %s", job, "not found")
+					} else {
+						glog.Errorf("Error deleting job %s: %v", job, err)
+					}
+					//m.lock.Unlock()
+					//errCh <- err
+					//return
 				}
 			}
 		}
@@ -395,6 +400,8 @@ func (m *ImageManager) processNextWorkItem() bool {
 			return nil
 		}
 
+		// When both Image and Node fields are empty it indicates all image pull/delete requests
+		// have been placed in the workqueue by the controller. The controller is waiting for status update
 		if iwr.Image == "" && iwr.Node == nil {
 			m.imageworkqueue.Forget(obj)
 			errCh := make(chan error)
