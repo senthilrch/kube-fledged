@@ -281,7 +281,7 @@ Kubernetes allows developers to extend the kubernetes api via [Custom Resources]
 
 _kubefledged-controller_ has a built-in image manager routine that is responsible for pulling and deleting images. Images are pulled or deleted using kubernetes jobs. If enabled, image cache is refreshed periodically by the refresh worker. _kubefledged-controller_ updates the status of image pulls, refreshes and image deletions in the status field of ImageCache resource.
 
-For more detailed description, go through _kube-fledged's_ [design proposal](docs/cluster-image-cache.md).
+For more detailed description, go through _kube-fledged's_ [design proposal](docs/design-proposal.md).
 
 
 ## Configuration Flags for Kubefledged Controller
