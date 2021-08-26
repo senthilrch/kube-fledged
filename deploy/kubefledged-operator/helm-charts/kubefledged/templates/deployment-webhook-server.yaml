@@ -4,7 +4,6 @@ metadata:
   name: {{ include "kubefledged.fullname" . }}-webhook-server
   labels:
     {{- include "kubefledged.labels" . | nindent 4 }}
-  namespace: {{ .Values.kubefledgedNameSpace }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:

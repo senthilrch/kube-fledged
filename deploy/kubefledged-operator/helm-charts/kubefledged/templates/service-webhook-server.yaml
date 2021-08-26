@@ -5,7 +5,6 @@ metadata:
   name: {{ include "kubefledged.webhookServiceName" . }}
   labels:
     {{ include "kubefledged.labels" . | nindent 4 }}
-  namespace: {{ .Values.kubefledgedNameSpace }}
 spec:
   ports:
   - name: webhook-server

@@ -4,7 +4,6 @@
 
 controllerReplicaCount: 1
 webhookServerReplicaCount: 1
-kubefledgedNameSpace: kube-fledged
 image:
   kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
   kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client
