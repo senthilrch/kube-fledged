@@ -12,7 +12,7 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: {{ include "kubefledged.serviceAccountName" . }}
-  namespace: {{ .Values.kubefledgedNameSpace }}
+  namespace: {{ .Release.Namespace | quote }}
 - apiGroup: rbac.authorization.k8s.io
   kind: Group
   name: system:nodes
