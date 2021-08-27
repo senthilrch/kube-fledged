@@ -23,6 +23,7 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 - [Quick Install using YAML manifests](#quick-install-using-yaml-manifests)
 - [Quick Install using Helm chart](#quick-install-using-helm-chart)
 - [Quick Install using Helm operator](#quick-install-using-helm-operator)
+- [Helm chart parameters](#helm-chart-parameters)
 - [Build and Deploy](#build-and-deploy)
   - [Build](#build)
   - [Deploy](#deploy)
@@ -125,6 +126,10 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ kubectl get pods -n kube-fledged -l app.kubernetes.io/name=kube-fledged
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
+
+## Helm chart parameters
+
+Parameters of the helm chart are documented [here](docs/helm-parameters.md)
 
 ## Build and Deploy
 
