@@ -114,7 +114,7 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ cd $HOME/src/github.com/senthilrch/kube-fledged
   ```
 
-- Deploy the helm operator to a separate namespace called "kubefledged-operator" and _kube-fledged_ to a separate namespace called "kube-fledged". If you need to deploy to a different namespace, export the variables OPERATOR_NAMESPACE and KUBEFLEDGED_NAMESPACE
+- Deploy the helm operator and _kube-fledged_ to namespace "kube-fledged". If you need to deploy to a different namespace, export the variable KUBEFLEDGED_NAMESPACE
 
   ```
   $ make deploy-using-operator
