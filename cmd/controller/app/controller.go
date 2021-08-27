@@ -577,7 +577,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 					status.Message = v1alpha2.ImageCacheMessageImagesPulledSuccessfully
 				}
 			}
-			if v.Status == images.ImageWorkResultStatusFailed && !failures {
+			if (v.Status == images.ImageWorkResultStatusFailed || v.Status == images.ImageWorkResultStatusUnknown) && !failures {
 				failures = true
 				status.Status = v1alpha2.ImageCacheActionStatusFailed
 				if v.ImageWorkRequest.WorkType == images.ImageCachePurge {
@@ -586,7 +586,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 					status.Message = v1alpha2.ImageCacheMessageImagePullFailedForSomeImages
 				}
 			}
-			if v.Status == images.ImageWorkResultStatusFailed {
+			if v.Status == images.ImageWorkResultStatusFailed || v.Status == images.ImageWorkResultStatusUnknown {
 				status.Failures[v.ImageWorkRequest.Image] = append(
 					status.Failures[v.ImageWorkRequest.Image], v1alpha2.NodeReasonMessage{
 						Node:    v.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"],
