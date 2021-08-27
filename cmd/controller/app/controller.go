@@ -221,30 +221,30 @@ func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
 	defer c.imageworkqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
-	glog.Info("Starting fledged controller")
+	glog.Info("Starting kubefledged-controller")
 
 	// Wait for the caches to be synced before starting workers
-	glog.Info("Waiting for informer caches to sync")
 	if ok := cache.WaitForCacheSync(stopCh, c.nodesSynced, c.imageCachesSynced); !ok {
 		return fmt.Errorf("failed to wait for caches to sync")
 	}
+	glog.Info("Informer caches synched successfull")
 
-	glog.Info("Starting image cache worker")
 	// Launch workers to process ImageCache resources
 	for i := 0; i < threadiness; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
+	glog.Info("Image cache worker started")
 
 	if c.imageCacheRefreshFrequency.Nanoseconds() != int64(0) {
-		glog.Info("Starting cache refresh worker")
 		go wait.Until(c.runRefreshWorker, c.imageCacheRefreshFrequency, stopCh)
+		glog.Info("Image cache refresh worker started")
 	}
 
-	glog.Info("Started workers")
 	c.imageManager.Run(stopCh)
 	if err := c.imageManager.Run(stopCh); err != nil {
 		glog.Fatalf("Error running image manager: %s", err.Error())
 	}
+	glog.Info("Image manager started")
 
 	<-stopCh
 	glog.Info("Shutting down workers")
