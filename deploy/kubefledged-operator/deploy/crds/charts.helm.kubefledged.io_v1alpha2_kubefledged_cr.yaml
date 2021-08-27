@@ -5,4 +5,21 @@ metadata:
   namespace: kubefledged-operator
 spec:
   # Defaults defined in <project_dir>/helm-charts/kubefledged/values.yaml
-  kubefledgedNameSpace: kube-fledged
+  controllerReplicaCount: 1
+  webhookServerReplicaCount: 1
+  image:
+    kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
+    kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client
+    kubefledgedWebhookServerRepository: docker.io/senthilrch/kubefledged-webhook-server
+    pullPolicy: Always
+  args:
+    controllerLogLevel: INFO
+    controllerImagePullDeadlineDuration: 5m
+    controllerImageCacheRefreshFrequency: 15m
+    controllerImagePullPolicy: IfNotPresent
+    webhookServerLogLevel: INFO
+    webhookServerCertFile: /var/run/secrets/webhook-server/tls.crt
+    webhookServerKeyFile: /var/run/secrets/webhook-server/tls.key
+    webhookServerPort: 443
+  nameOverride: ""
+  fullnameOverride: ""
