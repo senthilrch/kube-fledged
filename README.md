@@ -46,9 +46,10 @@ kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and 
 ## Use cases
 
 - Applications that require rapid start-up. For e.g. an application performing real-time data processing needs to scale rapidly due to a burst in data volume.
-- Serverless Functions where functions need to react immediately to incoming events.
-- IoT applications that run on Edge devices when the network connectivity between the edge and image registry is intermittent.
+- Serverless Functions since they need to react immediately to incoming events.
+- IoT applications that run on Edge devices, because the network connectivity between the edge device and image registry would be intermittent.
 - If a cluster administrator or operator needs to roll-out upgrades to an application and wants to verify before-hand if the new images can be pulled successfully.
+- If users need to use specific images in a private registry, such images can be cached in the cluster. No need to grant permissions to the registry.
 
 ## Prerequisites
 
