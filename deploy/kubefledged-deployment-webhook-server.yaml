@@ -18,7 +18,7 @@ spec:
         app: kubefledged
     spec:
       initContainers:
-      - image: senthilrch/kubefledged-webhook-server:v0.8.1
+      - image: senthilrch/kubefledged-webhook-server:v0.8.2
         command: ["/opt/bin/kubefledged-webhook-server"]
         args:
         - "--stderrthreshold=INFO"
@@ -40,7 +40,7 @@ spec:
         - name: certkey-volume
           mountPath: "/var/run/secrets/webhook-server"
       containers:
-      - image: senthilrch/kubefledged-webhook-server:v0.8.1
+      - image: senthilrch/kubefledged-webhook-server:v0.8.2
         command: ["/opt/bin/kubefledged-webhook-server"]
         args:
         - "--stderrthreshold=INFO"

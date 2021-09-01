@@ -501,7 +501,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 			expectError: false,
 		},
 		{
-			name: "#6: Purge - Unsuccessful",
+			name: "#6: Purge - Successful",
 			imageworkstatus: map[string]ImageWorkResult{
 				"fakejob": {
 					ImageWorkRequest: ImageWorkRequest{
@@ -523,8 +523,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 					},
 				},
 			},
-			expectError:         true,
-			expectedErrorString: "no pods matched job",
+			expectError: false,
 		},
 		{
 			name: "#7: Purge - Unsuccessful",
@@ -562,7 +561,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 			expectedErrorString: "more than one pod matched job",
 		},
 		{
-			name: "#8: Create - Unsuccessful",
+			name: "#8: Create - Successful",
 			imageworkstatus: map[string]ImageWorkResult{
 				"fakejob": {
 					ImageWorkRequest: ImageWorkRequest{
@@ -597,9 +596,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 					},
 				},
 			},
-			jobDeleteErr:        true,
-			expectError:         true,
-			expectedErrorString: "Internal error occurred: fake error",
+			expectError: false,
 		},
 	}
 

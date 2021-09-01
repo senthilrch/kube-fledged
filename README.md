@@ -23,6 +23,7 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 - [Quick Install using YAML manifests](#quick-install-using-yaml-manifests)
 - [Quick Install using Helm chart](#quick-install-using-helm-chart)
 - [Quick Install using Helm operator](#quick-install-using-helm-operator)
+- [Helm chart parameters](#helm-chart-parameters)
 - [Build and Deploy](#build-and-deploy)
   - [Build](#build)
   - [Deploy](#deploy)
@@ -113,7 +114,7 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ cd $HOME/src/github.com/senthilrch/kube-fledged
   ```
 
-- Deploy the helm operator to a separate namespace called "kubefledged-operator" and _kube-fledged_ to a separate namespace called "kube-fledged". If you need to deploy to a different namespace, export the variables OPERATOR_NAMESPACE and KUBEFLEDGED_NAMESPACE
+- Deploy the helm operator and _kube-fledged_ to namespace "kube-fledged". If you need to deploy to a different namespace, export the variable KUBEFLEDGED_NAMESPACE
 
   ```
   $ make deploy-using-operator
@@ -125,6 +126,10 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ kubectl get pods -n kube-fledged -l app.kubernetes.io/name=kube-fledged
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
+
+## Helm chart parameters
+
+Parameters of the helm chart are documented [here](docs/helm-parameters.md)
 
 ## Build and Deploy
 

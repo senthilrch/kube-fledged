@@ -53,6 +53,8 @@ const (
 	ImageWorkResultStatusJobCreated = "jobcreated"
 	//ImageWorkResultStatusAlreadyPulled  means image is already present in the node
 	ImageWorkResultStatusAlreadyPulled = "alreadypulled"
+	//ImageWorkResultStatusUnknown  means status of image pull/delete unknown
+	ImageWorkResultStatusUnknown = "unknown"
 )
 
 // ImageManager provides the functionalities for pulling and deleting images
@@ -208,52 +210,61 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 					glog.Errorf("Error listing Pods: %v", err)
 					return err
 				}
-				if len(pods) == 0 {
-					glog.Errorf("No pods matched job %s", job)
-					return fmt.Errorf("no pods matched job %s", job)
-				}
 				if len(pods) > 1 {
 					glog.Errorf("More than one pod matched job %s", job)
 					return fmt.Errorf("more than one pod matched job %s", job)
 				}
-				iwres.Status = ImageWorkResultStatusFailed
-				if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
-					glog.Infof("Job %s expired (delete: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
-				} else {
-					glog.Infof("Job %s expired (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
-				}
-				if pods[0].Status.Phase == corev1.PodPending {
-					if len(pods[0].Status.ContainerStatuses) == 1 {
-						if pods[0].Status.ContainerStatuses[0].State.Waiting != nil {
-							iwres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
-							iwres.Message = pods[0].Status.ContainerStatuses[0].State.Waiting.Message
-						}
-						if pods[0].Status.ContainerStatuses[0].State.Terminated != nil {
-							iwres.Reason = pods[0].Status.ContainerStatuses[0].State.Terminated.Reason
-							iwres.Message = pods[0].Status.ContainerStatuses[0].State.Terminated.Message
-						}
+				if len(pods) == 0 {
+					glog.Warningf("No pods matched job %s", job)
+					if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
+						glog.Warningf("Job %s status unknown (delete: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 					} else {
-						iwres.Reason = "Pending"
-						iwres.Message = "Check if node is ready"
+						glog.Warningf("Job %s status unknown (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 					}
+					iwres.Status = ImageWorkResultStatusUnknown
+					iwres.Reason = fmt.Sprintf("No pods matched job %s", job)
+					iwres.Message = fmt.Sprintf("No pods matched job %s", job)
 				}
-				if iwres.ImageWorkRequest.WorkType != ImageCachePurge {
-					fieldSelector := fields.Set{
-						"involvedObject.kind":      "Pod",
-						"involvedObject.name":      pods[0].Name,
-						"involvedObject.namespace": m.fledgedNameSpace,
-						"reason":                   "Failed",
-					}.AsSelector().String()
-
-					eventlist, err := m.kubeclientset.CoreV1().Events(m.fledgedNameSpace).
-						List(context.TODO(), metav1.ListOptions{FieldSelector: fieldSelector})
-					if err != nil {
-						glog.Errorf("Error listing events for pod (%s): %v", pods[0].Name, err)
-						return err
+				if len(pods) == 1 {
+					iwres.Status = ImageWorkResultStatusFailed
+					if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
+						glog.Infof("Job %s expired (delete: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
+					} else {
+						glog.Infof("Job %s expired (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
 					}
+					if pods[0].Status.Phase == corev1.PodPending {
+						if len(pods[0].Status.ContainerStatuses) == 1 {
+							if pods[0].Status.ContainerStatuses[0].State.Waiting != nil {
+								iwres.Reason = pods[0].Status.ContainerStatuses[0].State.Waiting.Reason
+								iwres.Message = pods[0].Status.ContainerStatuses[0].State.Waiting.Message
+							}
+							if pods[0].Status.ContainerStatuses[0].State.Terminated != nil {
+								iwres.Reason = pods[0].Status.ContainerStatuses[0].State.Terminated.Reason
+								iwres.Message = pods[0].Status.ContainerStatuses[0].State.Terminated.Message
+							}
+						} else {
+							iwres.Reason = "Pending"
+							iwres.Message = "Check if node is ready"
+						}
+					}
+					if iwres.ImageWorkRequest.WorkType != ImageCachePurge {
+						fieldSelector := fields.Set{
+							"involvedObject.kind":      "Pod",
+							"involvedObject.name":      pods[0].Name,
+							"involvedObject.namespace": m.fledgedNameSpace,
+							"reason":                   "Failed",
+						}.AsSelector().String()
 
-					for _, v := range eventlist.Items {
-						iwres.Message = iwres.Message + ":" + v.Message
+						eventlist, err := m.kubeclientset.CoreV1().Events(m.fledgedNameSpace).
+							List(context.TODO(), metav1.ListOptions{FieldSelector: fieldSelector})
+						if err != nil {
+							glog.Errorf("Error listing events for pod (%s): %v", pods[0].Name, err)
+							return err
+						}
+
+						for _, v := range eventlist.Items {
+							iwres.Message = iwres.Message + ":" + v.Message
+						}
 					}
 				}
 				m.imageworkstatus[job] = iwres
