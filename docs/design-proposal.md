@@ -19,7 +19,7 @@ registry. In the latter solution, the local registry has caching capabilities. W
 
 1. Setting up and maintaining the Local registry mirror consumes considerable computational and human resources.
 2. For huge clusters spanning multiple regions, we need to have multiple local registry mirrors. This introduces unnecessary complexities when application instances span multiple regions. You might need to have multiple Deployment manifests each pointing to the local registry mirror of that region.
-3. These approach doesn't fully solves the requirement for achieving rapid starting of a Pod since there is still a notable delay in pulling the image from the local mirror. There are several use cases which cannot tolerate this delay.
+3. These approaches don't fully solve the requirement for achieving rapid starting of a Pod since there is still a notable delay in pulling the image from the local mirror. There are several use cases which cannot tolerate this delay.
 4. Nodes might lose network connectivity to the local registry mirror so the Pod will be stuck until the connectivity is restored.
 
 # 4. Proposed Solution - Cluster Image Cache
