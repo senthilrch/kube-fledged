@@ -243,7 +243,8 @@ remove-operator-and-kubefledged:
 	-kubectl delete -f deploy/kubefledged-operator/deploy/service_account.yaml
 	-kubectl delete -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_kubefledgeds_crd.yaml
 	-kubectl delete namespace ${KUBEFLEDGED_NAMESPACE}
+	# Restore manifests
 	-git checkout deploy/kubefledged-operator/deploy/operator.yaml
 	-git checkout deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
 	-git checkout deploy/kubefledged-operator/deploy/service_account.yaml
-
+	-git checkout deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
