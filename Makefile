@@ -195,6 +195,7 @@ deploy-using-yaml:
 	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml
 	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
 	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
+	-kubectl delete -f deploy/kubefledged-deployment-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
