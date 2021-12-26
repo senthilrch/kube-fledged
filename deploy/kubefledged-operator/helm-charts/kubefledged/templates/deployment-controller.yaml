@@ -18,24 +18,9 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-      serviceAccountName: {{ include "kubefledged.serviceAccountName" . }}
+      serviceAccountName: {{ include "kubefledged.fullname" . }}-controller
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      initContainers:
-        - name: wait
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: {{ .Values.image.kubefledgedCRIClientRepository }}:{{ .Chart.AppVersion }}
-          command: ["curl"]
-          args:
-            - "--insecure"
-            - "--retry-all-errors"
-            - "--retry"
-            - "60"
-            - "--retry-delay"
-            - "1"
-            - "https://{{ include "kubefledged.webhookServiceName" . }}:{{ .Values.webhookService.port }}/readyz"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:

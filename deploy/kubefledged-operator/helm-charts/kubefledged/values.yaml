@@ -4,6 +4,8 @@
 
 controllerReplicaCount: 1
 webhookServerReplicaCount: 1
+webhookServer:
+  enable: false
 image:
   kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
   kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client

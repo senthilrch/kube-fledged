@@ -1,3 +1,4 @@
+{{- if .Values.webhookServer.enable -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -35,9 +36,9 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
           - name: WEBHOOK_SERVER_SERVICE
-            value: {{ include "kubefledged.webhookServiceName" . }}
+            value: {{ include "kubefledged.fullname" . }}-webhook-server
           - name: VALIDATING_WEBHOOK_CONFIG
-            value: {{ include "kubefledged.validatingWebhookName" . }}
+            value: {{ include "kubefledged.fullname" . }}-webhook-server
           - name: CERT_KEY_PATH
             value: "/var/run/secrets/webhook-server/"
           volumeMounts:
@@ -81,3 +82,4 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+{{- end }}

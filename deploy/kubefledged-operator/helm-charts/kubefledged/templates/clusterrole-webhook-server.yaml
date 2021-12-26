@@ -1,3 +1,4 @@
+{{- if .Values.webhookServer.enable -}}
 {{- if .Values.clusterRole.create -}}
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -15,4 +16,5 @@ rules:
     verbs:
       - get
       - patch
+{{- end -}}
 {{- end -}}
