@@ -5,7 +5,7 @@ metadata:
   namespace: kube-fledged
   labels:
     app: kubefledged
-    component: kubefledged-webhook-server
+    kubefledged: kubefledged-webhook-server
 spec:
   ports:
   - name: webhook-server

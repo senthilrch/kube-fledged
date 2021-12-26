@@ -17,19 +17,19 @@ spec:
         kubefledged: kubefledged-controller
         app: kubefledged
     spec:
-      initContainers:
-        - name: wait
-          image: senthilrch/kubefledged-cri-client:v0.8.2
-          command: ["curl"]
-          args:
-            - "--insecure"
-            - "--retry-all-errors"
-            - "--retry"
-            - "60"
-            - "--retry-delay"
-            - "1"
-            - "https://kubefledged-webhook-server.kube-fledged.svc:3443/readyz"
-          imagePullPolicy: Always
+      #initContainers:
+      #  - name: wait
+      #    image: senthilrch/kubefledged-cri-client:v0.8.2
+      #    command: ["curl"]
+      #    args:
+      #      - "--insecure"
+      #      - "--retry-all-errors"
+      #      - "--retry"
+      #      - "60"
+      #      - "--retry-delay"
+      #      - "1"
+      #      - "https://kubefledged-webhook-server.kube-fledged.svc:3443/readyz"
+      #    imagePullPolicy: Always
       containers:
       - image: senthilrch/kubefledged-controller:v0.8.2
         command: ["/opt/bin/kubefledged-controller"]

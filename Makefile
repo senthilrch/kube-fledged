@@ -190,17 +190,22 @@ hack:
 deploy-using-yaml:
 	-kubectl apply -f deploy/kubefledged-namespace.yaml
 	kubectl apply -f deploy/kubefledged-crd.yaml
-	kubectl apply -f deploy/kubefledged-serviceaccount.yaml
-	kubectl apply -f deploy/kubefledged-clusterrole.yaml
-	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml
+	kubectl apply -f deploy/kubefledged-serviceaccount-controller.yaml
+	kubectl apply -f deploy/kubefledged-clusterrole-controller.yaml
+	kubectl apply -f deploy/kubefledged-clusterrolebinding-controller.yaml
+	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
+	kubectl rollout status deployment kubefledged-controller -n kube-fledged --watch
+
+deploy-webhook-server-using-yaml:
 	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
 	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
-	-kubectl delete -f deploy/kubefledged-deployment-webhook-server.yaml
+	-kubectl delete deploy -l app=kubefledged,kubefledged=kubefledged-webhook-server
+	kubectl apply -f deploy/kubefledged-serviceaccount-webhook-server.yaml
+	kubectl apply -f deploy/kubefledged-clusterrole-webhook-server.yaml
+	kubectl apply -f deploy/kubefledged-clusterrolebinding-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml
-	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
 	kubectl rollout status deployment kubefledged-webhook-server -n kube-fledged --watch
-	kubectl rollout status deployment kubefledged-controller -n kube-fledged --watch
 
 deploy-using-operator:
 	# Create the namespace
@@ -227,11 +232,19 @@ update:
 	kubectl get pods -l app=kubefledged -n kube-fledged
 
 remove-kubefledged:
-	-kubectl delete -f deploy/kubefledged-namespace.yaml
-	-kubectl delete -f deploy/kubefledged-clusterrolebinding.yaml
-	-kubectl delete -f deploy/kubefledged-clusterrole.yaml
-	-kubectl delete -f deploy/kubefledged-crd.yaml
-	-kubectl delete -f deploy/kubefledged-validatingwebhook.yaml
+	-kubectl delete namespace -l app=kubefledged
+	-kubectl delete clusterrolebinding -l app=kubefledged
+	-kubectl delete clusterrole -l app=kubefledged
+	-kubectl delete crd -l app=kubefledged
+	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
+
+remove-webhook-server:
+	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
+	-kubectl delete deploy -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
+	-kubectl delete service -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
+	-kubectl delete clusterrolebinding -l app=kubefledged,kubefledged=kubefledged-webhook-server
+	-kubectl delete clusterrole -l app=kubefledged,kubefledged=kubefledged-webhook-server
+	-kubectl delete serviceaccount -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
 
 remove-operator-and-kubefledged:
 	# Remove kubefledged

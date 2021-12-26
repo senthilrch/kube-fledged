@@ -7,7 +7,7 @@ metadata:
   # The kubernetes namespace to be used for this image cache. You can choose a different namepace as per your preference
   labels:
     app: kubefledged
-    component: imagecache
+    kubefledged: imagecache
 spec:
   # The "cacheSpec" field allows a user to define a list of images and onto which worker nodes those images should be cached (i.e. pre-pulled).
   cacheSpec:

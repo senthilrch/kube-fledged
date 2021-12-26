@@ -1,0 +1,17 @@
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: kubefledged-webhook-server
+  labels:
+    app: kubefledged
+    kubefledged: kubefledged-webhook-server
+  annotations:
+    rbac.authorization.kubernetes.io/autoupdate: "true"
+rules:
+  - apiGroups:
+      - "admissionregistration.k8s.io"
+    resources:
+      - validatingwebhookconfigurations
+    verbs:
+      - get
+      - patch

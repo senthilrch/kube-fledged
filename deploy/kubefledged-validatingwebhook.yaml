@@ -4,7 +4,7 @@ metadata:
   name: kubefledged
   labels:
     app: kubefledged
-    component: kubefledged-webhook-server
+    kubefledged: kubefledged-webhook-server
 webhooks:
   - name: validate-image-cache.kubefledged.io
     admissionReviewVersions: ["v1beta1", "v1"]
