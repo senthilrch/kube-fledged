@@ -7,8 +7,6 @@ metadata:
   labels:
     {{ include "kubefledged.labels" . | nindent 4 }}  
   annotations:
-    helm.sh/hook: "pre-install,pre-upgrade"
-    helm.sh/hook-delete-policy: "before-hook-creation"
     meta.helm.sh/release-name: {{ .Release.Name }}
     meta.helm.sh/release-namespace: {{ .Release.Namespace }}
 webhooks:
