@@ -236,7 +236,7 @@ update:
 	kubectl get pods -l app=kubefledged -n kube-fledged
 
 remove-kubefledged:
-	-kubectl delete namespace -l app=kubefledged
+	-kubectl delete -f deploy/kubefledged-namespace.yaml
 	-kubectl delete clusterrolebinding -l app=kubefledged
 	-kubectl delete clusterrole -l app=kubefledged
 	-kubectl delete crd -l app=kubefledged

@@ -30,6 +30,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/storage/names"
@@ -121,10 +122,17 @@ func NewImageManager(
 	imagePullDeadlineDuration time.Duration,
 	criClientImage, busyboxImage, imagePullPolicy string) (*ImageManager, coreinformers.PodInformer) {
 
+	appEqKubefledged, _ := labels.NewRequirement("app", selection.Equals, []string{"kubefledged"})
+	kubefledgedEqImagemanager, _ := labels.NewRequirement("kubefledged", selection.Equals, []string{"kubefledged-image-manager"})
+	labelSelector := labels.NewSelector()
+	labelSelector = labelSelector.Add(*appEqKubefledged, *kubefledgedEqImagemanager)
+
 	kubeInformerFactory := kubeinformers.NewSharedInformerFactoryWithOptions(
 		kubeclientset,
 		time.Second*30,
-		kubeinformers.WithNamespace(namespace))
+		kubeinformers.WithTweakListOptions(func(options *metav1.ListOptions) {
+			options.LabelSelector = labelSelector.String()
+		}))
 	podInformer := kubeInformerFactory.Core().V1().Pods()
 
 	imagemanager := &ImageManager{
@@ -209,7 +217,7 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 	for job, iwres := range m.imageworkstatus {
 		if iwres.ImageWorkRequest.Imagecache.Name == imageCacheName {
 			if iwres.Status == ImageWorkResultStatusJobCreated {
-				pods, err := m.podsLister.Pods(m.fledgedNameSpace).
+				pods, err := m.podsLister.Pods(iwres.ImageWorkRequest.Imagecache.Namespace).
 					List(labels.Set(map[string]string{"job-name": job}).AsSelector())
 				if err != nil {
 					glog.Errorf("Error listing Pods: %v", err)
@@ -256,11 +264,11 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 						fieldSelector := fields.Set{
 							"involvedObject.kind":      "Pod",
 							"involvedObject.name":      pods[0].Name,
-							"involvedObject.namespace": m.fledgedNameSpace,
+							"involvedObject.namespace": iwres.ImageWorkRequest.Imagecache.Namespace,
 							"reason":                   "Failed",
 						}.AsSelector().String()
 
-						eventlist, err := m.kubeclientset.CoreV1().Events(m.fledgedNameSpace).
+						eventlist, err := m.kubeclientset.CoreV1().Events(iwres.ImageWorkRequest.Imagecache.Namespace).
 							List(context.TODO(), metav1.ListOptions{FieldSelector: fieldSelector})
 						if err != nil {
 							glog.Errorf("Error listing events for pod (%s): %v", pods[0].Name, err)
@@ -320,7 +328,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 			delete(m.imageworkstatus, job)
 			// delete the job
 			if !strings.HasPrefix(job, fakeJobPrefix) {
-				if err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).
+				if err := m.kubeclientset.BatchV1().Jobs(imageCache.Namespace).
 					Delete(context.TODO(), job, metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
 					// if for some reason the job cannot be deleted, we'll not retry. rather we continue processing the remaining jobs
 					if strings.Contains(err.Error(), "not found") {
@@ -484,7 +492,7 @@ func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 		return nil, err
 	}
 	// Create a Job to pull the image into the node
-	job, err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).Create(context.TODO(), newjob, metav1.CreateOptions{})
+	job, err := m.kubeclientset.BatchV1().Jobs(iwr.Imagecache.Namespace).Create(context.TODO(), newjob, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("Error creating job in node %s: %v", iwr.Node, err)
 		return nil, err
@@ -501,7 +509,7 @@ func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 		return nil, err
 	}
 	// Create a Job to delete the image from the node
-	job, err := m.kubeclientset.BatchV1().Jobs(m.fledgedNameSpace).Create(context.TODO(), newjob, metav1.CreateOptions{})
+	job, err := m.kubeclientset.BatchV1().Jobs(iwr.Imagecache.Namespace).Create(context.TODO(), newjob, metav1.CreateOptions{})
 	if err != nil {
 		glog.Errorf("Error creating job in node %s: %v", iwr.Node, err)
 		return nil, err

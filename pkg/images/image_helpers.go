@@ -48,9 +48,10 @@ func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node 
 	}
 
 	labels := map[string]string{
-		"app":        "imagecache",
-		"imagecache": imagecache.Name,
-		"controller": controllerAgentName,
+		"app":         "kubefledged",
+		"kubefledged": "kubefledged-image-manager",
+		"imagecache":  imagecache.Name,
+		"controller":  controllerAgentName,
 	}
 
 	backoffLimit := int32(0)
@@ -140,9 +141,10 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 	}
 
 	labels := map[string]string{
-		"app":        "imagecache",
-		"imagecache": imagecache.Name,
-		"controller": controllerAgentName,
+		"app":         "kubefledged",
+		"kubefledged": "kubefledged-image-manager",
+		"imagecache":  imagecache.Name,
+		"controller":  controllerAgentName,
 	}
 
 	hostpathtype := corev1.HostPathSocket
