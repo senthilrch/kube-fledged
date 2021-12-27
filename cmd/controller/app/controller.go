@@ -514,10 +514,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 				}
 			}
 			glog.V(4).Infof("No. of nodes in %+v is %d", i.NodeSelector, len(nodes))
-			if len(nodes) == 0 {
-				glog.Errorf("NodeSelector %+v did not match any nodes.", i.NodeSelector)
-				return fmt.Errorf("NodeSelector %+v did not match any nodes", i.NodeSelector)
-			}
 
 			for _, n := range nodes {
 				for m := range i.Images {
@@ -573,7 +569,9 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			status.StartTime = imageCache.Status.StartTime
 		}
 
+		status.Status = v1alpha2.ImageCacheActioneNoImagesPulledOrDeleted
 		status.Reason = imageCache.Status.Reason
+		status.Message = v1alpha2.ImageCacheMessageNoImagesPulledOrDeleted
 
 		failures := false
 		for _, v := range *wqKey.Status {
@@ -632,7 +630,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			}
 		}
 
-		if status.Status == v1alpha2.ImageCacheActionStatusSucceeded {
+		if status.Status == v1alpha2.ImageCacheActionStatusSucceeded || status.Status == v1alpha2.ImageCacheActioneNoImagesPulledOrDeleted {
 			c.recorder.Event(imageCache, corev1.EventTypeNormal, status.Reason, status.Message)
 		}
 

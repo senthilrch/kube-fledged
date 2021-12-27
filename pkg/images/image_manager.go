@@ -288,14 +288,14 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 	return nil
 }
 
-func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<- error) {
+func (m *ImageManager) updateImageCacheStatus(imageCache *fledgedv1alpha2.ImageCache, errCh chan<- error) {
 	wait.Poll(time.Second, m.imagePullDeadlineDuration,
 		func() (done bool, err error) {
 			m.lock.RLock()
 			defer m.lock.RUnlock()
 			done, err = true, nil
 			for _, iwres := range m.imageworkstatus {
-				if iwres.ImageWorkRequest.Imagecache.Name == imageCacheName {
+				if iwres.ImageWorkRequest.Imagecache.Name == imageCache.Name {
 					if iwres.Status == ImageWorkResultStatusJobCreated {
 						done, err = false, nil
 						return
@@ -305,7 +305,7 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 			return
 		})
 	glog.V(4).Info("wait.Poll exited successfully")
-	err := m.updatePendingImageWorkResults(imageCacheName)
+	err := m.updatePendingImageWorkResults(imageCache.Name)
 	if err != nil {
 		glog.Errorf("Error from updatePendingImageWorkResults(): %v", err)
 		errCh <- err
@@ -317,10 +317,9 @@ func (m *ImageManager) updateImageCacheStatus(imageCacheName string, errCh chan<
 	//m.lock.Unlock()
 	deletePropagation := metav1.DeletePropagationBackground
 	var iwstatusLock sync.RWMutex
-	var imageCache *fledgedv1alpha2.ImageCache
 	m.lock.Lock()
 	for job, iwres := range m.imageworkstatus {
-		if iwres.ImageWorkRequest.Imagecache.Name == imageCacheName {
+		if iwres.ImageWorkRequest.Imagecache.Name == imageCache.Name {
 			iwstatusLock.Lock()
 			iwstatus[job] = iwres
 			iwstatusLock.Unlock()
@@ -429,7 +428,7 @@ func (m *ImageManager) processNextWorkItem() bool {
 		if iwr.Image == "" && iwr.Node == nil {
 			m.imageworkqueue.Forget(obj)
 			errCh := make(chan error)
-			go m.updateImageCacheStatus(iwr.Imagecache.Name, errCh)
+			go m.updateImageCacheStatus(iwr.Imagecache, errCh)
 			return nil
 		}
 		// Run the syncHandler, passing it the namespace/name string of the
