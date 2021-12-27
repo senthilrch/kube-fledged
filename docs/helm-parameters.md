@@ -4,6 +4,9 @@
 | --------- | ------------- | ----------- |
 | controllerReplicaCount    | 1        | No. of replicas of kubefledged-controller |
 | webhookServerReplicaCount | 1        | No. of replicas of kubefledged-webhook-server |
+| controller.hostNetwork    | false    | When set to "true", kubefledged-controller pod runs with "hostNetwork: true" |
+| webhookServer.enable      | false    | When set to "true", kubefledged-webhook-server is installed |
+| webhookServer.hostNetwork | false    | When set to "true", kubefledged-webhook-server pod runs with "hostNetwork: true" |
 | image.kubefledgedControllerRepository | docker.io/senthilrch/kubefledged-controller | Repository name of kubefledged-controller image |
 | image.kubefledgedCRIClientRepository | docker.io/senthilrch/kubefledged-cri-client | Repository name of kubefledged-cri-client image |
 | image.kubefledgedWebhookServerRepository | docker.io/senthilrch/kubefledged-webhook-server | Repository name of kubefledged-webhook-server image |

@@ -7,8 +7,11 @@ spec:
   # Defaults defined in <project_dir>/helm-charts/kubefledged/values.yaml
   controllerReplicaCount: 1
   webhookServerReplicaCount: 1
+  controller:
+    hostNetwork: false
   webhookServer:
     enable: false
+    hostNetwork: false
   image:
     kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
     kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client

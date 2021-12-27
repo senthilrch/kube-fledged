@@ -14,6 +14,9 @@ spec:
       labels:
         {{- include "kubefledged.selectorLabels" . | nindent 8 }}-controller
     spec:
+    {{- if .Values.controller.hostNetwork -}}
+      hostNetwork: true
+    {{- end }}
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}

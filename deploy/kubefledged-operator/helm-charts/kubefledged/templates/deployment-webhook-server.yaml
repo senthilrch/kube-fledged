@@ -15,6 +15,9 @@ spec:
       labels:
         {{- include "kubefledged.selectorLabels" . | nindent 8 }}-webhook-server
     spec:
+    {{- if .Values.webhookServer.hostNetwork -}}
+      hostNetwork: true
+    {{- end }}
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
