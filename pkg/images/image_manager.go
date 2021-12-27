@@ -183,9 +183,14 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 	}
 	if pod.Status.Phase == corev1.PodFailed {
 		iwres.Status = ImageWorkResultStatusFailed
-		if pod.Status.ContainerStatuses[0].State.Terminated != nil {
-			iwres.Reason = pod.Status.ContainerStatuses[0].State.Terminated.Reason
-			iwres.Message = pod.Status.ContainerStatuses[0].State.Terminated.Message
+		if len(pod.Status.ContainerStatuses) == 1 {
+			if pod.Status.ContainerStatuses[0].State.Terminated != nil {
+				iwres.Reason = pod.Status.ContainerStatuses[0].State.Terminated.Reason
+				iwres.Message = pod.Status.ContainerStatuses[0].State.Terminated.Message
+			}
+		} else {
+			iwres.Reason = fledgedv1alpha2.ImageCacheReasonImagePullStatusUnknown
+			iwres.Message = fledgedv1alpha2.ImageCacheMessageImagePullStatusUnknown
 		}
 		if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
 			glog.Infof("Job %s failed (delete: %s --> %s)", pod.Labels["job-name"], iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
