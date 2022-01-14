@@ -24,6 +24,7 @@ args:
   controllerImagePullDeadlineDuration: 5m
   controllerImageCacheRefreshFrequency: 15m
   controllerImagePullPolicy: IfNotPresent
+  controllerServiceAccountName: ""
   webhookServerLogLevel: INFO
   webhookServerCertFile: /var/run/secrets/webhook-server/tls.crt
   webhookServerKeyFile: /var/run/secrets/webhook-server/tls.key

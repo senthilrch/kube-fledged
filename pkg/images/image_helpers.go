@@ -31,7 +31,7 @@ import (
 )
 
 // newImagePullJob constructs a job manifest for pulling an image to a node
-func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node, imagePullPolicy string, busyboxImage string) (*batchv1.Job, error) {
+func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node, imagePullPolicy string, busyboxImage string, serviceAccountName string) (*batchv1.Job, error) {
 	var pullPolicy corev1.PullPolicy = corev1.PullIfNotPresent
 	hostname := node.Labels["kubernetes.io/hostname"]
 	if imagecache == nil {
@@ -129,11 +129,14 @@ func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node 
 			},
 		},
 	}
+	if serviceAccountName != "" {
+		job.Spec.Template.Spec.ServiceAccountName = serviceAccountName
+	}
 	return job, nil
 }
 
 // newImageDeleteJob constructs a job manifest to delete an image from a node
-func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node, containerRuntimeVersion string, dockerclientimage string) (*batchv1.Job, error) {
+func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node, containerRuntimeVersion string, dockerclientimage string, serviceAccountName string) (*batchv1.Job, error) {
 	hostname := node.Labels["kubernetes.io/hostname"]
 	if imagecache == nil {
 		glog.Error("imagecache pointer is nil")
@@ -222,6 +225,9 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///var/run/crio/crio.sock  --image-endpoint=unix:///var/run/crio/crio.sock rmi " + image + " > /dev/termination-log 2>&1"}
 		job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = "/var/run/crio/crio.sock"
 		job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = "/var/run/crio/crio.sock"
+	}
+	if serviceAccountName != "" {
+		job.Spec.Template.Spec.ServiceAccountName = serviceAccountName
 	}
 	return job, nil
 }

@@ -95,7 +95,8 @@ func NewController(
 	imagePullDeadlineDuration time.Duration,
 	criClientImage string,
 	busyboxImage string,
-	imagePullPolicy string) *Controller {
+	imagePullPolicy string,
+	serviceAccountName string) *Controller {
 
 	runtime.Must(fledgedscheme.AddToScheme(scheme.Scheme))
 	glog.V(4).Info("Creating event broadcaster")
@@ -118,7 +119,8 @@ func NewController(
 		imageCacheRefreshFrequency: imageCacheRefreshFrequency,
 	}
 
-	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, controller.fledgedNameSpace, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy)
+	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset,
+		controller.fledgedNameSpace, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy, serviceAccountName)
 	controller.imageManager = imageManager
 
 	glog.Info("Setting up event handlers")

@@ -35,6 +35,9 @@ spec:
             - "--image-pull-deadline-duration={{ .Values.args.controllerImagePullDeadlineDuration }}"
             - "--image-cache-refresh-frequency={{ .Values.args.controllerImageCacheRefreshFrequency }}"
             - "--image-pull-policy={{ .Values.args.controllerImagePullPolicy }}"
+          {{- if .Values.args.controllerServiceAccountName }}
+            - "--service-account-name={{ .Values.args.controllerServiceAccountName }}"
+          {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: KUBEFLEDGED_NAMESPACE

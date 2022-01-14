@@ -41,7 +41,7 @@ var (
 	busyboxImage               string
 	imagePullPolicy            string
 	fledgedNameSpace           string
-	webhookServerPort          int
+	serviceAccountName         string
 )
 
 func main() {
@@ -71,7 +71,7 @@ func main() {
 	controller := app.NewController(kubeClient, fledgedClient, fledgedNameSpace,
 		kubeInformerFactory.Core().V1().Nodes(),
 		fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches(),
-		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy)
+		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy, serviceAccountName)
 
 	glog.Info("Starting pre-flight checks")
 	if err = controller.PreFlightChecks(); err != nil {
@@ -100,4 +100,5 @@ func init() {
 	if busyboxImage = os.Getenv("BUSYBOX_IMAGE"); busyboxImage == "" {
 		busyboxImage = "busybox:1.29.2"
 	}
+	flag.StringVar(&serviceAccountName, "service-account-name", "", "serviceAccountName used in Jobs created for pulling/deleting images. Optional flag. If not specified the default service account of the namespace is used")
 }
