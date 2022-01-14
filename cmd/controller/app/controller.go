@@ -32,6 +32,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	coreinformers "k8s.io/client-go/informers/core/v1"
@@ -94,7 +95,8 @@ func NewController(
 	imagePullDeadlineDuration time.Duration,
 	criClientImage string,
 	busyboxImage string,
-	imagePullPolicy string) *Controller {
+	imagePullPolicy string,
+	serviceAccountName string) *Controller {
 
 	runtime.Must(fledgedscheme.AddToScheme(scheme.Scheme))
 	glog.V(4).Info("Creating event broadcaster")
@@ -117,7 +119,8 @@ func NewController(
 		imageCacheRefreshFrequency: imageCacheRefreshFrequency,
 	}
 
-	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset, controller.fledgedNameSpace, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy)
+	imageManager, _ := images.NewImageManager(controller.workqueue, controller.imageworkqueue, controller.kubeclientset,
+		controller.fledgedNameSpace, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy, serviceAccountName)
 	controller.imageManager = imageManager
 
 	glog.Info("Setting up event handlers")
@@ -149,7 +152,14 @@ func (c *Controller) PreFlightChecks() error {
 
 // danglingJobs finds and removes dangling or stuck jobs
 func (c *Controller) danglingJobs() error {
-	joblist, err := c.kubeclientset.BatchV1().Jobs(c.fledgedNameSpace).List(context.TODO(), metav1.ListOptions{})
+	appEqKubefledged, _ := labels.NewRequirement("app", selection.Equals, []string{"kubefledged"})
+	kubefledgedEqImagemanager, _ := labels.NewRequirement("kubefledged", selection.Equals, []string{"kubefledged-image-manager"})
+	labelSelector := labels.NewSelector()
+	labelSelector = labelSelector.Add(*appEqKubefledged, *kubefledgedEqImagemanager)
+
+	joblist, err := c.kubeclientset.BatchV1().Jobs("").List(context.TODO(), metav1.ListOptions{
+		LabelSelector: labelSelector.String(),
+	})
 	if err != nil {
 		glog.Errorf("Error listing jobs: %v", err)
 		return err
@@ -161,7 +171,7 @@ func (c *Controller) danglingJobs() error {
 	}
 	deletePropagation := metav1.DeletePropagationBackground
 	for _, job := range joblist.Items {
-		err := c.kubeclientset.BatchV1().Jobs(c.fledgedNameSpace).
+		err := c.kubeclientset.BatchV1().Jobs(job.Namespace).
 			Delete(context.TODO(), job.Name, metav1.DeleteOptions{PropagationPolicy: &deletePropagation})
 		if err != nil {
 			glog.Errorf("Error deleting job(%s): %v", job.Name, err)
@@ -176,7 +186,7 @@ func (c *Controller) danglingJobs() error {
 // image caches will get refreshed in the next cycle
 func (c *Controller) danglingImageCaches() error {
 	dangling := false
-	imagecachelist, err := c.kubefledgedclientset.KubefledgedV1alpha2().ImageCaches(c.fledgedNameSpace).List(context.TODO(), metav1.ListOptions{})
+	imagecachelist, err := c.kubefledgedclientset.KubefledgedV1alpha2().ImageCaches("").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		glog.Errorf("Error listing imagecaches: %v", err)
 		return err
@@ -385,7 +395,7 @@ func (c *Controller) processNextWorkItem() bool {
 // runRefreshWorker is resposible of refreshing the image cache
 func (c *Controller) runRefreshWorker() {
 	// List the ImageCache resources
-	imageCaches, err := c.imageCachesLister.ImageCaches(c.fledgedNameSpace).List(labels.Everything())
+	imageCaches, err := c.imageCachesLister.ImageCaches("").List(labels.Everything())
 	if err != nil {
 		glog.Errorf("Error in listing image caches: %v", err)
 		return
@@ -506,10 +516,6 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 				}
 			}
 			glog.V(4).Infof("No. of nodes in %+v is %d", i.NodeSelector, len(nodes))
-			if len(nodes) == 0 {
-				glog.Errorf("NodeSelector %+v did not match any nodes.", i.NodeSelector)
-				return fmt.Errorf("NodeSelector %+v did not match any nodes", i.NodeSelector)
-			}
 
 			for _, n := range nodes {
 				for m := range i.Images {
@@ -565,7 +571,9 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			status.StartTime = imageCache.Status.StartTime
 		}
 
+		status.Status = v1alpha2.ImageCacheActioneNoImagesPulledOrDeleted
 		status.Reason = imageCache.Status.Reason
+		status.Message = v1alpha2.ImageCacheMessageNoImagesPulledOrDeleted
 
 		failures := false
 		for _, v := range *wqKey.Status {
@@ -624,7 +632,7 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			}
 		}
 
-		if status.Status == v1alpha2.ImageCacheActionStatusSucceeded {
+		if status.Status == v1alpha2.ImageCacheActionStatusSucceeded || status.Status == v1alpha2.ImageCacheActioneNoImagesPulledOrDeleted {
 			c.recorder.Event(imageCache, corev1.EventTypeNormal, status.Reason, status.Message)
 		}
 

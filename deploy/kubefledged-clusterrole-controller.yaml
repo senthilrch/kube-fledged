@@ -4,7 +4,7 @@ metadata:
   name: kubefledged-controller
   labels:
     app: kubefledged
-    component: kubefledged-controller
+    kubefledged: kubefledged-controller
   annotations:
     rbac.authorization.kubernetes.io/autoupdate: "true"
 rules:
@@ -58,21 +58,3 @@ rules:
       - list
       - watch
       - get    
----
-kind: ClusterRole
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: kubefledged-webhook-server
-  labels:
-    app: kubefledged
-    component: kubefledged-webhook-server
-  annotations:
-    rbac.authorization.kubernetes.io/autoupdate: "true"
-rules:
-  - apiGroups:
-      - "admissionregistration.k8s.io"
-    resources:
-      - validatingwebhookconfigurations
-    verbs:
-      - get
-      - patch

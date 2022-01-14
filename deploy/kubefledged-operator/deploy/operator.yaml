@@ -17,7 +17,7 @@ spec:
       containers:
         - name: kubefledged-operator
           # Replace this with the built image name
-          image: docker.io/senthilrch/kubefledged-operator:v0.8.2
+          image: docker.io/senthilrch/kubefledged-operator:v0.9.0
           imagePullPolicy: Always
           env:
             - name: WATCH_NAMESPACE

@@ -83,6 +83,12 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
 
+- Optional: Deploy _kube-fledged webhook server_ to the cluster. This component enables validating the ImageCache CR.
+
+  ```
+  $ make deploy-webhook-server-using-yaml
+  ```
+
 ## Quick Install using Helm chart
 
 - Create the namespace where kube-fledged will be installed
@@ -100,6 +106,12 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ gpg --keyserver keyserver.ubuntu.com --recv-keys 92D793FA3A6460ED (or) gpg --keyserver pgp.mit.edu --recv-keys 92D793FA3A6460ED
   $ gpg --export >~/.gnupg/pubring.gpg
   $ helm install --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
+  ```
+
+- Optional: Verify and install kube-fledged webhook server. This component enables validating the ImageCache CR.
+
+  ```
+  $ helm upgrade --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --set webhookServer.enable=true --wait
   ```
 
 ## Quick Install using Helm operator
@@ -125,6 +137,12 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   ```
   $ kubectl get pods -n kube-fledged -l app.kubernetes.io/name=kube-fledged
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
+  ```
+
+- Optional: Deploy _kube-fledged webhook server_ to the cluster. This component enables validating the ImageCache CR.
+
+  ```
+  $ make deploy-webhook-server-using-operator
   ```
 
 ## Helm chart parameters
@@ -277,7 +295,16 @@ Run the following command to remove _kube-fledged_ from the cluster.
 
 ```
 $ make remove-kubefledged (if you deployed using YAML manifests)
+$ helm delete kube-fledged -n ${KUBEFLEDGED_NAMESPACE} (if you deployed using Helm chart)
 $ make remove-operator-and-kubefledged (if you deployed using Helm Operator)
+```
+
+Note: To remove the _kube-fledged webhook server_ alone. 
+
+```
+$ make remove-webhook-server (if you deployed using YAML manifests)
+$ helm upgrade kube-fledged deploy/kubefledged-operator/helm-charts/kubefledged -n ${KUBEFLEDGED_NAMESPACE} --set webhookServer.enable=false --wait --debug (if you deployed using Helm chart)
+$ make remove-webhook-server-using-operator (if you deployed using Helm Operator)
 ```
 
 ## How it works
@@ -296,6 +323,8 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 `--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. default "15m"
 
 `--image-pull-policy:` Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled.
+
+`--service-account-name:` serviceAccountName used in Jobs created for pulling or deleting images. Optional flag. If not specified the default service account of the namespace is used
 
 `--stderrthreshold:` Log level. set the value of this flag to INFO
 

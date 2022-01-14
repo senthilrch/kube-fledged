@@ -80,11 +80,12 @@ type ImageCacheActionStatus string
 
 // List of constants for ImageCacheActionStatus
 const (
-	ImageCacheActionStatusProcessing ImageCacheActionStatus = "Processing"
-	ImageCacheActionStatusSucceeded  ImageCacheActionStatus = "Succeeded"
-	ImageCacheActionStatusFailed     ImageCacheActionStatus = "Failed"
-	ImageCacheActionStatusUnknown    ImageCacheActionStatus = "Unknown"
-	ImageCacheActionStatusAborted    ImageCacheActionStatus = "Aborted"
+	ImageCacheActionStatusProcessing         ImageCacheActionStatus = "Processing"
+	ImageCacheActionStatusSucceeded          ImageCacheActionStatus = "Succeeded"
+	ImageCacheActionStatusFailed             ImageCacheActionStatus = "Failed"
+	ImageCacheActionStatusUnknown            ImageCacheActionStatus = "Unknown"
+	ImageCacheActionStatusAborted            ImageCacheActionStatus = "Aborted"
+	ImageCacheActioneNoImagesPulledOrDeleted ImageCacheActionStatus = "NoImagesPulledOrDeleted"
 )
 
 // List of constants for ImageCacheReason
@@ -122,4 +123,5 @@ const (
 	ImageCacheMessageImagePullAborted               = "Image cache processing aborted. Image cache will get refreshed during next refresh cycle"
 	ImageCacheMessageOldImageCacheNotFound          = "Unable to fetch the previous version of Image cache spec before update action."
 	ImageCacheMessageNotSupportedUpdates            = "The updates performed to image cache spec is not supported. Only addition or removal of images in a image list is supported."
+	ImageCacheMessageNoImagesPulledOrDeleted        = "No images were pulled or deleted because nodeSelector specified did not match any nodes"
 )

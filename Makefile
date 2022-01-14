@@ -43,7 +43,7 @@ ifndef OPERATOR_IMAGE_REPO
 endif
 
 ifndef RELEASE_VERSION
-  RELEASE_VERSION=v0.8.2
+  RELEASE_VERSION=v0.9.0
 endif
 
 ifndef DOCKER_VERSION
@@ -190,16 +190,22 @@ hack:
 deploy-using-yaml:
 	-kubectl apply -f deploy/kubefledged-namespace.yaml
 	kubectl apply -f deploy/kubefledged-crd.yaml
-	kubectl apply -f deploy/kubefledged-serviceaccount.yaml
-	kubectl apply -f deploy/kubefledged-clusterrole.yaml
-	kubectl apply -f deploy/kubefledged-clusterrolebinding.yaml
+	kubectl apply -f deploy/kubefledged-serviceaccount-controller.yaml
+	kubectl apply -f deploy/kubefledged-clusterrole-controller.yaml
+	kubectl apply -f deploy/kubefledged-clusterrolebinding-controller.yaml
+	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
+	kubectl rollout status deployment kubefledged-controller -n kube-fledged --watch
+
+deploy-webhook-server-using-yaml:
 	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
 	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
+	-kubectl delete deploy -l app=kubefledged,kubefledged=kubefledged-webhook-server
+	kubectl apply -f deploy/kubefledged-serviceaccount-webhook-server.yaml
+	kubectl apply -f deploy/kubefledged-clusterrole-webhook-server.yaml
+	kubectl apply -f deploy/kubefledged-clusterrolebinding-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml
-	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
 	kubectl rollout status deployment kubefledged-webhook-server -n kube-fledged --watch
-	kubectl rollout status deployment kubefledged-controller -n kube-fledged --watch
 
 deploy-using-operator:
 	# Create the namespace
@@ -218,6 +224,10 @@ deploy-using-operator:
 	kubectl rollout status deployment kubefledged-operator -n ${KUBEFLEDGED_NAMESPACE} --watch
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 
+deploy-webhook-server-using-operator:
+	sed -i "s|enable: false|enable: true|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
+	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
+
 update:
 	kubectl scale deployment kubefledged-controller --replicas=0 -n kube-fledged
 	kubectl scale deployment kubefledged-webhook-server --replicas=0 -n kube-fledged && sleep 1
@@ -227,12 +237,20 @@ update:
 
 remove-kubefledged:
 	-kubectl delete -f deploy/kubefledged-namespace.yaml
-	-kubectl delete -f deploy/kubefledged-clusterrolebinding.yaml
-	-kubectl delete -f deploy/kubefledged-clusterrole.yaml
-	-kubectl delete -f deploy/kubefledged-crd.yaml
-	-kubectl delete -f deploy/kubefledged-validatingwebhook.yaml
+	-kubectl delete clusterrolebinding -l app=kubefledged
+	-kubectl delete clusterrole -l app=kubefledged
+	-kubectl delete crd -l app=kubefledged
+	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
 
-remove-operator-and-kubefledged:
+remove-webhook-server:
+	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
+	-kubectl delete deploy -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
+	-kubectl delete service -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
+	-kubectl delete clusterrolebinding -l app=kubefledged,kubefledged=kubefledged-webhook-server
+	-kubectl delete clusterrole -l app=kubefledged,kubefledged=kubefledged-webhook-server
+	-kubectl delete serviceaccount -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
+
+remove-kubefledged-and-operator:
 	# Remove kubefledged
 	-kubectl delete -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	-kubectl delete validatingwebhookconfigurations -l app.kubernetes.io/name=kube-fledged
@@ -247,4 +265,8 @@ remove-operator-and-kubefledged:
 	-git checkout deploy/kubefledged-operator/deploy/operator.yaml
 	-git checkout deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
 	-git checkout deploy/kubefledged-operator/deploy/service_account.yaml
-	-git checkout deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
+
+remove-webhook-server-using-operator:
+	sed -i "s|enable: true|enable: false|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
+	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
+

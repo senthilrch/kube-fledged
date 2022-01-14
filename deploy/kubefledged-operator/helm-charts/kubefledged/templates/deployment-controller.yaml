@@ -14,28 +14,16 @@ spec:
       labels:
         {{- include "kubefledged.selectorLabels" . | nindent 8 }}-controller
     spec:
+    {{- if .Values.controller.hostNetwork -}}
+      hostNetwork: true
+    {{- end }}
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-      serviceAccountName: {{ include "kubefledged.serviceAccountName" . }}
+      serviceAccountName: {{ include "kubefledged.fullname" . }}-controller
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      initContainers:
-        - name: wait
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          image: {{ .Values.image.kubefledgedCRIClientRepository }}:{{ .Chart.AppVersion }}
-          command: ["curl"]
-          args:
-            - "--insecure"
-            - "--retry-all-errors"
-            - "--retry"
-            - "60"
-            - "--retry-delay"
-            - "1"
-            - "https://{{ include "kubefledged.webhookServiceName" . }}:{{ .Values.webhookService.port }}/readyz"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -47,6 +35,9 @@ spec:
             - "--image-pull-deadline-duration={{ .Values.args.controllerImagePullDeadlineDuration }}"
             - "--image-cache-refresh-frequency={{ .Values.args.controllerImageCacheRefreshFrequency }}"
             - "--image-pull-policy={{ .Values.args.controllerImagePullPolicy }}"
+          {{- if .Values.args.controllerServiceAccountName }}
+            - "--service-account-name={{ .Values.args.controllerServiceAccountName }}"
+          {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: KUBEFLEDGED_NAMESPACE

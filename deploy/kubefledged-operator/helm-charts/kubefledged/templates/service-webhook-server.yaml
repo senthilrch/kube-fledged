@@ -1,8 +1,9 @@
+{{- if .Values.webhookServer.enable -}}
 {{- if .Values.webhookService.create -}}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "kubefledged.webhookServiceName" . }}
+  name: {{ include "kubefledged.fullname" . }}-webhook-server
   labels:
     {{ include "kubefledged.labels" . | nindent 4 }}
 spec:
@@ -14,4 +15,5 @@ spec:
   selector:
     {{- include "kubefledged.selectorLabels" . | nindent 4 }}-webhook-server
   type: ClusterIP
+{{- end -}}
 {{- end -}}

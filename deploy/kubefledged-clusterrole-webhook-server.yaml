@@ -1,11 +1,10 @@
-{{- if .Values.webhookServer.enable -}}
-{{- if .Values.clusterRole.create -}}
-apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: {{ include "kubefledged.fullname" . }}-webhook-server
+  name: kubefledged-webhook-server
   labels:
-    {{ include "kubefledged.labels" . | nindent 4 }}
+    app: kubefledged
+    kubefledged: kubefledged-webhook-server
   annotations:
     rbac.authorization.kubernetes.io/autoupdate: "true"
 rules:
@@ -16,5 +15,3 @@ rules:
     verbs:
       - get
       - patch
-{{- end -}}
-{{- end -}}

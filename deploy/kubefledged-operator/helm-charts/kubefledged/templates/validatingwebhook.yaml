@@ -1,13 +1,12 @@
+{{- if .Values.webhookServer.enable -}}
 {{- if .Values.validatingWebhook.create -}}
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: {{ include "kubefledged.validatingWebhookName" . }}
+  name: {{ include "kubefledged.fullname" . }}-webhook-server
   labels:
     {{ include "kubefledged.labels" . | nindent 4 }}  
   annotations:
-    helm.sh/hook: "pre-install"
-    helm.sh/hook-delete-policy: "before-hook-creation"
     meta.helm.sh/release-name: {{ .Release.Name }}
     meta.helm.sh/release-namespace: {{ .Release.Namespace }}
 webhooks:
@@ -29,4 +28,5 @@ webhooks:
         apiVersions: ["v1alpha2"]
         resources: ["imagecaches"]
         scope: "Namespaced"
+{{- end -}}
 {{- end -}}
