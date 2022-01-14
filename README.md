@@ -8,10 +8,9 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/senthilrch/kube-fledged)](https://img.shields.io/github/v/release/senthilrch/kube-fledged)
 [![License](https://img.shields.io/github/license/senthilrch/kube-fledged)](https://img.shields.io/github/license/senthilrch/kube-fledged)
 
-**_kube-fledged_** is a kubernetes add-on for creating and managing a cache of container images directly on the worker nodes of a kubernetes cluster. It allows a user to define a list
-of images and onto which worker nodes those images should be cached (i.e. pre-pulled). As a result, application pods start almost instantly, since the images need not be pulled from the registry.
+**kube-fledged** is a kubernetes operator for creating and managing a cache of container images directly on the worker nodes of a kubernetes cluster. It allows a user to define a list of images and onto which worker nodes those images should be cached (i.e. pulled). As a result, application pods start almost instantly, since the images need not be pulled from the registry.
 
-_kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable parameters to customize the functioning as per one's needs. 
+kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and supports several configurable parameters to customize the functioning as per one's needs. 
 
 ## Table of contents
 <!-- https://github.com/thlorenz/doctoc -->
@@ -47,8 +46,9 @@ _kube-fledged_ provides CRUD APIs to manage the lifecycle of the image cache, an
 ## Use cases
 
 - Applications that require rapid start-up. For e.g. an application performing real-time data processing needs to scale rapidly due to a burst in data volume.
-- Serverless Functions where functions need to react immediately to incoming events.
-- IoT applications that run on Edge devices when the network connectivity between the edge and image registry is intermittent.
+- Serverless Functions since they need to react immediately to incoming events.
+- IoT applications that run on Edge devices, because the network connectivity between the edge device and image registry would be intermittent.
+- If images need to be pulled from a private registry and everyone cannot be granted access to pull images from this registry, then the images can be made available on the nodes of the cluster.
 - If a cluster administrator or operator needs to roll-out upgrades to an application and wants to verify before-hand if the new images can be pulled successfully.
 
 ## Prerequisites
