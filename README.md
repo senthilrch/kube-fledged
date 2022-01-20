@@ -296,7 +296,7 @@ Run the following command to remove _kube-fledged_ from the cluster.
 ```
 $ make remove-kubefledged (if you deployed using YAML manifests)
 $ helm delete kube-fledged -n ${KUBEFLEDGED_NAMESPACE} (if you deployed using Helm chart)
-$ make remove-operator-and-kubefledged (if you deployed using Helm Operator)
+$ make remove-kubefledged-and-operator (if you deployed using Helm Operator)
 ```
 
 Note: To remove the _kube-fledged webhook server_ alone. 
