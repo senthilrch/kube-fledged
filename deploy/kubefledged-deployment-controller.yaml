@@ -18,7 +18,7 @@ spec:
         app: kubefledged
     spec:
       containers:
-      - image: senthilrch/kubefledged-controller:v0.9.0
+      - image: senthilrch/kubefledged-controller:v0.10.0
         command: ["/opt/bin/kubefledged-controller"]
         args:
         - "--stderrthreshold=INFO"
@@ -33,7 +33,7 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         - name: KUBEFLEDGED_CRI_CLIENT_IMAGE
-          value: "senthilrch/kubefledged-cri-client:v0.9.0"
+          value: "senthilrch/kubefledged-cri-client:v0.10.0"
         - name: BUSYBOX_IMAGE
-          value: "gcr.io/google-containers/busybox:1.27.2"
+          value: "gcr.io/google-containers/busybox:latest"
       serviceAccountName: kubefledged-controller
