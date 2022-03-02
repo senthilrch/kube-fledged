@@ -147,7 +147,9 @@ def file_extension(filename):
 
 skipped_dirs = ['Godeps', 'third_party', '_gopath', '_output', '.git', 'cluster/env.sh',
                 "vendor", "test/e2e/generated/bindata.go", "hack/boilerplate/test",
-                "pkg/generated/bindata.go", "deploy/kubefledged-operator"]
+                "pkg/generated/bindata.go", "deploy/kubefledged-operator",
+                "pkg/apis/kubefledged/v1alpha2/zz_generated.deepcopy.go",
+                "pkg/signals/signal_posix.go", 'scp.sh']
 
 # list all the files contain 'DO NOT EDIT', but are not generated
 skipped_ungenerated_files = ['hack/build-ui.sh', 'hack/lib/swagger.sh',
