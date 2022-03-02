@@ -22,6 +22,7 @@ PROJECT_ROOT=$(dirname "${BASH_SOURCE}")/..
 source "${PROJECT_ROOT}/hack/init.sh"
 
 verify_go_version
+go get -u golang.org/x/lint/golint
 
 if ! which golint > /dev/null; then
   echo 'Can not find golint, install with:'

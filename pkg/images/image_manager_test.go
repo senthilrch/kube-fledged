@@ -44,16 +44,17 @@ var node = corev1.Node{
 	},
 }
 
-func newTestImageManager(kubeclientset kubernetes.Interface, imagepullpolicy string) (*ImageManager, coreinformers.PodInformer) {
+func newTestImageManager(kubeclientset kubernetes.Interface, imagepullpolicy string, serviceaccountname string) (*ImageManager, coreinformers.PodInformer) {
 	imagePullDeadlineDuration := time.Millisecond * 10
 	criClientImage := "senthilrch/fledged-docker-client:latest"
 	busyboxImage := "busybox:latest"
 	imagePullPolicy := imagepullpolicy
+	serviceAccountName := serviceaccountname
 	imagecacheworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches")
 	imageworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus")
 
 	imagemanager, podInformer := NewImageManager(imagecacheworkqueue, imageworkqueue, kubeclientset, fledgedNameSpace,
-		imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy)
+		imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy, serviceAccountName)
 	imagemanager.podsSynced = func() bool { return true }
 
 	return imagemanager, podInformer
@@ -205,7 +206,7 @@ func TestPullDeleteImage(t *testing.T) {
 			})
 		}
 
-		imagemanager, _ := newTestImageManager(fakekubeclientset, "IfNotPresent")
+		imagemanager, _ := newTestImageManager(fakekubeclientset, "IfNotPresent", "sa-kube-fledged")
 		var err error
 		if test.action == "pullimage" {
 			_, err = imagemanager.pullImage(test.iwr)
@@ -303,7 +304,7 @@ func TestHandlePodStatusChange(t *testing.T) {
 	}
 	for _, test := range tests {
 		fakekubeclientset := &fakeclientset.Clientset{}
-		imagemanager, _ := newTestImageManager(fakekubeclientset, "IfNotPresent")
+		imagemanager, _ := newTestImageManager(fakekubeclientset, "IfNotPresent", "sa-kube-fledged")
 		imagemanager.imageworkstatus[test.pod.Labels["job-name"]] = ImageWorkResult{
 			Status: ImageWorkResultStatusJobCreated,
 			ImageWorkRequest: ImageWorkRequest{
@@ -328,6 +329,10 @@ func TestHandlePodStatusChange(t *testing.T) {
 
 func TestUpdateImageCacheStatus(t *testing.T) {
 	imageCacheName := "fakeimagecache"
+	imageCache := &fledgedv1alpha2.ImageCache{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: imageCacheName,
+		}}
 	tests := []struct {
 		name                string
 		imageworkstatus     map[string]ImageWorkResult
@@ -612,7 +617,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 				return true, nil, apierrors.NewInternalError(fmt.Errorf("fake error"))
 			})
 		}
-		imagemanager, podInformer := newTestImageManager(fakekubeclientset, "IfNotPresent")
+		imagemanager, podInformer := newTestImageManager(fakekubeclientset, "IfNotPresent", "sa-kube-fledged")
 		for _, pod := range test.pods {
 			if !reflect.DeepEqual(pod, corev1.Pod{}) {
 				podInformer.Informer().GetIndexer().Add(&pod)
@@ -620,7 +625,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 		}
 		imagemanager.imageworkstatus = test.imageworkstatus
 		errCh := make(chan error)
-		go imagemanager.updateImageCacheStatus(imageCacheName, errCh)
+		go imagemanager.updateImageCacheStatus(imageCache, errCh)
 		err := <-errCh
 		if err != nil {
 			t.Logf("err=%s", err.Error())
@@ -891,7 +896,7 @@ func TestProcessNextWorkItem(t *testing.T) {
 	}
 	for _, test := range tests {
 		fakekubeclientset := &fakeclientset.Clientset{}
-		imagemanager, podInformer := newTestImageManager(fakekubeclientset, test.imagepullpolicy)
+		imagemanager, podInformer := newTestImageManager(fakekubeclientset, test.imagepullpolicy, "sa-kube-fledged")
 		for _, pod := range test.pods {
 			if !reflect.DeepEqual(pod, corev1.Pod{}) {
 				podInformer.Informer().GetIndexer().Add(&pod)
