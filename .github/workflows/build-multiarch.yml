@@ -1,14 +1,11 @@
-name: Build kube-fledged
+name: Build multiarch
 
 on:
   push:
-    branches: [ master, develop ]
-  pull_request:
-    branches: [ master, develop ]
+    branches: [ master ]
 
 jobs:
-
-  build:
+  build-multiarch:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
@@ -23,4 +20,4 @@ jobs:
     - run: hack/verify-gofmt.sh
     - run: hack/verify-golint.sh
     - run: hack/verify-govet.sh
-    - run: make BUILD_OUTPUT= PROGRESS=plain release-amd64
+    - run: make PROGRESS=plain release

@@ -1,0 +1,25 @@
+name: Build amd64
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+jobs:
+  build-amd64:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: 1.17
+
+    - run: hack/verify-codegen.sh
+    - run: hack/verify-boilerplate.sh
+    - run: hack/verify-gofmt.sh
+    - run: hack/verify-golint.sh
+    - run: hack/verify-govet.sh
+    - run: make BUILD_OUTPUT= PROGRESS=plain release-amd64
