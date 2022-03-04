@@ -1,0 +1,113 @@
+name: Reusable workflow to build kube-fledged
+
+on:
+  workflow_call:
+    inputs:
+      alpine_version:
+        description: 'Version of alpine base image'
+        required: true
+        type: string
+      controller_image_repo:
+        description: 'kubefledged-controller repository'
+        required: true
+        type: string
+      crictl_image_repo:
+        description: 'kubefledged-cri-client repository'
+        required: true
+        type: string        
+      crictl_version:
+        description: 'crictl tool version'
+        required: true
+        type: string
+      docker_version:
+        description: 'docker version'
+        required: true
+        type: string               
+      golang_version:
+        description: 'Go version used during the build'
+        required: true
+        type: string
+      release_version:
+        description: 'kube-fledged release version'
+        required: true
+        type: string
+      webhook_server_image_repo:
+        description: 'kubefledged-webhook-server repository'
+        required: true
+        type: string
+    secrets:
+      dockerhub_user:
+        description: 'Dockerhub username'
+        required: true
+      dockerhub_pswd:
+        description: 'Dockerhub password'
+        required: true        
+
+jobs:
+  build_kube_fledged:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set up Go
+      uses: actions/setup-go@v2
+      with:
+        go-version: ${{ inputs.golang_version }}
+
+    - name: Run verify scripts
+      run: |
+        hack/verify-codegen.sh
+        hack/verify-boilerplate.sh
+        hack/verify-gofmt.sh
+        hack/verify-golint.sh
+        hack/verify-govet.sh
+    
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v1
+      
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v1
+    
+    - name: Login to DockerHub
+      uses: docker/login-action@v1 
+      with:
+        username: ${{ secrets.dockerhub_user }}
+        password: ${{ secrets.dockerhub_pswd }}
+    
+    - name: Build and push kubefledged-controller image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: build/Dockerfile.controller
+        build-args: |
+          ALPINE_VERSION=${{ inputs.alpine_version }}
+          GOLANG_VERSION=${{ inputs.golang_version }}
+        platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+        push: true
+        tags: ${{ inputs.controller_image_repo }}:${{ inputs.release_version }},${{ inputs.controller_image_repo }}:latest
+
+    - name: Build and push kubefledged-webhook-server image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: build/Dockerfile.webhook_server
+        build-args: |
+          ALPINE_VERSION=${{ inputs.alpine_version }}
+          GOLANG_VERSION=${{ inputs.golang_version }}
+        platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+        push: true
+        tags: ${{ inputs.webhook_server_image_repo }}:${{ inputs.release_version }},${{ inputs.webhook_server_image_repo }}:latest
+
+    - name: Build and push kubefledged-cri-client image
+      uses: docker/build-push-action@v2
+      with:
+        context: .
+        file: build/Dockerfile.cri_client
+        build-args: |
+          ALPINE_VERSION=${{ inputs.alpine_version }}
+          CRICTL_VERSION=${{ inputs.crictl_version }}
+          DOCKER_VERSION=${{ inputs.docker_version }}
+        platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+        push: true
+        tags: ${{ inputs.crictl_image_repo }}:${{ inputs.release_version }},${{ inputs.crictl_image_repo }}:latest

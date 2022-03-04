@@ -1,0 +1,23 @@
+name: Build kube-fledged
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master, develop ]
+
+jobs:
+  caller:
+    uses: ./.github/workflows/build-kube-fledged.yml
+    with:
+      alpine_version: 3.15.0
+      controller_image_repo: docker.io/senthilrch/kubefledged-controller
+      crictl_image_repo: docker.io/senthilrch/kubefledged-cri-client
+      crictl_version: v1.23.0
+      docker_version: 20.10.9
+      golang_version: 1.17.7
+      release_version: v0.10.0
+      webhook_server_image_repo: docker.io/senthilrch/kubefledged-webhook-server
+    secrets:
+      dockerhub_user: ${{ secrets.DOCKERHUB_USER }}
+      dockerhub_pswd: ${{ secrets.DOCKERHUB_PSWD }}
