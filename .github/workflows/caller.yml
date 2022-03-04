@@ -15,8 +15,17 @@ jobs:
       crictl_image_repo: docker.io/senthilrch/kubefledged-cri-client
       crictl_version: v1.23.0
       docker_version: 20.10.9
+      dockerfile_controller: build/Dockerfile.controller
+      dockerfile_cri_client: build/Dockerfile.cri_client
+      dockerfile_operator: deploy/kubefledged-operator/build/Dockerfile
+      dockerfile_webhook_server: build/Dockerfile.webhook_server
       golang_version: 1.17.7
+      operator_image_repo: docker.io/senthilrch/kubefledged-operator
+      operator_target_platforms: linux/amd64,linux/arm64
+      operatorsdk_version: v1.18.0
+      push_image: true
       release_version: v0.10.0
+      target_platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
       webhook_server_image_repo: docker.io/senthilrch/kubefledged-webhook-server
     secrets:
       dockerhub_user: ${{ secrets.DOCKERHUB_USER }}
