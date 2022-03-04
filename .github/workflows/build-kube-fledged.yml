@@ -98,6 +98,9 @@ jobs:
         hack/verify-gofmt.sh
         hack/verify-golint.sh
         hack/verify-govet.sh
+
+    - name: Run unit tests
+      run: hack/run-unit-tests.sh
     
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v1
