@@ -111,7 +111,7 @@ jobs:
         username: ${{ secrets.dockerhub_user }}
         password: ${{ secrets.dockerhub_pswd }}
     
-    - name: Build and push kubefledged-controller image
+    - name: Build kubefledged-controller image
       uses: docker/build-push-action@v2
       with:
         context: .
@@ -123,7 +123,7 @@ jobs:
         push: ${{ inputs.push_image }}
         tags: ${{ inputs.controller_image_repo }}:${{ inputs.release_version }},${{ inputs.controller_image_repo }}:latest
 
-    - name: Build and push kubefledged-webhook-server image
+    - name: Build kubefledged-webhook-server image
       uses: docker/build-push-action@v2
       with:
         context: .
@@ -135,7 +135,7 @@ jobs:
         push: ${{ inputs.push_image }}
         tags: ${{ inputs.webhook_server_image_repo }}:${{ inputs.release_version }},${{ inputs.webhook_server_image_repo }}:latest
 
-    - name: Build and push kubefledged-cri-client image
+    - name: Build kubefledged-cri-client image
       uses: docker/build-push-action@v2
       with:
         context: .
@@ -148,7 +148,7 @@ jobs:
         push: ${{ inputs.push_image }}
         tags: ${{ inputs.crictl_image_repo }}:${{ inputs.release_version }},${{ inputs.crictl_image_repo }}:latest
 
-    - name: Build and push kubefledged-operator image
+    - name: Build kubefledged-operator image
       uses: docker/build-push-action@v2
       with:
         context: ./deploy/kubefledged-operator
