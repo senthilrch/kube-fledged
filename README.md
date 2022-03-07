@@ -40,6 +40,7 @@ kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and 
 - [Built With](#built-with)
 - [Contributing](#contributing)
 - [License](#license)
+- [Shout-outs](#shout-outs) 
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -364,3 +365,17 @@ Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for details on our code of 
 ## License
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE.md](LICENSE.md) file for details
+
+## Shout-outs
+
+[Cloud-Native Through the Prism of Percona:
+ Episode 1](https://www.percona.com/blog/cloud-native-series-1) 
+
+- https://www.percona.com/blog/cloud-native-series-1
+- https://collabnix.github.io/kubetools/
+- https://itnext.io/kubernetes-essential-tools-2021-def12e84c572
+- https://learnk8s.io/kubernetes-autoscaling-strategies
+- https://www.libhunt.com/r/kraken
+- https://dev.to/ajeetraina/top-200-kubernetes-tools-for-devops-engineer-like-you-3h7e
+- https://www.facebook.com/groups/kubernetes.professionals/posts/1055140111994964/
+- https://www.reddit.com/r/kubernetes/comments/pxbdkj/kubefledged_cache_container_images_in_kubernetes/
