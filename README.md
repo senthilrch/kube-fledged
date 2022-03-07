@@ -40,6 +40,7 @@ kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and 
 - [Built With](#built-with)
 - [Contributing](#contributing)
 - [License](#license)
+- [Blogs and Presentations](#blogs-and-presentations) 
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -364,3 +365,13 @@ Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for details on our code of 
 ## License
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE.md](LICENSE.md) file for details
+
+## Blogs and Presentations
+
+The Growing Need for Caching Container Images in Kubernetes
+Add the following links:
+
+https://www.youtube.com/watch?v=F_OAN_u4PJQ
+https://cloudolife.com/2021/12/18/Kubernetes-K8S/Helm/Helm-install-kube-fledged-to-create-and-manage-caches-of-container-images-directly-on-the-worker-nodes-within-Kubernetes-K8S/
+https://itnext.io/kube-fledged-cache-container-images-in-kubernetes-7880a00bab91
+https://itnext.io/how-to-deploy-and-use-kube-fledged-to-cache-images-in-kubernetes-8b6b9d6c2733
