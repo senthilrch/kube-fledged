@@ -40,10 +40,10 @@ kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and 
   - [Supported Container Runtimes](#supported-container-runtimes)
   - [Supported Platforms](#supported-platforms)
   - [Built With](#built-with)
+  - [Blogs and Presentations](#blogs-and-presentations)
   - [Contributing](#contributing)
   - [Code of Conduct](#code-of-conduct)
   - [License](#license)
-  - [Blogs and Presentations](#blogs-and-presentations)
   - [](#-1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -356,6 +356,12 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 * [Go Modules](https://golang.org/doc/go1.11#modules) - Go Modules for Dependency Management
 * [Make](https://www.gnu.org/software/make/) - GNU Make
 
+## Blogs and Presentations
+
+- [The Growing Need for Caching Container Images in Kubernetes](https://www.youtube.com/watch?v=F_OAN_u4PJQ)
+- [Helm install kube-fledged to create and manage caches of container images directly on the worker nodes within Kubernetes](https://cloudolife.com/2021/12/18/Kubernetes-K8S/Helm/Helm-install-kube-fledged-to-create-and-manage-caches-of-container-images-directly-on-the-worker-nodes-within-Kubernetes-K8S/)
+- [Kube-fledged: Cache Container Images in Kubernetes](https://itnext.io/kube-fledged-cache-container-images-in-kubernetes-7880a00bab91)
+- [How to Deploy and Use Kube-fledged to Cache Images in Kubernetes](https://itnext.io/how-to-deploy-and-use-kube-fledged-to-cache-images-in-kubernetes-8b6b9d6c2733)
 
 ## Contributing
 
@@ -369,11 +375,3 @@ Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for details on our code of 
 ## License
 
 This project is licensed under the Apache 2.0 License - see the [LICENSE.md](LICENSE.md) file for details
-
-
-## Blogs and Presentations
-
-- [The Growing Need for Caching Container Images in Kubernetes](https://www.youtube.com/watch?v=F_OAN_u4PJQ)
-- [Helm install kube-fledged to create and manage caches of container images directly on the worker nodes within Kubernetes](https://cloudolife.com/2021/12/18/Kubernetes-K8S/Helm/Helm-install-kube-fledged-to-create-and-manage-caches-of-container-images-directly-on-the-worker-nodes-within-Kubernetes-K8S/)
-- [Kube-fledged: Cache Container Images in Kubernetes](https://itnext.io/kube-fledged-cache-container-images-in-kubernetes-7880a00bab91)
-- [How to Deploy and Use Kube-fledged to Cache Images in Kubernetes](https://itnext.io/how-to-deploy-and-use-kube-fledged-to-cache-images-in-kubernetes-8b6b9d6c2733)
