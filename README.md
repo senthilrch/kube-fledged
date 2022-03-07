@@ -17,7 +17,6 @@ kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
-- [](#)
   - [Table of contents](#table-of-contents)
   - [Use cases](#use-cases)
   - [Prerequisites](#prerequisites)
@@ -44,7 +43,6 @@ kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and 
   - [Contributing](#contributing)
   - [Code of Conduct](#code-of-conduct)
   - [License](#license)
-  - [](#-1)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
