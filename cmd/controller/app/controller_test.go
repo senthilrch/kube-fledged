@@ -182,6 +182,10 @@ func TestPreFlightChecks(t *testing.T) {
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "foo",
+							Labels: map[string]string{
+								"app":         "kubefledged",
+								"kubefledged": "kubefledged-image-manager",
+							},
 						},
 					},
 				},
