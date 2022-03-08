@@ -52,6 +52,3 @@ jobs:
       release_version: v0.10.0
       target_platforms: linux/amd64
       webhook_server_image_repo: docker.io/senthilrch/kubefledged-webhook-server
-    secrets:
-      dockerhub_user: ${{ secrets.DOCKERHUB_USER }}
-      dockerhub_pswd: ${{ secrets.DOCKERHUB_PSWD }}
