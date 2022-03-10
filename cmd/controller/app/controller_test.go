@@ -64,6 +64,7 @@ func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clie
 	busyboxImage := "busybox:latest"
 	imagePullPolicy := "IfNotPresent"
 	serviceAccountName := "sa-kube-fledged"
+	imageDeleteJobHostNetwork := false
 
 	/* 	startInformers := true
 	   	if startInformers {
@@ -73,8 +74,10 @@ func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clie
 	   		fledgedInformerFactory.Start(stopCh)
 	   	} */
 
-	controller := NewController(kubeclientset, fledgedclientset, fledgedNameSpace, nodeInformer, imagecacheInformer,
-		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy, serviceAccountName)
+	controller := NewController(kubeclientset,
+		fledgedclientset, fledgedNameSpace, nodeInformer, imagecacheInformer,
+		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage,
+		busyboxImage, imagePullPolicy, serviceAccountName, imageDeleteJobHostNetwork)
 	controller.nodesSynced = func() bool { return true }
 	controller.imageCachesSynced = func() bool { return true }
 	return controller, nodeInformer, imagecacheInformer

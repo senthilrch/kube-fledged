@@ -73,6 +73,7 @@ type ImageManager struct {
 	busyboxImage              string
 	imagePullPolicy           string
 	serviceAccountName        string
+	imageDeleteJobHostNetwork bool
 	lock                      sync.RWMutex
 }
 
@@ -121,7 +122,8 @@ func NewImageManager(
 	kubeclientset kubernetes.Interface,
 	namespace string,
 	imagePullDeadlineDuration time.Duration,
-	criClientImage, busyboxImage, imagePullPolicy, serviceAccountName string) (*ImageManager, coreinformers.PodInformer) {
+	criClientImage, busyboxImage, imagePullPolicy, serviceAccountName string,
+	imageDeleteJobHostNetwork bool) (*ImageManager, coreinformers.PodInformer) {
 
 	appEqKubefledged, _ := labels.NewRequirement("app", selection.Equals, []string{"kubefledged"})
 	kubefledgedEqImagemanager, _ := labels.NewRequirement("kubefledged", selection.Equals, []string{"kubefledged-image-manager"})
@@ -150,6 +152,7 @@ func NewImageManager(
 		busyboxImage:              busyboxImage,
 		imagePullPolicy:           imagePullPolicy,
 		serviceAccountName:        serviceAccountName,
+		imageDeleteJobHostNetwork: imageDeleteJobHostNetwork,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		//AddFunc: ,
@@ -504,7 +507,8 @@ func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 // deleteImage deletes the image from the node
 func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
-	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion, m.criClientImage, m.serviceAccountName)
+	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion,
+		m.criClientImage, m.serviceAccountName, m.imageDeleteJobHostNetwork)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err

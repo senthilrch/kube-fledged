@@ -91,6 +91,10 @@ jobs:
       with:
         go-version: ${{ inputs.golang_version }}
 
+    - name: Install dependencies
+      run: |
+        go get -u golang.org/x/lint/golint
+
     - name: Run verify scripts
       run: |
         hack/verify-codegen.sh

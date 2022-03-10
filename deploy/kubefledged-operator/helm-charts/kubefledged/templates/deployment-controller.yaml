@@ -38,6 +38,7 @@ spec:
           {{- if .Values.args.controllerServiceAccountName }}
             - "--service-account-name={{ .Values.args.controllerServiceAccountName }}"
           {{- end }}
+            - "--image-delete-job-host-network={{ .Values.args.controllerImageDeleteJobHostNetwork }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: KUBEFLEDGED_NAMESPACE
