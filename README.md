@@ -321,9 +321,11 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 ## Configuration Flags for Kubefledged Controller
 
-`--image-pull-deadline-duration:` Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed. default "5m"
-
 `--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. default "15m"
+
+`--image-delete-job-host-network:` Whether the pod for the image delete job should be run with 'HostNetwork: true'. Default value: false.
+
+`--image-pull-deadline-duration:` Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed. default "5m"
 
 `--image-pull-policy:` Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled.
 

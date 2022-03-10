@@ -19,7 +19,7 @@ set -o nounset
 set -o pipefail
 
 export GOPATH=${HOME}/go
-go get -d k8s.io/code-generator@v0.21.1
+go get -u k8s.io/code-generator@v0.21.1
 
 SCRIPT_ROOT=$(dirname ${BASH_SOURCE})/..
 CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 $GOPATH/pkg/mod/k8s.io/code-generator@v0.21.1 2>/dev/null || echo ../code-generator)}
