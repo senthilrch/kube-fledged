@@ -56,7 +56,7 @@ jobs:
       dockerhub_user: ${{ secrets.DOCKERHUB_USER }}
       dockerhub_pswd: ${{ secrets.DOCKERHUB_PSWD }}
   pull_request:
-    if: github.ref_type != 'tag'
+    if: github.event_name == 'pull_request'
     uses: ./.github/workflows/build-kube-fledged.yml
     with:
       alpine_version: 3.15.0
