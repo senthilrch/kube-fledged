@@ -74,6 +74,7 @@ type ImageManager struct {
 	imagePullPolicy           string
 	serviceAccountName        string
 	imageDeleteJobHostNetwork bool
+	jobPriorityClassName      string
 	lock                      sync.RWMutex
 }
 
@@ -123,7 +124,8 @@ func NewImageManager(
 	namespace string,
 	imagePullDeadlineDuration time.Duration,
 	criClientImage, busyboxImage, imagePullPolicy, serviceAccountName string,
-	imageDeleteJobHostNetwork bool) (*ImageManager, coreinformers.PodInformer) {
+	imageDeleteJobHostNetwork bool,
+	jobPriorityClassName string) (*ImageManager, coreinformers.PodInformer) {
 
 	appEqKubefledged, _ := labels.NewRequirement("app", selection.Equals, []string{"kubefledged"})
 	kubefledgedEqImagemanager, _ := labels.NewRequirement("kubefledged", selection.Equals, []string{"kubefledged-image-manager"})
@@ -153,6 +155,7 @@ func NewImageManager(
 		imagePullPolicy:           imagePullPolicy,
 		serviceAccountName:        serviceAccountName,
 		imageDeleteJobHostNetwork: imageDeleteJobHostNetwork,
+		jobPriorityClassName:      jobPriorityClassName,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		//AddFunc: ,
@@ -490,7 +493,8 @@ func (m *ImageManager) processNextWorkItem() bool {
 // pullImage pulls the image to the node
 func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
-	newjob, err := newImagePullJob(iwr.Imagecache, iwr.Image, iwr.Node, m.imagePullPolicy, m.busyboxImage, m.serviceAccountName)
+	newjob, err := newImagePullJob(iwr.Imagecache, iwr.Image, iwr.Node, m.imagePullPolicy,
+		m.busyboxImage, m.serviceAccountName, m.jobPriorityClassName)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err
@@ -508,7 +512,7 @@ func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
 	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion,
-		m.criClientImage, m.serviceAccountName, m.imageDeleteJobHostNetwork)
+		m.criClientImage, m.serviceAccountName, m.imageDeleteJobHostNetwork, m.jobPriorityClassName)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err

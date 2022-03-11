@@ -329,6 +329,8 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 `--image-pull-policy:` Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled.
 
+`--job-priority-class-name:` priorityClassName of jobs created by kubefledged-controller.
+
 `--service-account-name:` serviceAccountName used in Jobs created for pulling or deleting images. Optional flag. If not specified the default service account of the namespace is used
 
 `--stderrthreshold:` Log level. set the value of this flag to INFO

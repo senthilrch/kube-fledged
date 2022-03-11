@@ -43,6 +43,7 @@ var (
 	fledgedNameSpace           string
 	serviceAccountName         string
 	imageDeleteJobHostNetwork  bool
+	jobPriorityClassName       string
 )
 
 func main() {
@@ -73,7 +74,8 @@ func main() {
 		kubeInformerFactory.Core().V1().Nodes(),
 		fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches(),
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage,
-		busyboxImage, imagePullPolicy, serviceAccountName, imageDeleteJobHostNetwork)
+		busyboxImage, imagePullPolicy, serviceAccountName, imageDeleteJobHostNetwork,
+		jobPriorityClassName)
 
 	glog.Info("Starting pre-flight checks")
 	if err = controller.PreFlightChecks(); err != nil {
@@ -104,4 +106,5 @@ func init() {
 	}
 	flag.StringVar(&serviceAccountName, "service-account-name", "", "serviceAccountName used in Jobs created for pulling/deleting images. Optional flag. If not specified the default service account of the namespace is used")
 	flag.BoolVar(&imageDeleteJobHostNetwork, "image-delete-job-host-network", false, "whether the pod for the image delete job should be run with 'HostNetwork: true'. Default value: false")
+	flag.StringVar(&jobPriorityClassName, "job-priority-class-name", "", "priorityClassName of jobs created by kubefledged-controller")
 }
