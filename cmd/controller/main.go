@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -44,6 +45,7 @@ var (
 	serviceAccountName         string
 	imageDeleteJobHostNetwork  bool
 	jobPriorityClassName       string
+	canDeleteJob               bool
 )
 
 func main() {
@@ -75,7 +77,7 @@ func main() {
 		fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches(),
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage,
 		busyboxImage, imagePullPolicy, serviceAccountName, imageDeleteJobHostNetwork,
-		jobPriorityClassName)
+		jobPriorityClassName, canDeleteJob)
 
 	glog.Info("Starting pre-flight checks")
 	if err = controller.PreFlightChecks(); err != nil {
@@ -107,4 +109,27 @@ func init() {
 	flag.StringVar(&serviceAccountName, "service-account-name", "", "serviceAccountName used in Jobs created for pulling/deleting images. Optional flag. If not specified the default service account of the namespace is used")
 	flag.BoolVar(&imageDeleteJobHostNetwork, "image-delete-job-host-network", false, "whether the pod for the image delete job should be run with 'HostNetwork: true'. Default value: false")
 	flag.StringVar(&jobPriorityClassName, "job-priority-class-name", "", "priorityClassName of jobs created by kubefledged-controller")
+
+	flag.Func("job-retention-policy", "sets the retention behavior of finished Image Manager Jobs (default: 'delete')",
+		func(val string) error {
+			const (
+				DELETE_POLICY string = "delete"
+				RETAIN_POLICY string = "retain"
+			)
+			switch strings.ToLower(strings.TrimSpace(val)) {
+			case DELETE_POLICY:
+				canDeleteJob = true
+				glog.Infof("Using '%s' Job Retention Policy", DELETE_POLICY)
+				return nil
+			case RETAIN_POLICY:
+				canDeleteJob = false
+				glog.Infof("Using '%s' Job Retention Policy", RETAIN_POLICY)
+				return nil
+			default:
+				canDeleteJob = true
+				glog.Infof("Defaulting to '%s' Job Retention Policy", DELETE_POLICY)
+				return nil
+			}
+		},
+	)
 }

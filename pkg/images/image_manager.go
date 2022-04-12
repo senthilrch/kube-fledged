@@ -75,6 +75,7 @@ type ImageManager struct {
 	serviceAccountName        string
 	imageDeleteJobHostNetwork bool
 	jobPriorityClassName      string
+	canDeleteJob              bool
 	lock                      sync.RWMutex
 }
 
@@ -125,7 +126,8 @@ func NewImageManager(
 	imagePullDeadlineDuration time.Duration,
 	criClientImage, busyboxImage, imagePullPolicy, serviceAccountName string,
 	imageDeleteJobHostNetwork bool,
-	jobPriorityClassName string) (*ImageManager, coreinformers.PodInformer) {
+	jobPriorityClassName string,
+	canDeleteJob bool) (*ImageManager, coreinformers.PodInformer) {
 
 	appEqKubefledged, _ := labels.NewRequirement("app", selection.Equals, []string{"kubefledged"})
 	kubefledgedEqImagemanager, _ := labels.NewRequirement("kubefledged", selection.Equals, []string{"kubefledged-image-manager"})
@@ -156,6 +158,7 @@ func NewImageManager(
 		serviceAccountName:        serviceAccountName,
 		imageDeleteJobHostNetwork: imageDeleteJobHostNetwork,
 		jobPriorityClassName:      jobPriorityClassName,
+		canDeleteJob:              canDeleteJob,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		//AddFunc: ,
@@ -333,8 +336,8 @@ func (m *ImageManager) updateImageCacheStatus(imageCache *fledgedv1alpha2.ImageC
 			iwstatusLock.Unlock()
 			imageCache = iwres.ImageWorkRequest.Imagecache
 			delete(m.imageworkstatus, job)
-			// delete the job
-			if !strings.HasPrefix(job, fakeJobPrefix) {
+			// delete the job if RetentionPolicy is not Retain
+			if !strings.HasPrefix(job, fakeJobPrefix) && m.canDeleteJob {
 				if err := m.kubeclientset.BatchV1().Jobs(imageCache.Namespace).
 					Delete(context.TODO(), job, metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
 					// if for some reason the job cannot be deleted, we'll not retry. rather we continue processing the remaining jobs

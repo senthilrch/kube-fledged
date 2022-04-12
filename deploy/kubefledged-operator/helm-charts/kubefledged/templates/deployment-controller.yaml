@@ -45,6 +45,9 @@ spec:
           {{- if .Values.args.controllerJobPriorityClassName }}
             - "--job-priority-class-name={{ .Values.args.controllerJobPriorityClassName }}"
           {{- end }}
+          {{- if .Values.args.controllerJobRetentionPolicy }}
+            - "--job-retention-policy={{ .Values.args.controllerJobRetentionPolicy }}"
+          {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: KUBEFLEDGED_NAMESPACE
