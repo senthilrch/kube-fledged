@@ -109,7 +109,6 @@ func init() {
 	flag.StringVar(&serviceAccountName, "service-account-name", "", "serviceAccountName used in Jobs created for pulling/deleting images. Optional flag. If not specified the default service account of the namespace is used")
 	flag.BoolVar(&imageDeleteJobHostNetwork, "image-delete-job-host-network", false, "whether the pod for the image delete job should be run with 'HostNetwork: true'. Default value: false")
 	flag.StringVar(&jobPriorityClassName, "job-priority-class-name", "", "priorityClassName of jobs created by kubefledged-controller")
-
 	flag.Func("job-retention-policy", "sets the retention behavior of finished Image Manager Jobs (default: 'delete')",
 		func(val string) error {
 			const (
