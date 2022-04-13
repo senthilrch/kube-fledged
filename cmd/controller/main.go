@@ -45,7 +45,8 @@ var (
 	serviceAccountName         string
 	imageDeleteJobHostNetwork  bool
 	jobPriorityClassName       string
-	canDeleteJob               bool
+	//Default value for when `--job-retention-policy` flag is not set
+	canDeleteJob bool = true
 )
 
 func main() {
@@ -125,8 +126,9 @@ func init() {
 				glog.Infof("Using '%s' Job Retention Policy", RETAIN_POLICY)
 				return nil
 			default:
-				canDeleteJob = true
-				glog.Infof("Defaulting to '%s' Job Retention Policy", DELETE_POLICY)
+				//canDeleteJob is initialized to true already
+				glog.Infof("Failed to set '%s' Job Retention Policy -- invalid input:"+
+					" falling back to '%s' Job Retention Policy", val, DELETE_POLICY)
 				return nil
 			}
 		},
