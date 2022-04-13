@@ -113,22 +113,22 @@ func init() {
 	flag.Func("job-retention-policy", "sets the retention behavior of finished Image Manager Jobs (default: 'delete')",
 		func(val string) error {
 			const (
-				DELETE_POLICY string = "delete"
-				RETAIN_POLICY string = "retain"
+				deletePolicy string = "delete"
+				retainPolicy string = "retain"
 			)
 			switch strings.ToLower(strings.TrimSpace(val)) {
-			case DELETE_POLICY:
+			case deletePolicy:
 				canDeleteJob = true
-				glog.Infof("Using '%s' Job Retention Policy", DELETE_POLICY)
+				glog.Infof("Using '%s' Job Retention Policy", deletePolicy)
 				return nil
-			case RETAIN_POLICY:
+			case retainPolicy:
 				canDeleteJob = false
-				glog.Infof("Using '%s' Job Retention Policy", RETAIN_POLICY)
+				glog.Infof("Using '%s' Job Retention Policy", retainPolicy)
 				return nil
 			default:
 				//canDeleteJob is initialized to true already
 				glog.Infof("Failed to set '%s' Job Retention Policy -- invalid input:"+
-					" falling back to '%s' Job Retention Policy", val, DELETE_POLICY)
+					" falling back to '%s' Job Retention Policy", val, deletePolicy)
 				return nil
 			}
 		},

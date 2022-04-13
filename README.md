@@ -331,7 +331,7 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 `--job-priority-class-name:` priorityClassName of jobs created by kubefledged-controller.
 
-`--job-retention-policy:` Set if an Image Manager Kubernetes Job API object will be deleted or retained (for debugging) after it finishes. Possible values are 'delete' and 'retain', defaults to 'delete'.
+`--job-retention-policy:` Determines if the jobs created by kubefledged-controller would be deleted or retained (for debugging) after it finishes. Possible values are 'delete' and 'retain'. default value is 'delete'.
 
 `--service-account-name:` serviceAccountName used in Jobs created for pulling or deleting images. Optional flag. If not specified the default service account of the namespace is used
 
