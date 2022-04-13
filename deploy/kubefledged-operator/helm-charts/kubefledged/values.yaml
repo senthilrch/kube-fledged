@@ -29,6 +29,7 @@ args:
   controllerServiceAccountName: ""
   controllerImageDeleteJobHostNetwork: false
   controllerJobPriorityClassName: ""
+  controllerJobRetentionPolicy: "delete"
   webhookServerLogLevel: INFO
   webhookServerCertFile: /var/run/secrets/webhook-server/tls.crt
   webhookServerKeyFile: /var/run/secrets/webhook-server/tls.key
