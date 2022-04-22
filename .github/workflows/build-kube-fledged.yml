@@ -4,168 +4,176 @@ on:
   workflow_call:
     inputs:
       alpine_version:
-        description: 'Version of alpine base image'
+        description: "Version of alpine base image"
         required: true
         type: string
       controller_image_repo:
-        description: 'kubefledged-controller repository'
+        description: "kubefledged-controller repository"
         required: true
         type: string
       crictl_image_repo:
-        description: 'kubefledged-cri-client repository'
+        description: "kubefledged-cri-client repository"
         required: true
-        type: string        
+        type: string
       crictl_version:
-        description: 'crictl tool version'
+        description: "crictl tool version"
         required: true
         type: string
       docker_version:
-        description: 'docker version'
+        description: "docker version"
         required: true
         type: string
       dockerfile_controller:
-        description: 'kubefledged-controller dockerfile path'
+        description: "kubefledged-controller dockerfile path"
         required: true
         type: string
       dockerfile_cri_client:
-        description: 'kubefledged-cri-client dockerfile path'
+        description: "kubefledged-cri-client dockerfile path"
         required: true
         type: string
       dockerfile_operator:
-        description: 'kubefledged-operator dockerfile path'
+        description: "kubefledged-operator dockerfile path"
         required: true
-        type: string                
+        type: string
       dockerfile_webhook_server:
-        description: 'kubefledged-webhook-server dockerfile path'
+        description: "kubefledged-webhook-server dockerfile path"
         required: true
-        type: string                                
+        type: string
       golang_version:
-        description: 'Go version used during the build'
+        description: "Go version used during the build"
         required: true
         type: string
       operator_image_repo:
-        description: 'kubefledged-operator repository'
+        description: "kubefledged-operator repository"
         required: true
         type: string
       operator_target_platforms:
-        description: 'target platforms for operator multi-arch image'
+        description: "target platforms for operator multi-arch image"
         required: true
-        type: string        
+        type: string
       operatorsdk_version:
-        description: 'operator sdk release version'
+        description: "operator sdk release version"
         required: true
         type: string
       push_image:
-        description: 'whether or not to push built images to dockerhub'
+        description: "whether or not to push built images to dockerhub"
         required: true
-        type: boolean                
+        type: boolean
       release_version:
-        description: 'kube-fledged release version'
+        description: "kube-fledged release version"
         required: true
         type: string
       target_platforms:
-        description: 'target platforms for multi-arch images'
+        description: "target platforms for multi-arch images"
         required: true
-        type: string        
+        type: string
       webhook_server_image_repo:
-        description: 'kubefledged-webhook-server repository'
+        description: "kubefledged-webhook-server repository"
         required: true
         type: string
     secrets:
       dockerhub_user:
-        description: 'Dockerhub username'
+        description: "Dockerhub username"
         required: false
       dockerhub_pswd:
-        description: 'Dockerhub password'
-        required: false        
+        description: "Dockerhub password"
+        required: false
 
 jobs:
   build_kube_fledged:
     runs-on: ubuntu-latest
     steps:
-    - name: Checkout
-      uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
 
-    - name: Set up Go
-      uses: actions/setup-go@v2
-      with:
-        go-version: ${{ inputs.golang_version }}
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: ${{ inputs.golang_version }}
 
-    - name: Install dependencies
-      run: |
-        go get -u golang.org/x/lint/golint
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v2
+        with:
+          version: latest
+          args: release --rm-dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Run verify scripts
-      run: |
-        hack/verify-codegen.sh
-        hack/verify-boilerplate.sh
-        hack/verify-gofmt.sh
-        hack/verify-golint.sh
-        hack/verify-govet.sh
+      - name: Install dependencies
+        run: |
+          go get -u golang.org/x/lint/golint
 
-    - name: Run unit tests
-      run: hack/run-unit-tests.sh
-    
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v1
-      
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
-    
-    - name: Login to DockerHub
-      env:
-        DOCKERHUB_USER: ${{ secrets.dockerhub_user }}
-        DOCKERHUB_PSWD: ${{ secrets.dockerhub_pswd }}
-      if: "${{ env.DOCKERHUB_USER != '' && env.DOCKERHUB_PSWD != '' }}"
-      uses: docker/login-action@v1 
-      with:
-        username: ${{ secrets.dockerhub_user }}
-        password: ${{ secrets.dockerhub_pswd }}
-    
-    - name: Build kubefledged-controller image
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: ${{ inputs.dockerfile_controller }}
-        build-args: |
-          ALPINE_VERSION=${{ inputs.alpine_version }}
-          GOLANG_VERSION=${{ inputs.golang_version }}
-        platforms: ${{ inputs.target_platforms }}
-        push: ${{ inputs.push_image }}
-        tags: ${{ inputs.controller_image_repo }}:${{ inputs.release_version }},${{ inputs.controller_image_repo }}:latest
+      - name: Run verify scripts
+        run: |
+          hack/verify-codegen.sh
+          hack/verify-boilerplate.sh
+          hack/verify-gofmt.sh
+          hack/verify-golint.sh
+          hack/verify-govet.sh
 
-    - name: Build kubefledged-webhook-server image
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: ${{ inputs.dockerfile_webhook_server }}
-        build-args: |
-          ALPINE_VERSION=${{ inputs.alpine_version }}
-          GOLANG_VERSION=${{ inputs.golang_version }}
-        platforms: ${{ inputs.target_platforms }}
-        push: ${{ inputs.push_image }}
-        tags: ${{ inputs.webhook_server_image_repo }}:${{ inputs.release_version }},${{ inputs.webhook_server_image_repo }}:latest
+      - name: Run unit tests
+        run: hack/run-unit-tests.sh
 
-    - name: Build kubefledged-cri-client image
-      uses: docker/build-push-action@v2
-      with:
-        context: .
-        file: ${{ inputs.dockerfile_cri_client }}
-        build-args: |
-          ALPINE_VERSION=${{ inputs.alpine_version }}
-          CRICTL_VERSION=${{ inputs.crictl_version }}
-          DOCKER_VERSION=${{ inputs.docker_version }}
-        platforms: ${{ inputs.target_platforms }}
-        push: ${{ inputs.push_image }}
-        tags: ${{ inputs.crictl_image_repo }}:${{ inputs.release_version }},${{ inputs.crictl_image_repo }}:latest
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
 
-    - name: Build kubefledged-operator image
-      uses: docker/build-push-action@v2
-      with:
-        context: ./deploy/kubefledged-operator
-        file: ${{ inputs.dockerfile_operator }}
-        build-args: |
-          OPERATORSDK_VERSION=${{ inputs.operatorsdk_version }}
-        platforms: ${{ inputs.operator_target_platforms }}
-        push: ${{ inputs.push_image }}
-        tags: ${{ inputs.operator_image_repo }}:${{ inputs.release_version }},${{ inputs.operator_image_repo }}:latest
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Login to DockerHub
+        env:
+          DOCKERHUB_USER: ${{ secrets.dockerhub_user }}
+          DOCKERHUB_PSWD: ${{ secrets.dockerhub_pswd }}
+        if: "${{ env.DOCKERHUB_USER != '' && env.DOCKERHUB_PSWD != '' }}"
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.dockerhub_user }}
+          password: ${{ secrets.dockerhub_pswd }}
+
+      - name: Build kubefledged-controller image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ${{ inputs.dockerfile_controller }}
+          build-args: |
+            ALPINE_VERSION=${{ inputs.alpine_version }}
+            GOLANG_VERSION=${{ inputs.golang_version }}
+          platforms: ${{ inputs.target_platforms }}
+          push: ${{ inputs.push_image }}
+          tags: ${{ inputs.controller_image_repo }}:${{ inputs.release_version }},${{ inputs.controller_image_repo }}:latest
+
+      - name: Build kubefledged-webhook-server image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ${{ inputs.dockerfile_webhook_server }}
+          build-args: |
+            ALPINE_VERSION=${{ inputs.alpine_version }}
+            GOLANG_VERSION=${{ inputs.golang_version }}
+          platforms: ${{ inputs.target_platforms }}
+          push: ${{ inputs.push_image }}
+          tags: ${{ inputs.webhook_server_image_repo }}:${{ inputs.release_version }},${{ inputs.webhook_server_image_repo }}:latest
+
+      - name: Build kubefledged-cri-client image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          file: ${{ inputs.dockerfile_cri_client }}
+          build-args: |
+            ALPINE_VERSION=${{ inputs.alpine_version }}
+            CRICTL_VERSION=${{ inputs.crictl_version }}
+            DOCKER_VERSION=${{ inputs.docker_version }}
+          platforms: ${{ inputs.target_platforms }}
+          push: ${{ inputs.push_image }}
+          tags: ${{ inputs.crictl_image_repo }}:${{ inputs.release_version }},${{ inputs.crictl_image_repo }}:latest
+
+      - name: Build kubefledged-operator image
+        uses: docker/build-push-action@v2
+        with:
+          context: ./deploy/kubefledged-operator
+          file: ${{ inputs.dockerfile_operator }}
+          build-args: |
+            OPERATORSDK_VERSION=${{ inputs.operatorsdk_version }}
+          platforms: ${{ inputs.operator_target_platforms }}
+          push: ${{ inputs.push_image }}
+          tags: ${{ inputs.operator_image_repo }}:${{ inputs.release_version }},${{ inputs.operator_image_repo }}:latest
