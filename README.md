@@ -48,18 +48,19 @@ kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and 
 
 ## Use cases
 
-- Applications that require rapid start-up. For e.g. an application performing real-time data processing needs to scale rapidly due to a burst in data volume.
-- Serverless Functions since they need to react immediately to incoming events.
-- IoT applications that run on Edge devices, because the network connectivity between the edge device and image registry would be intermittent.
+- Applications that require **rapid** start-up and/or scaling. For e.g. an application performing real-time data processing needs to scale rapidly due to a burst in data volume.
+- Serverless Functions typically need to react **immediately** to incoming events and spin-up containers within fraction of a second.
+- IoT applications that run on Edge devices, that need to **tolerate** the intermittent network connectivity between the edge device and image registry.
 - If images need to be pulled from a private registry and everyone cannot be granted access to pull images from this registry, then the images can be made available on the nodes of the cluster.
 - If a cluster administrator or operator needs to roll-out upgrades to an application and wants to verify before-hand if the new images can be pulled successfully.
 
 ## Prerequisites
 
-- A functioning kubernetes cluster (v1.16 or above). It could be a simple development cluster like minikube or a large production cluster.
-- Cluster-admin privileges to the kubernetes cluster.
+- A functioning kubernetes cluster. It could be a simple development cluster like minikube or a large production cluster.
+- Cluster-admin privileges to the kubernetes cluster for deploying kube-fledged.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- git, make, go, docker engine (>= 19.03), openssl, kubectl, helm, gpg and gnu-sed installed on a local linux or mac machine. kubectl configured properly to access the cluster.
+- For kube-fledged **development**, you need git, make, go, docker engine (>= 19.03), openssl, kubectl, helm, gpg and gnu-sed installed on a local linux or mac machine. kubectl configured properly to access the cluster.
+- For kube-fledged **deployment**, you need git, make, helm and kubectl installed on a local linux of mac machine. kubectl configured properly to access the cluster.
 
 ## Quick Install using YAML manifests
 
