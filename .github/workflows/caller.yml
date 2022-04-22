@@ -2,13 +2,13 @@ name: Build kube-fledged
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [master, develop]
   pull_request:
-    branches: [ master, develop ]
+    branches: [master, develop]
 
 jobs:
   push_master:
-    if: github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'master' 
+    if: github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'master'
     uses: ./.github/workflows/build-kube-fledged.yml
     with:
       alpine_version: 3.15.0
@@ -26,13 +26,13 @@ jobs:
       operatorsdk_version: v1.18.0
       push_image: true
       release_version: v0.10.0
-      target_platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+      target_platforms: linux/amd64,linux/arm/v7,linux/arm64/v8, windows/amd64
       webhook_server_image_repo: docker.io/senthilrch/kubefledged-webhook-server
     secrets:
       dockerhub_user: ${{ secrets.DOCKERHUB_USER }}
       dockerhub_pswd: ${{ secrets.DOCKERHUB_PSWD }}
   push_develop:
-    if: github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'develop' 
+    if: github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'develop'
     uses: ./.github/workflows/build-kube-fledged.yml
     with:
       alpine_version: 3.15.0
