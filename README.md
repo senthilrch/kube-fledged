@@ -377,7 +377,11 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 - [Top 200 Kubernetes Tools for DevOps Engineer Like You](https://dev.to/ajeetraina/top-200-kubernetes-tools-for-devops-engineer-like-you-3h7e)
 - [Kubernetes Professionals - Facebook](https://www.facebook.com/groups/kubernetes.professionals/posts/1055140111994964/)
 - [Kube-fledged: Cache Container Images in Kubernetes - Reddit](https://www.reddit.com/r/kubernetes/comments/pxbdkj/kubefledged_cache_container_images_in_kubernetes/)
-
+- [Kubernetes Tools - collection of tools for containers & k8s](https://wiki.nikitavoloboev.xyz/operating-systems/containers/kubernetes)
+- [Kubernetes Posts - collection of great posts for kubernetes](https://rimzy.net/category/kubernetes-operator/)
+- [Nubenetes - k8s plugins, extensions, tools, projects](https://nubenetes.com/kubernetes-tools/)
+- [SweetOps - community to share vision on k8s like infrastructure](https://archive.sweetops.com/kubernetes/2020/05/)
+- [Devops Buzz - extend k8s power](https://www.devops.buzz/public/kubernetes/tools)
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on the process for submitting pull requests.
