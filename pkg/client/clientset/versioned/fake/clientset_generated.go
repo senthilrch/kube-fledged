@@ -74,7 +74,10 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var (
+	_ clientset.Interface = &Clientset{}
+	_ testing.FakeClient  = &Clientset{}
+)
 
 // KubefledgedV1alpha2 retrieves the KubefledgedV1alpha2Client
 func (c *Clientset) KubefledgedV1alpha2() kubefledgedv1alpha2.KubefledgedV1alpha2Interface {

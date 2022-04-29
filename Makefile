@@ -270,3 +270,6 @@ remove-webhook-server-using-operator:
 	sed -i "s|enable: true|enable: false|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 
+.PHONY:	e2e-test
+e2e-test:
+	@go test -v ./e2etest
