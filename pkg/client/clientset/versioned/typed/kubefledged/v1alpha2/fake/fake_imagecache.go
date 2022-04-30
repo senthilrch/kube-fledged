@@ -117,7 +117,7 @@ func (c *FakeImageCaches) UpdateStatus(ctx context.Context, imageCache *v1alpha2
 // Delete takes name of the imageCache and deletes it. Returns an error if one occurs.
 func (c *FakeImageCaches) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(imagecachesResource, c.ns, name), &v1alpha2.ImageCache{})
+		Invokes(testing.NewDeleteActionWithOptions(imagecachesResource, c.ns, name, opts), &v1alpha2.ImageCache{})
 
 	return err
 }

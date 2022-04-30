@@ -19,7 +19,8 @@ set -o nounset
 set -o pipefail
 
 SCRIPT_ROOT=$(dirname "${BASH_SOURCE}")/..
-PROJECT="github.com/senthilrch/kube-fledged"
+PROJECT="."
 
-go test $(go list ${PROJECT}/... | grep -v ${PROJECT}/vendor/| grep -v ${PROJECT}/hack/) \
+go test $(go list ${PROJECT}/... | grep -v vendor | grep -v hack | grep -v e2etest) \
 -v -covermode=count -coverprofile=${SCRIPT_ROOT}/coverage.out
+
