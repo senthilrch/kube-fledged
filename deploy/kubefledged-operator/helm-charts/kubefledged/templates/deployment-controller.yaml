@@ -38,6 +38,9 @@ spec:
           {{- if .Values.args.controllerServiceAccountName }}
             - "--service-account-name={{ .Values.args.controllerServiceAccountName }}"
           {{- end }}
+          {{- if .Values.args.jobPriorityClassName }}
+            - "--job-priority-class-name={{ .Values.args.jobPriorityClassName }}"
+          {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: KUBEFLEDGED_NAMESPACE

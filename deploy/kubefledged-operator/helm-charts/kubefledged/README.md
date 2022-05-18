@@ -50,6 +50,7 @@ Kube-fledged is a kubernetes operator for creating and managing a cache of conta
 | args.controllerImageCacheRefreshFrequency | 15m | The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh |
 | args.controllerImagePullPolicy | IfNotPresent | Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled |
 | args.controllerServiceAccountName | "" | serviceAccountName used in Jobs created for pulling or deleting images. Optional flag. If not specified the default service account of the namespace is used |
+| args.jobPriorityClassName | "" | priorityClassName of jobs created by kubefledged-controller |
 | args.webhookServerLogLevel | INFO | Log level of kubefledged-webhook-server |
 | args.webhookServerCertFile | /var/run/secrets/webhook-server/tls.crt | Path of server certificate of kubefledged-webhook-server |
 | args.webhookServerKeyFile | /var/run/secrets/webhook-server/tls.key | Path of server key of kubefledged-webhook-server |
