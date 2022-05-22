@@ -38,25 +38,29 @@ kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and 
 - [Supported Container Runtimes](#supported-container-runtimes)
 - [Supported Platforms](#supported-platforms)
 - [Built With](#built-with)
+- [Blogs and Presentations](#blogs-and-presentations)
+- [Shout-outs](#shout-outs)
 - [Contributing](#contributing)
+- [Code of Conduct](#code-of-conduct)
 - [License](#license)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 ## Use cases
 
-- Applications that require rapid start-up. For e.g. an application performing real-time data processing needs to scale rapidly due to a burst in data volume.
-- Serverless Functions since they need to react immediately to incoming events.
-- IoT applications that run on Edge devices, because the network connectivity between the edge device and image registry would be intermittent.
+- Applications that require **rapid** start-up and/or scaling. For e.g. an application performing real-time data processing needs to scale rapidly due to a burst in data volume.
+- Serverless Functions typically need to react **immediately** to incoming events and spin-up containers within fraction of a second.
+- IoT applications that run on Edge devices, that need to **tolerate** the intermittent network connectivity between the edge device and image registry.
 - If images need to be pulled from a private registry and everyone cannot be granted access to pull images from this registry, then the images can be made available on the nodes of the cluster.
 - If a cluster administrator or operator needs to roll-out upgrades to an application and wants to verify before-hand if the new images can be pulled successfully.
 
 ## Prerequisites
 
-- A functioning kubernetes cluster (v1.16 or above). It could be a simple development cluster like minikube or a large production cluster.
-- Cluster-admin privileges to the kubernetes cluster.
+- A functioning kubernetes cluster. It could be a simple development cluster like minikube or a large production cluster.
+- Cluster-admin privileges to the kubernetes cluster for deploying kube-fledged.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- git, make, go, docker engine (>= 19.03), openssl, kubectl, helm, gpg and gnu-sed installed on a local linux or mac machine. kubectl configured properly to access the cluster.
+- For kube-fledged **development**, you need git, make, go, docker engine (>= 19.03), openssl, kubectl, helm, gpg and gnu-sed installed on a local linux or mac machine. kubectl configured properly to access the cluster.
+- For kube-fledged **deployment**, you need git, make, helm and kubectl installed on a local linux of mac machine. kubectl configured properly to access the cluster.
 
 ## Quick Install using YAML manifests
 
@@ -318,11 +322,17 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 ## Configuration Flags for Kubefledged Controller
 
-`--image-pull-deadline-duration:` Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed. default "5m"
-
 `--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. default "15m"
 
+`--image-delete-job-host-network:` Whether the pod for the image delete job should be run with 'HostNetwork: true'. Default value: false.
+
+`--image-pull-deadline-duration:` Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed. default "5m"
+
 `--image-pull-policy:` Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled.
+
+`--job-priority-class-name:` priorityClassName of jobs created by kubefledged-controller.
+
+`--job-retention-policy:` Determines if the jobs created by kubefledged-controller would be deleted or retained (for debugging) after it finishes. Possible values are 'delete' and 'retain'. default value is 'delete'.
 
 `--service-account-name:` serviceAccountName used in Jobs created for pulling or deleting images. Optional flag. If not specified the default service account of the namespace is used
 
@@ -351,7 +361,28 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 * [Go Modules](https://golang.org/doc/go1.11#modules) - Go Modules for Dependency Management
 * [Make](https://www.gnu.org/software/make/) - GNU Make
 
+## Blogs and Presentations
 
+- [The Growing Need for Caching Container Images in Kubernetes](https://www.youtube.com/watch?v=F_OAN_u4PJQ)
+- [Helm install kube-fledged to create and manage caches of container images directly on the worker nodes within Kubernetes](https://cloudolife.com/2021/12/18/Kubernetes-K8S/Helm/Helm-install-kube-fledged-to-create-and-manage-caches-of-container-images-directly-on-the-worker-nodes-within-Kubernetes-K8S/)
+- [Kube-fledged: Cache Container Images in Kubernetes](https://itnext.io/kube-fledged-cache-container-images-in-kubernetes-7880a00bab91)
+- [How to Deploy and Use Kube-fledged to Cache Images in Kubernetes](https://itnext.io/how-to-deploy-and-use-kube-fledged-to-cache-images-in-kubernetes-8b6b9d6c2733)
+
+## Shout-outs
+
+- [Cloud-Native Through the Prism of Percona: Episode 1](https://www.percona.com/blog/cloud-native-series-1)
+- [Kubetools - A Curated List of Kubernetes Tools](https://collabnix.github.io/kubetools/)
+- [Kubernetes Essential Tools: 2021](https://itnext.io/kubernetes-essential-tools-2021-def12e84c572)
+- [Architecting Kubernetes clusters — choosing the best autoscaling strategy](https://learnk8s.io/kubernetes-autoscaling-strategies)
+- [Uber Kraken Alternatives](https://www.libhunt.com/r/kraken)
+- [Top 200 Kubernetes Tools for DevOps Engineer Like You](https://dev.to/ajeetraina/top-200-kubernetes-tools-for-devops-engineer-like-you-3h7e)
+- [Kubernetes Professionals - Facebook](https://www.facebook.com/groups/kubernetes.professionals/posts/1055140111994964/)
+- [Kube-fledged: Cache Container Images in Kubernetes - Reddit](https://www.reddit.com/r/kubernetes/comments/pxbdkj/kubefledged_cache_container_images_in_kubernetes/)
+- [Kubernetes Tools - collection of tools for containers & k8s](https://wiki.nikitavoloboev.xyz/operating-systems/containers/kubernetes)
+- [Kubernetes Posts - collection of great posts for kubernetes](https://rimzy.net/category/kubernetes-operator/)
+- [Nubenetes - k8s plugins, extensions, tools, projects](https://nubenetes.com/kubernetes-tools/)
+- [SweetOps - community to share vision on k8s like infrastructure](https://archive.sweetops.com/kubernetes/2020/05/)
+- [Devops Buzz - extend k8s power](https://www.devops.buzz/public/kubernetes/tools)
 ## Contributing
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on the process for submitting pull requests.

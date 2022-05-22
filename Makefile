@@ -43,27 +43,27 @@ ifndef OPERATOR_IMAGE_REPO
 endif
 
 ifndef RELEASE_VERSION
-  RELEASE_VERSION=v0.9.0
+  RELEASE_VERSION=v0.10.0
 endif
 
 ifndef DOCKER_VERSION
-  DOCKER_VERSION=20.10.6
+  DOCKER_VERSION=20.10.9
 endif
 
 ifndef CRICTL_VERSION
-  CRICTL_VERSION=v1.21.0
+  CRICTL_VERSION=v1.23.0
 endif
 
 ifndef GOLANG_VERSION
-  GOLANG_VERSION=1.16.4
+  GOLANG_VERSION=1.17.7
 endif
 
 ifndef ALPINE_VERSION
-  ALPINE_VERSION=3.13.9
+  ALPINE_VERSION=3.15.0
 endif
 
 ifndef OPERATORSDK_VERSION
-  OPERATORSDK_VERSION=v1.9.0
+  OPERATORSDK_VERSION=v1.18.0
 endif
 
 ifndef TARGET_PLATFORMS
@@ -270,3 +270,6 @@ remove-webhook-server-using-operator:
 	sed -i "s|enable: true|enable: false|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 
+.PHONY:	e2e-test
+e2e-test:
+	@go test -v ./e2etest

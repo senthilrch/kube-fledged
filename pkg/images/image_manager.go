@@ -73,6 +73,9 @@ type ImageManager struct {
 	busyboxImage              string
 	imagePullPolicy           string
 	serviceAccountName        string
+	imageDeleteJobHostNetwork bool
+	jobPriorityClassName      string
+	canDeleteJob              bool
 	lock                      sync.RWMutex
 }
 
@@ -121,7 +124,10 @@ func NewImageManager(
 	kubeclientset kubernetes.Interface,
 	namespace string,
 	imagePullDeadlineDuration time.Duration,
-	criClientImage, busyboxImage, imagePullPolicy, serviceAccountName string) (*ImageManager, coreinformers.PodInformer) {
+	criClientImage, busyboxImage, imagePullPolicy, serviceAccountName string,
+	imageDeleteJobHostNetwork bool,
+	jobPriorityClassName string,
+	canDeleteJob bool) (*ImageManager, coreinformers.PodInformer) {
 
 	appEqKubefledged, _ := labels.NewRequirement("app", selection.Equals, []string{"kubefledged"})
 	kubefledgedEqImagemanager, _ := labels.NewRequirement("kubefledged", selection.Equals, []string{"kubefledged-image-manager"})
@@ -150,6 +156,9 @@ func NewImageManager(
 		busyboxImage:              busyboxImage,
 		imagePullPolicy:           imagePullPolicy,
 		serviceAccountName:        serviceAccountName,
+		imageDeleteJobHostNetwork: imageDeleteJobHostNetwork,
+		jobPriorityClassName:      jobPriorityClassName,
+		canDeleteJob:              canDeleteJob,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		//AddFunc: ,
@@ -327,8 +336,8 @@ func (m *ImageManager) updateImageCacheStatus(imageCache *fledgedv1alpha2.ImageC
 			iwstatusLock.Unlock()
 			imageCache = iwres.ImageWorkRequest.Imagecache
 			delete(m.imageworkstatus, job)
-			// delete the job
-			if !strings.HasPrefix(job, fakeJobPrefix) {
+			// delete the job if RetentionPolicy is not Retain
+			if !strings.HasPrefix(job, fakeJobPrefix) && m.canDeleteJob {
 				if err := m.kubeclientset.BatchV1().Jobs(imageCache.Namespace).
 					Delete(context.TODO(), job, metav1.DeleteOptions{PropagationPolicy: &deletePropagation}); err != nil {
 					// if for some reason the job cannot be deleted, we'll not retry. rather we continue processing the remaining jobs
@@ -487,7 +496,8 @@ func (m *ImageManager) processNextWorkItem() bool {
 // pullImage pulls the image to the node
 func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
-	newjob, err := newImagePullJob(iwr.Imagecache, iwr.Image, iwr.Node, m.imagePullPolicy, m.busyboxImage, m.serviceAccountName)
+	newjob, err := newImagePullJob(iwr.Imagecache, iwr.Image, iwr.Node, m.imagePullPolicy,
+		m.busyboxImage, m.serviceAccountName, m.jobPriorityClassName)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err
@@ -504,7 +514,8 @@ func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 // deleteImage deletes the image from the node
 func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
-	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion, m.criClientImage, m.serviceAccountName)
+	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion,
+		m.criClientImage, m.serviceAccountName, m.imageDeleteJobHostNetwork, m.jobPriorityClassName)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err

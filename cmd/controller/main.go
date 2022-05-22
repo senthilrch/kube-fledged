@@ -19,6 +19,7 @@ package main
 import (
 	"flag"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -42,6 +43,10 @@ var (
 	imagePullPolicy            string
 	fledgedNameSpace           string
 	serviceAccountName         string
+	imageDeleteJobHostNetwork  bool
+	jobPriorityClassName       string
+	//Default value for when `--job-retention-policy` flag is not set
+	canDeleteJob bool = true
 )
 
 func main() {
@@ -71,7 +76,9 @@ func main() {
 	controller := app.NewController(kubeClient, fledgedClient, fledgedNameSpace,
 		kubeInformerFactory.Core().V1().Nodes(),
 		fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches(),
-		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy, serviceAccountName)
+		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage,
+		busyboxImage, imagePullPolicy, serviceAccountName, imageDeleteJobHostNetwork,
+		jobPriorityClassName, canDeleteJob)
 
 	glog.Info("Starting pre-flight checks")
 	if err = controller.PreFlightChecks(); err != nil {
@@ -101,4 +108,29 @@ func init() {
 		busyboxImage = "busybox:1.29.2"
 	}
 	flag.StringVar(&serviceAccountName, "service-account-name", "", "serviceAccountName used in Jobs created for pulling/deleting images. Optional flag. If not specified the default service account of the namespace is used")
+	flag.BoolVar(&imageDeleteJobHostNetwork, "image-delete-job-host-network", false, "whether the pod for the image delete job should be run with 'HostNetwork: true'. Default value: false")
+	flag.StringVar(&jobPriorityClassName, "job-priority-class-name", "", "priorityClassName of jobs created by kubefledged-controller")
+	flag.Func("job-retention-policy", "sets the retention behavior of finished Image Manager Jobs (default: 'delete')",
+		func(val string) error {
+			const (
+				deletePolicy string = "delete"
+				retainPolicy string = "retain"
+			)
+			switch strings.ToLower(strings.TrimSpace(val)) {
+			case deletePolicy:
+				canDeleteJob = true
+				glog.Infof("Using '%s' Job Retention Policy", deletePolicy)
+				return nil
+			case retainPolicy:
+				canDeleteJob = false
+				glog.Infof("Using '%s' Job Retention Policy", retainPolicy)
+				return nil
+			default:
+				//canDeleteJob is initialized to true already
+				glog.Infof("Failed to set '%s' Job Retention Policy -- invalid input:"+
+					" falling back to '%s' Job Retention Policy", val, deletePolicy)
+				return nil
+			}
+		},
+	)
 }

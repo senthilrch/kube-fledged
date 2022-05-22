@@ -17,6 +17,9 @@ spec:
     {{- if .Values.controller.hostNetwork -}}
       hostNetwork: true
     {{- end }}
+    {{- if .Values.controller.priorityClassName -}}
+      priorityClassName: {{ .Values.controller.priorityClassName }}
+    {{- end }}    
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -35,11 +38,15 @@ spec:
             - "--image-pull-deadline-duration={{ .Values.args.controllerImagePullDeadlineDuration }}"
             - "--image-cache-refresh-frequency={{ .Values.args.controllerImageCacheRefreshFrequency }}"
             - "--image-pull-policy={{ .Values.args.controllerImagePullPolicy }}"
+            - "--image-delete-job-host-network={{ .Values.args.controllerImageDeleteJobHostNetwork }}"
           {{- if .Values.args.controllerServiceAccountName }}
             - "--service-account-name={{ .Values.args.controllerServiceAccountName }}"
           {{- end }}
-          {{- if .Values.args.jobPriorityClassName }}
-            - "--job-priority-class-name={{ .Values.args.jobPriorityClassName }}"
+          {{- if .Values.args.controllerJobPriorityClassName }}
+            - "--job-priority-class-name={{ .Values.args.controllerJobPriorityClassName }}"
+          {{- end }}
+          {{- if .Values.args.controllerJobRetentionPolicy }}
+            - "--job-retention-policy={{ .Values.args.controllerJobRetentionPolicy }}"
           {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:

@@ -31,7 +31,9 @@ import (
 )
 
 // newImagePullJob constructs a job manifest for pulling an image to a node
-func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node, imagePullPolicy string, busyboxImage string, serviceAccountName string) (*batchv1.Job, error) {
+func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node,
+	imagePullPolicy string, busyboxImage string, serviceAccountName string,
+	jobPriorityClassName string) (*batchv1.Job, error) {
 	var pullPolicy corev1.PullPolicy = corev1.PullIfNotPresent
 	hostname := node.Labels["kubernetes.io/hostname"]
 	if imagecache == nil {
@@ -132,11 +134,16 @@ func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node 
 	if serviceAccountName != "" {
 		job.Spec.Template.Spec.ServiceAccountName = serviceAccountName
 	}
+	if jobPriorityClassName != "" {
+		job.Spec.Template.Spec.PriorityClassName = jobPriorityClassName
+	}
 	return job, nil
 }
 
 // newImageDeleteJob constructs a job manifest to delete an image from a node
-func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node, containerRuntimeVersion string, dockerclientimage string, serviceAccountName string) (*batchv1.Job, error) {
+func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, node *corev1.Node,
+	containerRuntimeVersion string, dockerclientimage string, serviceAccountName string,
+	imageDeleteJobHostNetwork bool, jobPriorityClassName string) (*batchv1.Job, error) {
 	hostname := node.Labels["kubernetes.io/hostname"]
 	if imagecache == nil {
 		glog.Error("imagecache pointer is nil")
@@ -207,6 +214,7 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 					},
 					RestartPolicy:    corev1.RestartPolicyNever,
 					ImagePullSecrets: imagecache.Spec.ImagePullSecrets,
+					HostNetwork:      imageDeleteJobHostNetwork,
 					Tolerations: []corev1.Toleration{
 						{
 							Operator: corev1.TolerationOpExists,
@@ -228,6 +236,9 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 	}
 	if serviceAccountName != "" {
 		job.Spec.Template.Spec.ServiceAccountName = serviceAccountName
+	}
+	if jobPriorityClassName != "" {
+		job.Spec.Template.Spec.PriorityClassName = jobPriorityClassName
 	}
 	return job, nil
 }

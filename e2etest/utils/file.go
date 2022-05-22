@@ -1,8 +1,5 @@
-//go:build !windows
-// +build !windows
-
 /*
-Copyright 2018 The kube-fledged authors.
+Copyright 2022 The kube-fledged authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,11 +14,22 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package signals
+package utils
 
 import (
-	"os"
-	"syscall"
+	"io/ioutil"
+	"strings"
+	"testing"
 )
 
-var shutdownSignals = []os.Signal{os.Interrupt, syscall.SIGTERM}
+//Sed basically does 'sed'-like string replacement on files and returns a string
+func Sed(t *testing.T, old, new, filePath string) string {
+	t.Helper()
+
+	oldFileByteSlice, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		t.Fatalf("failed to read file %s", filePath)
+	}
+
+	return strings.ReplaceAll(string(oldFileByteSlice), old, new)
+}

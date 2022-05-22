@@ -25,7 +25,7 @@ verify_go_version
 
 if ! which golint > /dev/null; then
   echo 'Can not find golint, install with:'
-  echo 'go get -u golang.org/x/lint/golint'
+  echo 'go install golang.org/x/lint/golint'
   exit 1
 fi
 

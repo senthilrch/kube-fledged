@@ -18,6 +18,9 @@ spec:
     {{- if .Values.webhookServer.hostNetwork -}}
       hostNetwork: true
     {{- end }}
+    {{- if .Values.webhookServer.priorityClassName -}}
+      priorityClassName: {{ .Values.webhookServer.priorityClassName }}
+    {{- end }}     
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
