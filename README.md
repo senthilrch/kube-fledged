@@ -338,6 +338,14 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 `--stderrthreshold:` Log level. set the value of this flag to INFO
 
+### advanced options
+  
+#### use custom container socket location on node
+
+label your node with `kubefledged.io/containerRuntimeLocation` with as value the appropriate path 
+
+```kubectl label nodes <your-node-name> kubefledged.io/containerRuntimeLocation=/run/k3s/containerd/containerd.sock```
+
 ## Supported Container Runtimes
 
 - docker
