@@ -225,7 +225,7 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 		},
 	}
 	if crl, ok := node.Labels["kubefledged.io/containerRuntimeLocation"]; ok {
-		_ = crl
+		crl = strings.ReplaceAll(crl, "_", "/")
 		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", fmt.Sprintf("exec /usr/bin/crictl --runtime-endpoint=unix://%s  --image-endpoint=unix://%s rmi ", crl, crl) + image + " > /dev/termination-log 2>&1"}
 		job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = crl
 		job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = crl
