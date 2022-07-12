@@ -224,15 +224,22 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 			},
 		},
 	}
-	if strings.Contains(containerRuntimeVersion, "containerd") {
-		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///run/containerd/containerd.sock  --image-endpoint=unix:///run/containerd/containerd.sock rmi " + image + " > /dev/termination-log 2>&1"}
-		job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = "/run/containerd/containerd.sock"
-		job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = "/run/containerd/containerd.sock"
-	}
-	if strings.Contains(containerRuntimeVersion, "crio") || strings.Contains(containerRuntimeVersion, "cri-o") {
-		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///var/run/crio/crio.sock  --image-endpoint=unix:///var/run/crio/crio.sock rmi " + image + " > /dev/termination-log 2>&1"}
-		job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = "/var/run/crio/crio.sock"
-		job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = "/var/run/crio/crio.sock"
+	if crl, ok := node.Labels["kubefledged.io/containerRuntimeLocation"]; ok {
+		crl = strings.ReplaceAll(crl, "_", "/")
+		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", fmt.Sprintf("exec /usr/bin/crictl --runtime-endpoint=unix://%s  --image-endpoint=unix://%s rmi ", crl, crl) + image + " > /dev/termination-log 2>&1"}
+		job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = crl
+		job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = crl
+	} else {
+		if strings.Contains(containerRuntimeVersion, "containerd") {
+			job.Spec.Template.Spec.Containers[0].Args = []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///run/containerd/containerd.sock  --image-endpoint=unix:///run/containerd/containerd.sock rmi " + image + " > /dev/termination-log 2>&1"}
+			job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = "/run/containerd/containerd.sock"
+			job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = "/run/containerd/containerd.sock"
+		}
+		if strings.Contains(containerRuntimeVersion, "crio") || strings.Contains(containerRuntimeVersion, "cri-o") {
+			job.Spec.Template.Spec.Containers[0].Args = []string{"-c", "exec /usr/bin/crictl --runtime-endpoint=unix:///var/run/crio/crio.sock  --image-endpoint=unix:///var/run/crio/crio.sock rmi " + image + " > /dev/termination-log 2>&1"}
+			job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = "/var/run/crio/crio.sock"
+			job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = "/var/run/crio/crio.sock"
+		}
 	}
 	if serviceAccountName != "" {
 		job.Spec.Template.Spec.ServiceAccountName = serviceAccountName
