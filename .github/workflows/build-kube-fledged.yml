@@ -93,7 +93,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        go get -u golang.org/x/lint/golint
+        go install golang.org/x/lint/golint@latest
 
     - name: Run verify scripts
       run: |
