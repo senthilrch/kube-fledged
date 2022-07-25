@@ -14,7 +14,7 @@ webhookServer:
 image:
   kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
   kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client
-  busyboxImageRepository: gcr.io/google-containers/busybox
+  busyboxImageRepository: busybox
   busyboxImageVersion: "1.27.2"
   kubefledgedWebhookServerRepository: docker.io/senthilrch/kubefledged-webhook-server
   pullPolicy: Always
