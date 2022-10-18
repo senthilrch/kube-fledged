@@ -47,23 +47,23 @@ ifndef RELEASE_VERSION
 endif
 
 ifndef DOCKER_VERSION
-  DOCKER_VERSION=20.10.9
+  DOCKER_VERSION=20.10.18
 endif
 
 ifndef CRICTL_VERSION
-  CRICTL_VERSION=v1.23.0
+  CRICTL_VERSION=v1.25.0
 endif
 
 ifndef GOLANG_VERSION
-  GOLANG_VERSION=1.17.7
+  GOLANG_VERSION=1.19.1
 endif
 
 ifndef ALPINE_VERSION
-  ALPINE_VERSION=3.15.0
+  ALPINE_VERSION=3.16.2
 endif
 
 ifndef OPERATORSDK_VERSION
-  OPERATORSDK_VERSION=v1.18.0
+  OPERATORSDK_VERSION=v1.23.0
 endif
 
 ifndef TARGET_PLATFORMS
@@ -211,21 +211,21 @@ deploy-using-operator:
 	# Create the namespace
 	-kubectl create namespace ${KUBEFLEDGED_NAMESPACE}
 	# Deploy the operator
-	sed -i "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/service_account.yaml
-	sed -i "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
-	sed -i "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/operator.yaml
+	sed -i '' "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/service_account.yaml
+	sed -i '' "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
+	sed -i '' "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/operator.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_kubefledgeds_crd.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/service_account.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/clusterrole.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/operator.yaml
 	# Deploy kube-fledged
-	sed -i "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
+	sed -i '' "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	kubectl rollout status deployment kubefledged-operator -n ${KUBEFLEDGED_NAMESPACE} --watch
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 
 deploy-webhook-server-using-operator:
-	sed -i "s|enable: false|enable: true|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
+	sed -i '' "s|enable: false|enable: true|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 
 update:
@@ -267,7 +267,7 @@ remove-kubefledged-and-operator:
 	-git checkout deploy/kubefledged-operator/deploy/service_account.yaml
 
 remove-webhook-server-using-operator:
-	sed -i "s|enable: true|enable: false|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
+	sed -i '' "s|enable: true|enable: false|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 
 .PHONY:	e2e-test
