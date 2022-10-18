@@ -49,7 +49,7 @@ func newTestImageManager(kubeclientset kubernetes.Interface, imagepullpolicy str
 	jobpriorityclassname string, candeletejob bool) (*ImageManager, coreinformers.PodInformer) {
 	imagePullDeadlineDuration := time.Millisecond * 10
 	criClientImage := "senthilrch/fledged-docker-client:latest"
-	busyboxImage := "busybox:latest"
+	busyboxImage := "senthilrch/busybox:1.35.0"
 	imagePullPolicy := imagepullpolicy
 	serviceAccountName := serviceaccountname
 	imageDeleteJobHostNetwork := imagedeletejobhostnetwork

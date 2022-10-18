@@ -105,7 +105,7 @@ func init() {
 		criClientImage = "senthilrch/kubefledged-cri-client:latest"
 	}
 	if busyboxImage = os.Getenv("BUSYBOX_IMAGE"); busyboxImage == "" {
-		busyboxImage = "busybox:1.29.2"
+		busyboxImage = "senthilrch/busybox:1.35.0"
 	}
 	flag.StringVar(&serviceAccountName, "service-account-name", "", "serviceAccountName used in Jobs created for pulling/deleting images. Optional flag. If not specified the default service account of the namespace is used")
 	flag.BoolVar(&imageDeleteJobHostNetwork, "image-delete-job-host-network", false, "whether the pod for the image delete job should be run with 'HostNetwork: true'. Default value: false")
