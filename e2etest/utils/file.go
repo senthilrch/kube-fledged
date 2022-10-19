@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-//Sed basically does 'sed'-like string replacement on files and returns a string
+// Sed basically does 'sed'-like string replacement on files and returns a string
 func Sed(t *testing.T, old, new, filePath string) string {
 	t.Helper()
 

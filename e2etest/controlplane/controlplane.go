@@ -45,7 +45,7 @@ const (
 	webhookServerPodSelector               = "app=kubefledged,kubefledged=kubefledged-webhook-server"
 )
 
-//HandlerConfig is a config for the kube-fledged control plane
+// HandlerConfig is a config for the kube-fledged control plane
 type HandlerConfig struct {
 	Strategy            DeployStrategy
 	YamlDir             string
@@ -65,7 +65,7 @@ type HandlerConfig struct {
 	crFilepath string
 }
 
-//Handler is an intermittent object during control plane creation/deletion. This abstracts away the installation and deletion complexities
+// Handler is an intermittent object during control plane creation/deletion. This abstracts away the installation and deletion complexities
 type Handler struct {
 	CreateFn  func(context.Context) error
 	IsCreated func(context.Context) bool
@@ -73,7 +73,7 @@ type Handler struct {
 	IsDeleted func(context.Context) bool
 }
 
-//NewHandler returns a Create-able and Delete-able object
+// NewHandler returns a Create-able and Delete-able object
 func NewHandler(t *testing.T, config HandlerConfig) *Handler {
 	t.Helper()
 
@@ -380,7 +380,7 @@ func NewHandler(t *testing.T, config HandlerConfig) *Handler {
 	return nil
 }
 
-//Create kube-fledged control plane and verify deployment
+// Create kube-fledged control plane and verify deployment
 func (h *Handler) Create(ctx context.Context, t *testing.T) error {
 	t.Helper()
 	err := h.CreateFn(ctx)
@@ -395,7 +395,7 @@ func (h *Handler) Create(ctx context.Context, t *testing.T) error {
 	return nil
 }
 
-//Delete kube-fledged control plane and verify deletion
+// Delete kube-fledged control plane and verify deletion
 func (h *Handler) Delete(ctx context.Context, t *testing.T) error {
 	t.Helper()
 	err := h.DeleteFn(ctx)

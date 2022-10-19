@@ -46,7 +46,7 @@ var (
 	imageDeleteJobHostNetwork  bool
 	jobPriorityClassName       string
 	//Default value for when `--job-retention-policy` flag is not set
-	canDeleteJob bool = true
+	canDeleteJob  bool = true
 	criSocketPath string
 )
 

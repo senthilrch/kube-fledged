@@ -25,7 +25,7 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-//ArePodsWithLabelRunningEventually asserts Pod successfully reaching Running state
+// ArePodsWithLabelRunningEventually asserts Pod successfully reaching Running state
 func ArePodsWithLabelRunningEventually(
 	ctx context.Context,
 	namespace string,
@@ -54,7 +54,7 @@ func ArePodsWithLabelRunningEventually(
 	return false
 }
 
-//ArePodsWithLabelDeletedEventually assert Pod deletion
+// ArePodsWithLabelDeletedEventually assert Pod deletion
 func ArePodsWithLabelDeletedEventually(
 	ctx context.Context,
 	namespace string,

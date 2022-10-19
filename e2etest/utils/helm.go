@@ -31,7 +31,7 @@ import (
 
 const helmDriver = "memory"
 
-//NewHelmDefaultConfig generates a default action Configuration (for use with helm commands)
+// NewHelmDefaultConfig generates a default action Configuration (for use with helm commands)
 func NewHelmDefaultConfig(t *testing.T, releaseName, releaseNamespace, kubeconfigPath string) *action.Configuration {
 	t.Helper()
 
@@ -52,7 +52,7 @@ func NewHelmDefaultConfig(t *testing.T, releaseName, releaseNamespace, kubeconfi
 	return actionConfig
 }
 
-//DeleteCRDs is there to delete CRDs especially when helm wouldn't after a 'helm uninstall'.
+// DeleteCRDs is there to delete CRDs especially when helm wouldn't after a 'helm uninstall'.
 // Ref: https://helm.sh/docs/topics/charts/#limitations-on-crds
 func DeleteCRDs(ctx context.Context, t *testing.T, cfg *rest.Config, crdNames []string) error {
 	t.Helper()

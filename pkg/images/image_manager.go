@@ -76,7 +76,7 @@ type ImageManager struct {
 	imageDeleteJobHostNetwork bool
 	jobPriorityClassName      string
 	canDeleteJob              bool
-	criSocketPath string
+	criSocketPath             string
 	lock                      sync.RWMutex
 }
 
@@ -161,7 +161,7 @@ func NewImageManager(
 		imageDeleteJobHostNetwork: imageDeleteJobHostNetwork,
 		jobPriorityClassName:      jobPriorityClassName,
 		canDeleteJob:              canDeleteJob,
-		criSocketPath: criSocketPath,
+		criSocketPath:             criSocketPath,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		//AddFunc: ,
