@@ -145,6 +145,7 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 	containerRuntimeVersion string, dockerclientimage string, serviceAccountName string,
 	imageDeleteJobHostNetwork bool, jobPriorityClassName string, criSocketPath string) (*batchv1.Job, error) {
 	hostname := node.Labels["kubernetes.io/hostname"]
+	socketPath := ""
 	if imagecache == nil {
 		glog.Error("imagecache pointer is nil")
 		return nil, fmt.Errorf("imagecache pointer is nil")
@@ -226,7 +227,7 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 	}
 	if strings.Contains(containerRuntimeVersion, "containerd") {
 		if criSocketPath == "" {
-			socketPath := "/run/containerd/containerd.sock"
+			socketPath = "/run/containerd/containerd.sock"
 		}
 		deleteCommand := "exec /usr/bin/crictl --runtime-endpoint=unix://" + socketPath + " --image-endpoint=unix://" + socketPath + " rmi " + image + " > /dev/termination-log 2>&1"
 		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", deleteCommand}
@@ -235,7 +236,7 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 	}
 	if strings.Contains(containerRuntimeVersion, "crio") || strings.Contains(containerRuntimeVersion, "cri-o") {
 		if criSocketPath == "" {
-			socketPath := "/var/run/crio/crio.sock"
+			socketPath = "/var/run/crio/crio.sock"
 		}
 		deleteCommand := "exec /usr/bin/crictl --runtime-endpoint=unix://" + socketPath + " --image-endpoint=unix://" + socketPath + " rmi " + image + " > /dev/termination-log 2>&1"
 		job.Spec.Template.Spec.Containers[0].Args = []string{"-c", deleteCommand}
@@ -244,7 +245,7 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 	}
 	if strings.Contains(containerRuntimeVersion, "docker") {
 		if criSocketPath == "" {
-			socketPath := "/var/run/docker.sock"
+			socketPath = "/var/run/docker.sock"
 		}
 		job.Spec.Template.Spec.Containers[0].VolumeMounts[0].MountPath = socketPath
 		job.Spec.Template.Spec.Volumes[0].VolumeSource.HostPath.Path = socketPath

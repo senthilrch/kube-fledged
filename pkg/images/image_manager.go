@@ -518,7 +518,7 @@ func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
 	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion,
-		m.criClientImage, m.serviceAccountName, m.imageDeleteJobHostNetwork, m.jobPriorityClassName)
+		m.criClientImage, m.serviceAccountName, m.imageDeleteJobHostNetwork, m.jobPriorityClassName, m.criSocketPath)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err
