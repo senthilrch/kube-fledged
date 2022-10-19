@@ -46,7 +46,7 @@ var node = corev1.Node{
 
 func newTestImageManager(kubeclientset kubernetes.Interface, imagepullpolicy string,
 	serviceaccountname string, imagedeletejobhostnetwork bool,
-	jobpriorityclassname string, candeletejob bool) (*ImageManager, coreinformers.PodInformer) {
+	jobpriorityclassname string, candeletejob bool, criSocketPath string) (*ImageManager, coreinformers.PodInformer) {
 	imagePullDeadlineDuration := time.Millisecond * 10
 	criClientImage := "senthilrch/fledged-docker-client:latest"
 	busyboxImage := "senthilrch/busybox:1.35.0"
@@ -55,12 +55,13 @@ func newTestImageManager(kubeclientset kubernetes.Interface, imagepullpolicy str
 	imageDeleteJobHostNetwork := imagedeletejobhostnetwork
 	jobPriorityClassName := jobpriorityclassname
 	canDeleteJob := candeletejob
+	criSocketPath := criSocketPath
 	imagecacheworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImageCaches")
 	imageworkqueue := workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "ImagePullerStatus")
 
 	imagemanager, podInformer := NewImageManager(imagecacheworkqueue, imageworkqueue, kubeclientset,
 		fledgedNameSpace, imagePullDeadlineDuration, criClientImage, busyboxImage, imagePullPolicy,
-		serviceAccountName, imageDeleteJobHostNetwork, jobPriorityClassName, canDeleteJob)
+		serviceAccountName, imageDeleteJobHostNetwork, jobPriorityClassName, canDeleteJob, criSocketPath)
 	imagemanager.podsSynced = func() bool { return true }
 
 	return imagemanager, podInformer

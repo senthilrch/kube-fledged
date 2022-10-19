@@ -47,6 +47,7 @@ var (
 	jobPriorityClassName       string
 	//Default value for when `--job-retention-policy` flag is not set
 	canDeleteJob bool = true
+	criSocketPath string
 )
 
 func main() {
@@ -78,7 +79,7 @@ func main() {
 		fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches(),
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage,
 		busyboxImage, imagePullPolicy, serviceAccountName, imageDeleteJobHostNetwork,
-		jobPriorityClassName, canDeleteJob)
+		jobPriorityClassName, canDeleteJob, criSocketPath)
 
 	glog.Info("Starting pre-flight checks")
 	if err = controller.PreFlightChecks(); err != nil {
@@ -133,4 +134,5 @@ func init() {
 			}
 		},
 	)
+	flag.StringVar(&criSocketPath, "cri-socket-path", "", "path to the cri socket on the node e.g. /run/containerd/containerd.sock (default: /var/run/docker.sock, /run/containerd/containerd.sock, /var/run/crio/crio.sock, ")
 }
