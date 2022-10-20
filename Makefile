@@ -204,6 +204,7 @@ deploy-using-yaml:
 	kubectl apply -f deploy/kubefledged-deployment-webhook-server.yaml
 	kubectl apply -f deploy/kubefledged-service-webhook-server.yaml
 	kubectl rollout status deployment kubefledged-webhook-server -n kube-fledged --watch
+	kubectl get pods -n kube-fledged
 
 deploy-using-operator:
 	# Create the namespace
@@ -223,6 +224,10 @@ deploy-using-operator:
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	sed -i '' "s|enable: false|enable: true|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
+	# Wait for the controller and webhook-server
+	kubectl rollout status deployment kube-fledged-controller -n ${KUBEFLEDGED_NAMESPACE} --watch
+	kubectl rollout status deployment kube-fledged-webhook-server -n ${KUBEFLEDGED_NAMESPACE} --watch
+	kubectl get pods -n ${KUBEFLEDGED_NAMESPACE}
 
 update:
 	kubectl scale deployment kubefledged-controller --replicas=0 -n kube-fledged
@@ -237,12 +242,6 @@ remove-kubefledged:
 	-kubectl delete clusterrole -l app=kubefledged
 	-kubectl delete crd -l app=kubefledged
 	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
-	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
-	-kubectl delete deploy -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
-	-kubectl delete service -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
-	-kubectl delete clusterrolebinding -l app=kubefledged,kubefledged=kubefledged-webhook-server
-	-kubectl delete clusterrole -l app=kubefledged,kubefledged=kubefledged-webhook-server
-	-kubectl delete serviceaccount -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
 
 remove-kubefledged-and-operator:
 	# Remove kubefledged
@@ -259,8 +258,6 @@ remove-kubefledged-and-operator:
 	-git checkout deploy/kubefledged-operator/deploy/operator.yaml
 	-git checkout deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
 	-git checkout deploy/kubefledged-operator/deploy/service_account.yaml
-	sed -i '' "s|enable: true|enable: false|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
-	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 
 .PHONY:	e2e-test
 e2e-test:
