@@ -48,7 +48,7 @@ jobs:
       dockerfile_operator: deploy/kubefledged-operator/build/Dockerfile
       dockerfile_webhook_server: build/Dockerfile.webhook_server
       operator_image_repo: docker.io/senthilrch/kubefledged-operator
-      operator_target_platforms: linux/amd64,linux/arm64
+      operator_target_platforms: linux/amd64
       push_image: true
       target_platforms: linux/amd64
       webhook_server_image_repo: docker.io/senthilrch/kubefledged-webhook-server
