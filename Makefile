@@ -195,8 +195,6 @@ deploy-using-yaml:
 	kubectl apply -f deploy/kubefledged-clusterrolebinding-controller.yaml
 	kubectl apply -f deploy/kubefledged-deployment-controller.yaml
 	kubectl rollout status deployment kubefledged-controller -n kube-fledged --watch
-
-deploy-webhook-server-using-yaml:
 	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
 	kubectl apply -f deploy/kubefledged-validatingwebhook.yaml
 	-kubectl delete deploy -l app=kubefledged,kubefledged=kubefledged-webhook-server
@@ -223,8 +221,6 @@ deploy-using-operator:
 	sed -i '' "s|{{KUBEFLEDGED_NAMESPACE}}|${KUBEFLEDGED_NAMESPACE}|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	kubectl rollout status deployment kubefledged-operator -n ${KUBEFLEDGED_NAMESPACE} --watch
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
-
-deploy-webhook-server-using-operator:
 	sed -i '' "s|enable: false|enable: true|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 
@@ -241,8 +237,6 @@ remove-kubefledged:
 	-kubectl delete clusterrole -l app=kubefledged
 	-kubectl delete crd -l app=kubefledged
 	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
-
-remove-webhook-server:
 	-kubectl delete validatingwebhookconfigurations -l app=kubefledged
 	-kubectl delete deploy -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
 	-kubectl delete service -l app=kubefledged,kubefledged=kubefledged-webhook-server -n kube-fledged
@@ -265,8 +259,6 @@ remove-kubefledged-and-operator:
 	-git checkout deploy/kubefledged-operator/deploy/operator.yaml
 	-git checkout deploy/kubefledged-operator/deploy/clusterrole_binding.yaml
 	-git checkout deploy/kubefledged-operator/deploy/service_account.yaml
-
-remove-webhook-server-using-operator:
 	sed -i '' "s|enable: true|enable: false|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 

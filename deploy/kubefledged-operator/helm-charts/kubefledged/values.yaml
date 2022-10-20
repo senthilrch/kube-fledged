@@ -8,7 +8,7 @@ controller:
   hostNetwork: false
   priorityClassName: ""
 webhookServer:
-  enable: false
+  enable: true
   hostNetwork: false
   priorityClassName: ""
 image:
@@ -30,6 +30,7 @@ args:
   controllerImageDeleteJobHostNetwork: false
   controllerJobPriorityClassName: ""
   controllerJobRetentionPolicy: "delete"
+  controllerCRISocketPath: ""
   webhookServerLogLevel: INFO
   webhookServerCertFile: /var/run/secrets/webhook-server/tls.crt
   webhookServerKeyFile: /var/run/secrets/webhook-server/tls.key
