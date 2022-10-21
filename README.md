@@ -112,9 +112,8 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
 - Clone the source code repository
 
   ```
-  $ mkdir -p $HOME/src/github.com/senthilrch
-  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
-  $ cd $HOME/src/github.com/senthilrch/kube-fledged
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/kube-fledged
+  $ cd $HOME/kube-fledged
   ```
 
 - Deploy the helm operator and _kube-fledged_ to namespace "kube-fledged". If you need to deploy to a different namespace, export the variable KUBEFLEDGED_NAMESPACE
