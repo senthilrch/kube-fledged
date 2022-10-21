@@ -76,6 +76,7 @@ type ImageManager struct {
 	imageDeleteJobHostNetwork bool
 	jobPriorityClassName      string
 	canDeleteJob              bool
+	criSocketPath             string
 	lock                      sync.RWMutex
 }
 
@@ -127,7 +128,8 @@ func NewImageManager(
 	criClientImage, busyboxImage, imagePullPolicy, serviceAccountName string,
 	imageDeleteJobHostNetwork bool,
 	jobPriorityClassName string,
-	canDeleteJob bool) (*ImageManager, coreinformers.PodInformer) {
+	canDeleteJob bool,
+	criSocketPath string) (*ImageManager, coreinformers.PodInformer) {
 
 	appEqKubefledged, _ := labels.NewRequirement("app", selection.Equals, []string{"kubefledged"})
 	kubefledgedEqImagemanager, _ := labels.NewRequirement("kubefledged", selection.Equals, []string{"kubefledged-image-manager"})
@@ -159,6 +161,7 @@ func NewImageManager(
 		imageDeleteJobHostNetwork: imageDeleteJobHostNetwork,
 		jobPriorityClassName:      jobPriorityClassName,
 		canDeleteJob:              canDeleteJob,
+		criSocketPath:             criSocketPath,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		//AddFunc: ,
@@ -515,7 +518,7 @@ func (m *ImageManager) pullImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 	// Construct the Job manifest
 	newjob, err := newImageDeleteJob(iwr.Imagecache, iwr.Image, iwr.Node, iwr.ContainerRuntimeVersion,
-		m.criClientImage, m.serviceAccountName, m.imageDeleteJobHostNetwork, m.jobPriorityClassName)
+		m.criClientImage, m.serviceAccountName, m.imageDeleteJobHostNetwork, m.jobPriorityClassName, m.criSocketPath)
 	if err != nil {
 		glog.Errorf("Error when constructing job manifest: %v", err)
 		return nil, err

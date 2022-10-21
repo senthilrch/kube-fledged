@@ -46,7 +46,8 @@ var (
 	imageDeleteJobHostNetwork  bool
 	jobPriorityClassName       string
 	//Default value for when `--job-retention-policy` flag is not set
-	canDeleteJob bool = true
+	canDeleteJob  bool = true
+	criSocketPath string
 )
 
 func main() {
@@ -78,7 +79,7 @@ func main() {
 		fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches(),
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage,
 		busyboxImage, imagePullPolicy, serviceAccountName, imageDeleteJobHostNetwork,
-		jobPriorityClassName, canDeleteJob)
+		jobPriorityClassName, canDeleteJob, criSocketPath)
 
 	glog.Info("Starting pre-flight checks")
 	if err = controller.PreFlightChecks(); err != nil {
@@ -105,7 +106,7 @@ func init() {
 		criClientImage = "senthilrch/kubefledged-cri-client:latest"
 	}
 	if busyboxImage = os.Getenv("BUSYBOX_IMAGE"); busyboxImage == "" {
-		busyboxImage = "busybox:1.29.2"
+		busyboxImage = "senthilrch/busybox:1.35.0"
 	}
 	flag.StringVar(&serviceAccountName, "service-account-name", "", "serviceAccountName used in Jobs created for pulling/deleting images. Optional flag. If not specified the default service account of the namespace is used")
 	flag.BoolVar(&imageDeleteJobHostNetwork, "image-delete-job-host-network", false, "whether the pod for the image delete job should be run with 'HostNetwork: true'. Default value: false")
@@ -133,4 +134,5 @@ func init() {
 			}
 		},
 	)
+	flag.StringVar(&criSocketPath, "cri-socket-path", "", "path to the cri socket on the node e.g. /run/containerd/containerd.sock (default: /var/run/docker.sock, /run/containerd/containerd.sock, /var/run/crio/crio.sock)")
 }

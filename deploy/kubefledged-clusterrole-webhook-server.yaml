@@ -14,4 +14,4 @@ rules:
       - validatingwebhookconfigurations
     verbs:
       - get
-      - patch
+      - update

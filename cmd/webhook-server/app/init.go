@@ -23,7 +23,6 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
-	"encoding/json"
 	"encoding/pem"
 	"math/big"
 	"os"
@@ -31,7 +30,6 @@ import (
 
 	"github.com/golang/glog"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
@@ -54,7 +52,7 @@ func InitWebhookServer() error {
 			Organization: []string{"kubefledged.io"},
 		},
 		NotBefore:             time.Now(),
-		NotAfter:              time.Now().AddDate(1, 0, 0),
+		NotAfter:              time.Now().AddDate(10, 0, 0),
 		IsCA:                  true,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
@@ -101,7 +99,7 @@ func InitWebhookServer() error {
 			Organization: []string{"kubefledged.io"},
 		},
 		NotBefore:    time.Now(),
-		NotAfter:     time.Now().AddDate(1, 0, 0),
+		NotAfter:     time.Now().AddDate(10, 0, 0),
 		SubjectKeyId: []byte{1, 2, 3, 4, 6},
 		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
 		KeyUsage:     x509.KeyUsageDigitalSignature,
@@ -157,11 +155,11 @@ func InitWebhookServer() error {
 	}
 	glog.Infof("success: server key (tls.key) copied to %s", certKeyPath)
 
-	err = patchValidatingWebhookConfig(caPEM, validatingWebhookConfig)
+	err = updateValidatingWebhookConfig(caPEM, validatingWebhookConfig)
 	if err != nil {
 		return err
 	}
-	glog.Infof("success: validatingwebhookconfiguration %s patched", validatingWebhookConfig)
+	glog.Infof("success: validatingwebhookconfiguration %s updated", validatingWebhookConfig)
 	return nil
 }
 
@@ -180,7 +178,7 @@ func writeFile(filepath string, sCert *bytes.Buffer) error {
 	return nil
 }
 
-func patchValidatingWebhookConfig(caPEM *bytes.Buffer, validatingWebhookConfig string) error {
+func updateValidatingWebhookConfig(caPEM *bytes.Buffer, validatingWebhookConfig string) error {
 
 	cfg, err := rest.InClusterConfig()
 	if err != nil {
@@ -194,39 +192,19 @@ func patchValidatingWebhookConfig(caPEM *bytes.Buffer, validatingWebhookConfig s
 		return err
 	}
 
-	_, err = kubeClient.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(
+	vwc, err := kubeClient.AdmissionregistrationV1().ValidatingWebhookConfigurations().Get(
 		context.TODO(), validatingWebhookConfig, metav1.GetOptions{})
 	if err != nil {
 		glog.Errorf("Error in getting validatingwebhookconfig: %s", err.Error())
 		return err
 	}
 
-	//  patchStringValue specifies a patch operation for a string.
-	type patchStringValue struct {
-		Op    string `json:"op"`
-		Path  string `json:"path"`
-		Value []byte `json:"value"`
-	}
-	/*
-		payload := []patchStringValue{{
-			Op:    "replace",
-			Path:  "/webhooks/0/clientConfig/caBundle",
-			Value: base64.StdEncoding.EncodeToString(caPEM.Bytes()),
-		}}
-	*/
-	payload := []patchStringValue{{
-		Op:    "replace",
-		Path:  "/webhooks/0/clientConfig/caBundle",
-		Value: caPEM.Bytes(),
-	}}
+	vwc.Webhooks[0].ClientConfig.CABundle = caPEM.Bytes()
 
-	payloadBytes, _ := json.Marshal(payload)
-
-	_, err = kubeClient.AdmissionregistrationV1().ValidatingWebhookConfigurations().Patch(
-		context.TODO(), validatingWebhookConfig, types.JSONPatchType, payloadBytes,
-		metav1.PatchOptions{})
+	_, err = kubeClient.AdmissionregistrationV1().ValidatingWebhookConfigurations().Update(
+		context.TODO(), vwc, metav1.UpdateOptions{})
 	if err != nil {
-		glog.Errorf("Error in patching validatingwebhookconfig: %s", err.Error())
+		glog.Errorf("Error in updating validatingwebhookconfig: %s", err.Error())
 		return err
 	}
 

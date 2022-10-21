@@ -16,7 +16,7 @@ limitations under the License.
 
 package controlplane
 
-//DeployStrategy enumerates different ways of deploying kube-fledged control plane
+// DeployStrategy enumerates different ways of deploying kube-fledged control plane
 type DeployStrategy string
 
 const (

@@ -33,7 +33,7 @@ spec:
         - name: WEBHOOK_SERVER_SERVICE
           value: kubefledged-webhook-server
         - name: VALIDATING_WEBHOOK_CONFIG
-          value: kubefledged
+          value: kubefledged-webhook-server
         - name: CERT_KEY_PATH
           value: "/var/run/secrets/webhook-server/"
         volumeMounts:

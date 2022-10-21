@@ -69,9 +69,8 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
 - Clone the source code repository
 
   ```
-  $ mkdir -p $HOME/src/github.com/senthilrch
-  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
-  $ cd $HOME/src/github.com/senthilrch/kube-fledged
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/kube-fledged
+  $ cd $HOME/kube-fledged
   ```
 
 - Deploy _kube-fledged_ to the cluster
@@ -85,12 +84,6 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   ```
   $ kubectl get pods -n kube-fledged -l app=kubefledged
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
-  ```
-
-- Optional: Deploy _kube-fledged webhook server_ to the cluster. This component enables validating the ImageCache CR.
-
-  ```
-  $ make deploy-webhook-server-using-yaml
   ```
 
 ## Quick Install using Helm chart
@@ -110,12 +103,6 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ gpg --keyserver keyserver.ubuntu.com --recv-keys 92D793FA3A6460ED (or) gpg --keyserver pgp.mit.edu --recv-keys 92D793FA3A6460ED
   $ gpg --export >~/.gnupg/pubring.gpg
   $ helm install --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
-  ```
-
-- Optional: Verify and install kube-fledged webhook server. This component enables validating the ImageCache CR.
-
-  ```
-  $ helm upgrade --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --set webhookServer.enable=true --wait
   ```
 
 ## Quick Install using Helm operator
@@ -143,12 +130,6 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ kubectl get imagecaches -n kube-fledged (Output should be: 'No resources found')
   ```
 
-- Optional: Deploy _kube-fledged webhook server_ to the cluster. This component enables validating the ImageCache CR.
-
-  ```
-  $ make deploy-webhook-server-using-operator
-  ```
-
 ## Helm chart parameters
 
 Parameters of the helm chart are documented [here](docs/helm-parameters.md)
@@ -162,9 +143,8 @@ These instructions will help you build _kube-fledged_ from source and deploy it 
 - Clone the source code repository
 
   ```
-  $ mkdir -p $HOME/src/github.com/senthilrch
-  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/src/github.com/senthilrch/kube-fledged
-  $ cd $HOME/src/github.com/senthilrch/kube-fledged
+  $ git clone https://github.com/senthilrch/kube-fledged.git $HOME/kube-fledged
+  $ cd $HOME/kube-fledged
   ```
 
 - If you are behind a proxy, export the following ENV variables (UPPER case)
@@ -303,14 +283,6 @@ $ helm delete kube-fledged -n ${KUBEFLEDGED_NAMESPACE} (if you deployed using He
 $ make remove-kubefledged-and-operator (if you deployed using Helm Operator)
 ```
 
-Note: To remove the _kube-fledged webhook server_ alone. 
-
-```
-$ make remove-webhook-server (if you deployed using YAML manifests)
-$ helm upgrade kube-fledged deploy/kubefledged-operator/helm-charts/kubefledged -n ${KUBEFLEDGED_NAMESPACE} --set webhookServer.enable=false --wait --debug (if you deployed using Helm chart)
-$ make remove-webhook-server-using-operator (if you deployed using Helm Operator)
-```
-
 ## How it works
 
 Kubernetes allows developers to extend the kubernetes api via [Custom Resources](https://kubernetes.io/docs/concepts/extend-kubernetes/api-extension/custom-resources/). _kube-fledged_ defines a custom resource of kind “ImageCache” and implements a custom controller (named _kubefledged-controller_). _kubefledged-controller_ does the heavy-lifting for managing image cache. Users can use kubectl commands for creation and deletion of ImageCache resources.
@@ -321,6 +293,8 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 
 ## Configuration Flags for Kubefledged Controller
+
+`--cri-socket-path:` path to the cri socket on the node e.g. /run/containerd/containerd.sock (default: /var/run/docker.sock, /run/containerd/containerd.sock, /var/run/crio/crio.sock)
 
 `--image-cache-refresh-frequency:` The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to "0s" will disable refresh. default "15m"
 
