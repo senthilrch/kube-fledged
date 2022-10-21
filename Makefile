@@ -225,6 +225,7 @@ deploy-using-operator:
 	sed -i '' "s|enable: false|enable: true|g" deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	kubectl apply -f deploy/kubefledged-operator/deploy/crds/charts.helm.kubefledged.io_v1alpha2_kubefledged_cr.yaml
 	# Wait for the controller and webhook-server
+	sleep 5
 	kubectl rollout status deployment kube-fledged-controller -n ${KUBEFLEDGED_NAMESPACE} --watch
 	kubectl rollout status deployment kube-fledged-webhook-server -n ${KUBEFLEDGED_NAMESPACE} --watch
 	kubectl get pods -n ${KUBEFLEDGED_NAMESPACE}
