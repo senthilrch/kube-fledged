@@ -145,7 +145,7 @@ func newImageDeleteJob(imagecache *fledgedv1alpha2.ImageCache, image string, nod
 	containerRuntimeVersion string, dockerclientimage string, serviceAccountName string,
 	imageDeleteJobHostNetwork bool, jobPriorityClassName string, criSocketPath string) (*batchv1.Job, error) {
 	hostname := node.Labels["kubernetes.io/hostname"]
-	socketPath := ""
+	socketPath := criSocketPath
 	if imagecache == nil {
 		glog.Error("imagecache pointer is nil")
 		return nil, fmt.Errorf("imagecache pointer is nil")

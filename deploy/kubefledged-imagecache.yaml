@@ -4,6 +4,7 @@ kind: ImageCache
 metadata:
   # Name of the image cache. A cluster can have multiple image cache objects
   name: imagecache1
+  namespace: kube-fledged
   # The kubernetes namespace to be used for this image cache. You can choose a different namepace as per your preference
   labels:
     app: kubefledged
