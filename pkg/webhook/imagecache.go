@@ -36,6 +36,9 @@ const (
      ]`
 )
 
+const imageCachePurgeAnnotationKey = "kubefledged.io/purge-imagecache"
+const imageCacheRefreshAnnotationKey = "kubefledged.io/refresh-imagecache"
+
 // MutateImageCache modifies image cache resource
 /*
 func MutateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
@@ -112,9 +115,23 @@ func ValidateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 			}
 		}
 
-		if imageCache.Status.Status == fledgedv1alpha2.ImageCacheActionStatusProcessing {
-			glog.Error("Previous image cache operation under processing. New operation not allowed now")
-			return toV1AdmissionResponse(fmt.Errorf("Previous image cache operation under processing. New operation not allowed now"))
+		if oldImageCache.Status.Status == fledgedv1alpha2.ImageCacheActionStatusProcessing {
+			if !reflect.DeepEqual(oldImageCache.Spec, imageCache.Spec) {
+				glog.Error("Previous image cache operation under processing. New operation not allowed now")
+				return toV1AdmissionResponse(fmt.Errorf("Previous image cache operation under processing. New operation not allowed now"))
+			}
+			if _, ok := oldImageCache.Annotations[imageCachePurgeAnnotationKey]; !ok {
+				if _, ok := imageCache.Annotations[imageCachePurgeAnnotationKey]; ok {
+					glog.Error("Previous image cache operation under processing. New operation not allowed now")
+					return toV1AdmissionResponse(fmt.Errorf("Previous image cache operation under processing. New operation not allowed now"))
+				}
+			}
+			if _, ok := oldImageCache.Annotations[imageCacheRefreshAnnotationKey]; !ok {
+				if _, ok := imageCache.Annotations[imageCacheRefreshAnnotationKey]; ok {
+					glog.Error("Previous image cache operation under processing. New operation not allowed now")
+					return toV1AdmissionResponse(fmt.Errorf("Previous image cache operation under processing. New operation not allowed now"))
+				}
+			}
 		}
 	}
 
