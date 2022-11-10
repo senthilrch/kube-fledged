@@ -72,30 +72,12 @@ func MutateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 // ValidateImageCache validates image cache resource
 func ValidateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 	glog.V(4).Info("admitting image cache")
-	var raw, oldraw []byte
-	var imageCache, oldImageCache fledgedv1alpha2.ImageCache
-
 	reviewResponse := v1.AdmissionResponse{}
 	reviewResponse.Allowed = true
 
-	raw = ar.Request.Object.Raw
-	err := json.Unmarshal(raw, &imageCache)
+	oldImageCache, imageCache, err := extractImageCachesFromAdmissionReview(ar)
 	if err != nil {
-		glog.Error(err)
 		return toV1AdmissionResponse(err)
-	}
-
-	if ar.Request.Operation == v1.Update {
-		oldraw = ar.Request.OldObject.Raw
-		err := json.Unmarshal(oldraw, &oldImageCache)
-		if err != nil {
-			glog.Error(err)
-			return toV1AdmissionResponse(err)
-		}
-		if reflect.DeepEqual(oldImageCache.Spec, imageCache.Spec) {
-			glog.V(4).Info("No change in image cache spec: skipping validation")
-			return &reviewResponse
-		}
 	}
 
 	cacheSpec := imageCache.Spec.CacheSpec
@@ -115,24 +97,6 @@ func ValidateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 				}
 			}
 		}
-		/*
-			if len(i.NodeSelector) > 0 {
-				if nodes, err = c.nodesLister.List(labels.Set(i.NodeSelector).AsSelector()); err != nil {
-					glog.Errorf("Error listing nodes using nodeselector %+v: %v", i.NodeSelector, err)
-					return err
-				}
-			} else {
-				if nodes, err = c.nodesLister.List(labels.Everything()); err != nil {
-					glog.Errorf("Error listing nodes using nodeselector labels.Everything(): %v", err)
-					return err
-				}
-			}
-			glog.V(4).Infof("No. of nodes in %+v is %d", i.NodeSelector, len(nodes))
-			if len(nodes) == 0 {
-				glog.Errorf("NodeSelector %s did not match any nodes.", labels.Set(i.NodeSelector).String())
-				return fmt.Errorf("NodeSelector %s did not match any nodes", labels.Set(i.NodeSelector).String())
-			}
-		*/
 	}
 
 	if ar.Request.Operation == v1.Update {
@@ -147,6 +111,11 @@ func ValidateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 				return toV1AdmissionResponse(fmt.Errorf("Mismatch in node selector"))
 			}
 		}
+
+		if imageCache.Status.Status == fledgedv1alpha2.ImageCacheActionStatusProcessing {
+			glog.Error("Previous image cache operation under processing. New operation not allowed now")
+			return toV1AdmissionResponse(fmt.Errorf("Previous image cache operation under processing. New operation not allowed now"))
+		}
 	}
 
 	glog.Info("Image cache creation/update validated successfully")
@@ -159,4 +128,27 @@ func toV1AdmissionResponse(err error) *v1.AdmissionResponse {
 			Message: err.Error(),
 		},
 	}
+}
+
+func extractImageCachesFromAdmissionReview(ar v1.AdmissionReview) (*fledgedv1alpha2.ImageCache, *fledgedv1alpha2.ImageCache, error) {
+	var raw, oldraw []byte
+	var imageCache, oldImageCache fledgedv1alpha2.ImageCache
+
+	raw = ar.Request.Object.Raw
+	err := json.Unmarshal(raw, &imageCache)
+	if err != nil {
+		glog.Error(err)
+		return nil, nil, err
+	}
+
+	if ar.Request.Operation == v1.Update {
+		oldraw = ar.Request.OldObject.Raw
+		err := json.Unmarshal(oldraw, &oldImageCache)
+		if err != nil {
+			glog.Error(err)
+			return nil, nil, err
+		}
+	}
+
+	return &oldImageCache, &imageCache, nil
 }
