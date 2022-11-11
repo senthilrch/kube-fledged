@@ -48,6 +48,7 @@ var (
 	//Default value for when `--job-retention-policy` flag is not set
 	canDeleteJob  bool = true
 	criSocketPath string
+	jobsMaxSurge  int
 )
 
 func main() {
@@ -79,7 +80,7 @@ func main() {
 		fledgedInformerFactory.Kubefledged().V1alpha2().ImageCaches(),
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage,
 		busyboxImage, imagePullPolicy, serviceAccountName, imageDeleteJobHostNetwork,
-		jobPriorityClassName, canDeleteJob, criSocketPath)
+		jobPriorityClassName, canDeleteJob, criSocketPath, jobsMaxSurge)
 
 	glog.Info("Starting pre-flight checks")
 	if err = controller.PreFlightChecks(); err != nil {
@@ -135,4 +136,9 @@ func init() {
 		},
 	)
 	flag.StringVar(&criSocketPath, "cri-socket-path", "", "path to the cri socket on the node e.g. /run/containerd/containerd.sock (default: /var/run/docker.sock, /run/containerd/containerd.sock, /var/run/crio/crio.sock)")
+	flag.IntVar(&jobsMaxSurge, "jobs-max-surge", 0, "maximum no. of active jobs allowed. default: max surge checks disabled")
+	if jobsMaxSurge < 0 {
+		jobsMaxSurge = 0
+		glog.Warningf("--jobs-max-surge set to incorrect value. max surge checks will be disabled")
+	}
 }

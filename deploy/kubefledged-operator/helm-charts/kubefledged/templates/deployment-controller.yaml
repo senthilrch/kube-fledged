@@ -50,7 +50,10 @@ spec:
           {{- end }}
           {{- if .Values.args.controllerCRISocketPath }}
             - "--cri-socket-path={{ .Values.args.controllerCRISocketPath }}"
-          {{- end }}          
+          {{- end }}
+          {{- if .Values.args.controllerJobsMaxSurge }}
+            - "--jobs-max-surge={{ .Values.args.controllerJobsMaxSurge }}"
+          {{- end }}                    
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: KUBEFLEDGED_NAMESPACE

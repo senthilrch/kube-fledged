@@ -77,6 +77,7 @@ type ImageManager struct {
 	jobPriorityClassName      string
 	canDeleteJob              bool
 	criSocketPath             string
+	jobsMaxSurge              int
 	lock                      sync.RWMutex
 }
 
@@ -129,7 +130,8 @@ func NewImageManager(
 	imageDeleteJobHostNetwork bool,
 	jobPriorityClassName string,
 	canDeleteJob bool,
-	criSocketPath string) (*ImageManager, coreinformers.PodInformer) {
+	criSocketPath string,
+	jobsMaxSurge int) (*ImageManager, coreinformers.PodInformer) {
 
 	appEqKubefledged, _ := labels.NewRequirement("app", selection.Equals, []string{"kubefledged"})
 	kubefledgedEqImagemanager, _ := labels.NewRequirement("kubefledged", selection.Equals, []string{"kubefledged-image-manager"})
@@ -162,6 +164,7 @@ func NewImageManager(
 		jobPriorityClassName:      jobPriorityClassName,
 		canDeleteJob:              canDeleteJob,
 		criSocketPath:             criSocketPath,
+		jobsMaxSurge:              jobsMaxSurge,
 	}
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		//AddFunc: ,
@@ -398,7 +401,7 @@ func (m *ImageManager) Run(stopCh <-chan struct{}) error {
 // processNextWorkItem function in order to read and process a message on the
 // workqueue.
 func (m *ImageManager) runWorker() {
-	for m.processNextWorkItem() {
+	for m.checkJobsMaxSurge() && m.processNextWorkItem() {
 	}
 }
 
@@ -530,4 +533,19 @@ func (m *ImageManager) deleteImage(iwr ImageWorkRequest) (*batchv1.Job, error) {
 		return nil, err
 	}
 	return job, nil
+}
+
+func (m *ImageManager) checkJobsMaxSurge() bool {
+	if m.jobsMaxSurge == 0 {
+		return true
+	}
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	var activeJobs int = 0
+	for _, iwres := range m.imageworkstatus {
+		if iwres.Status == ImageWorkResultStatusJobCreated {
+			activeJobs++
+		}
+	}
+	return activeJobs < m.jobsMaxSurge
 }
