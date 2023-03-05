@@ -14,11 +14,11 @@ spec:
       labels:
         {{- include "kubefledged.selectorLabels" . | nindent 8 }}-controller
     spec:
-    {{- if .Values.controller.hostNetwork -}}
-      hostNetwork: true
+    {{ if .Values.controller.hostNetwork -}}
+      {{ indent 2 "hostNetwork: true" }}
     {{- end }}
-    {{- if .Values.controller.priorityClassName -}}
-      priorityClassName: {{ .Values.controller.priorityClassName }}
+    {{ if .Values.controller.priorityClassName -}}
+      {{ indent 2 (printf "priorityClassName: %s" .Values.controller.priorityClassName) }}
     {{- end }}    
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:

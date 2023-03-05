@@ -16,11 +16,11 @@ spec:
       annotations:
         enforceRestartHackTimestamp: {{ now }}
     spec:
-    {{- if .Values.webhookServer.hostNetwork -}}
-      hostNetwork: true
+    {{ if .Values.webhookServer.hostNetwork -}}
+      {{ indent 2 "hostNetwork: true" }}
     {{- end }}
-    {{- if .Values.webhookServer.priorityClassName -}}
-      priorityClassName: {{ .Values.webhookServer.priorityClassName }}
+    {{ if .Values.webhookServer.priorityClassName -}}
+      {{ indent 2 (printf "priorityClassName: %s" .Values.webhookServer.priorityClassName) }}
     {{- end }}     
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
