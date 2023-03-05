@@ -23,7 +23,7 @@ import (
 	"github.com/pkg/errors"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/kube"
-	apiextensionsv1client "k8s.io/apiextensions-apiserver/pkg/client/clientset/deprecated/typed/apiextensions/v1"
+	apiextensionsv1client "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/rest"
@@ -63,7 +63,7 @@ func DeleteCRDs(ctx context.Context, t *testing.T, cfg *rest.Config, crdNames []
 	}
 
 	for _, crdName := range crdNames {
-		err = client.CustomResourceDefinitions().Delete(crdName, &metav1.DeleteOptions{})
+		err = client.CustomResourceDefinitions().Delete(ctx, crdName, metav1.DeleteOptions{})
 		if err != nil && !k8serrors.IsNotFound(err) {
 			return errors.Wrapf(err, "failed to delete CRD %s", crdName)
 		}
