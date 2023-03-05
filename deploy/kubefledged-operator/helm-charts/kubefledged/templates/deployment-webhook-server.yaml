@@ -1,4 +1,3 @@
-{{- if .Values.webhookServer.enable -}}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,6 +13,8 @@ spec:
     metadata:
       labels:
         {{- include "kubefledged.selectorLabels" . | nindent 8 }}-webhook-server
+      annotations:
+        enforceRestartHackTimestamp: {{ now }}
     spec:
     {{- if .Values.webhookServer.hostNetwork -}}
       hostNetwork: true
@@ -25,31 +26,8 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-      serviceAccountName: {{ include "kubefledged.fullname" . }}-webhook-server
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      initContainers:
-        - image: {{ .Values.image.kubefledgedWebhookServerRepository }}:{{ .Chart.AppVersion }}
-          command: {{ .Values.command.kubefledgedWebhookServerCommand }}
-          args:
-          - "--stderrthreshold=INFO"
-          - "--init-server"
-          imagePullPolicy: Always
-          name: init
-          env:
-          - name: KUBEFLEDGED_NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: WEBHOOK_SERVER_SERVICE
-            value: {{ include "kubefledged.fullname" . }}-webhook-server
-          - name: VALIDATING_WEBHOOK_CONFIG
-            value: {{ include "kubefledged.fullname" . }}-webhook-server
-          - name: CERT_KEY_PATH
-            value: "/var/run/secrets/webhook-server/"
-          volumeMounts:
-          - name: certkey-volume
-            mountPath: "/var/run/secrets/webhook-server"
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
@@ -75,7 +53,9 @@ spec:
             readOnly: true
       volumes:
       - name: certkey-volume
-        emptyDir: {}             
+        secret:
+          defaultMode: 420
+          secretName: {{ include "kubefledged.webhookServerCertSecretName" . | quote }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -88,4 +68,3 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
     {{- end }}
-{{- end }}

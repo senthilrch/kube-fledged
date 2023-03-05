@@ -8,7 +8,6 @@ controller:
   hostNetwork: false
   priorityClassName: ""
 webhookServer:
-  enable: true
   hostNetwork: false
   priorityClassName: ""
 image:
