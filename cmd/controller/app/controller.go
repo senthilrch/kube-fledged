@@ -525,15 +525,17 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 			glog.V(4).Infof("No. of nodes in %+v is %d", i.NodeSelector, len(nodes))
 
 			for _, n := range nodes {
-				for m := range i.Images {
-					ipr := images.ImageWorkRequest{
-						Image:                   i.Images[m],
-						Node:                    n,
-						ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
-						WorkType:                wqKey.WorkType,
-						Imagecache:              imageCache,
+				if wqKey.WorkType == images.ImageCacheCreate || wqKey.WorkType == images.ImageCacheRefresh || wqKey.WorkType == images.ImageCachePurge {
+					for m := range i.Images {
+						ipr := images.ImageWorkRequest{
+							Image:                   i.Images[m],
+							Node:                    n,
+							ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
+							WorkType:                wqKey.WorkType,
+							Imagecache:              imageCache,
+						}
+						c.imageworkqueue.AddRateLimited(ipr)
 					}
-					c.imageworkqueue.AddRateLimited(ipr)
 				}
 				if wqKey.WorkType == images.ImageCacheUpdate {
 					for _, oldimage := range wqKey.OldImageCache.Spec.CacheSpec[k].Images {
@@ -550,6 +552,25 @@ func (c *Controller) syncHandler(wqKey images.WorkQueueKey) error {
 								Node:                    n,
 								ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
 								WorkType:                images.ImageCachePurge,
+								Imagecache:              imageCache,
+							}
+							c.imageworkqueue.AddRateLimited(ipr)
+						}
+					}
+					for _, newimage := range i.Images {
+						matched := false
+						for _, oldimage := range wqKey.OldImageCache.Spec.CacheSpec[k].Images {
+							if oldimage == newimage {
+								matched = true
+								break
+							}
+						}
+						if !matched {
+							ipr := images.ImageWorkRequest{
+								Image:                   newimage,
+								Node:                    n,
+								ContainerRuntimeVersion: n.Status.NodeInfo.ContainerRuntimeVersion,
+								WorkType:                images.ImageCacheUpdate,
 								Imagecache:              imageCache,
 							}
 							c.imageworkqueue.AddRateLimited(ipr)
