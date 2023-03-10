@@ -13,7 +13,7 @@ webhookServer:
 image:
   kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
   kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client
-  busyboxImageRepository: senthilrch/busybox
+  busyboxImageRepository: docker.io/senthilrch/busybox
   busyboxImageVersion: "1.35.0"
   kubefledgedWebhookServerRepository: docker.io/senthilrch/kubefledged-webhook-server
   pullPolicy: Always
@@ -35,7 +35,6 @@ args:
   webhookServerCertFile: /var/run/secrets/webhook-server/tls.crt
   webhookServerKeyFile: /var/run/secrets/webhook-server/tls.key
   webhookServerPort: 443
-validatingWebhookCABundle:
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""

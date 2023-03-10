@@ -231,29 +231,44 @@ func (m *ImageManager) handlePodStatusChange(pod *corev1.Pod) {
 func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
+
+	iwresStatus, iwresReason, iwresMessage := "", "", ""
 	for job, iwres := range m.imageworkstatus {
 		if iwres.ImageWorkRequest.Imagecache.Name == imageCacheName {
 			if iwres.Status == ImageWorkResultStatusJobCreated {
 				pods, err := m.podsLister.Pods(iwres.ImageWorkRequest.Imagecache.Namespace).
 					List(labels.Set(map[string]string{"job-name": job}).AsSelector())
-				if err != nil {
-					glog.Errorf("Error listing Pods: %v", err)
-					return err
-				}
-				if len(pods) > 1 {
-					glog.Errorf("More than one pod matched job %s", job)
-					return fmt.Errorf("more than one pod matched job %s", job)
-				}
-				if len(pods) == 0 {
-					glog.Warningf("No pods matched job %s", job)
-					if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
-						glog.Warningf("Job %s status unknown (delete: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
-					} else {
-						glog.Warningf("Job %s status unknown (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
+				if err != nil || len(pods) == 0 || len(pods) > 1 {
+					if err != nil {
+						glog.Errorf("Error listing Pods: %v", err)
+						iwresStatus = ImageWorkResultStatusUnknown
+						iwresReason = fmt.Sprintf("Error listing pods of job %s", job)
+						iwresMessage = fmt.Sprintf("Error listing pods of job %s", job)
 					}
-					iwres.Status = ImageWorkResultStatusUnknown
-					iwres.Reason = fmt.Sprintf("No pods matched job %s", job)
-					iwres.Message = fmt.Sprintf("No pods matched job %s", job)
+
+					if len(pods) == 0 {
+						glog.Errorf("No pods matched job %s", job)
+						iwresStatus = ImageWorkResultStatusUnknown
+						iwresReason = fmt.Sprintf("No pods matched job %s", job)
+						iwresMessage = fmt.Sprintf("No pods matched job %s", job)
+					}
+
+					if len(pods) > 1 {
+						glog.Errorf("More than 1 pods matched job %s", job)
+						iwresStatus = ImageWorkResultStatusUnknown
+						iwresReason = fmt.Sprintf("More than 1 pods matched job %s", job)
+						iwresMessage = fmt.Sprintf("More than 1 pods matched job %s", job)
+					}
+
+					iwres.Status = iwresStatus
+					iwres.Reason = iwresReason
+					iwres.Message = iwresMessage
+
+					if iwres.ImageWorkRequest.WorkType == ImageCachePurge {
+						glog.Errorf("Job %s status unknown (delete: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
+					} else {
+						glog.Errorf("Job %s status unknown (pull: %s --> %s)", job, iwres.ImageWorkRequest.Image, iwres.ImageWorkRequest.Node.Labels["kubernetes.io/hostname"])
+					}
 				}
 				if len(pods) == 1 {
 					iwres.Status = ImageWorkResultStatusFailed
@@ -289,11 +304,10 @@ func (m *ImageManager) updatePendingImageWorkResults(imageCacheName string) erro
 							List(context.TODO(), metav1.ListOptions{FieldSelector: fieldSelector})
 						if err != nil {
 							glog.Errorf("Error listing events for pod (%s): %v", pods[0].Name, err)
-							return err
-						}
-
-						for _, v := range eventlist.Items {
-							iwres.Message = iwres.Message + ":" + v.Message
+						} else {
+							for _, v := range eventlist.Items {
+								iwres.Message = iwres.Message + ":" + v.Message
+							}
 						}
 					}
 				}

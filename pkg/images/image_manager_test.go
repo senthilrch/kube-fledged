@@ -570,8 +570,7 @@ func TestUpdateImageCacheStatus(t *testing.T) {
 					},
 				},
 			},
-			expectError:         true,
-			expectedErrorString: "more than one pod matched job",
+			expectError: false,
 		},
 		{
 			name: "#8: Create - Successful",
