@@ -484,7 +484,7 @@ func TestSyncHandler(t *testing.T) {
 				ObjKey: "foo/bar/car",
 			},
 			expectErr:         true,
-			expectedErrString: "unexpected key format",
+			expectedErrString: "unexpected key format:",
 		},
 		/*{
 			name: "#2: Create - Invalid imagecache spec (no images specified)",
