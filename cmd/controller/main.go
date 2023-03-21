@@ -25,7 +25,7 @@ import (
 	"github.com/golang/glog"
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
@@ -45,6 +45,8 @@ var (
 	serviceAccountName         string
 	imageDeleteJobHostNetwork  bool
 	jobPriorityClassName       string
+	kubeconfig                 string
+	masterURL                  string
 	//Default value for when `--job-retention-policy` flag is not set
 	canDeleteJob  bool = true
 	criSocketPath string
@@ -56,7 +58,7 @@ func main() {
 	// set up signals so we handle the first shutdown signal gracefully
 	stopCh := signals.SetupSignalHandler()
 
-	cfg, err := rest.InClusterConfig()
+	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
 	if err != nil {
 		glog.Fatalf("Error building kubeconfig: %s", err.Error())
 	}
@@ -96,6 +98,12 @@ func main() {
 }
 
 func init() {
+
+	flag.StringVar(&kubeconfig, "kubeconfig", "",
+		"Path to a kubeconfig. Only required if out-of-cluster.")
+	flag.StringVar(&masterURL, "master", "",
+		"The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+
 	flag.DurationVar(&imagePullDeadlineDuration, "image-pull-deadline-duration", time.Minute*5, "Maximum duration allowed for pulling an image. After this duration, image pull is considered to have failed")
 	flag.DurationVar(&imageCacheRefreshFrequency, "image-cache-refresh-frequency", time.Minute*15, "The image cache is refreshed periodically to ensure the cache is up to date. Setting this flag to 0s will disable refresh")
 	flag.StringVar(&imagePullPolicy, "image-pull-policy", "IfNotPresent", "Image pull policy for pulling images into the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Images with no or ':latest' tag are always pulled")
