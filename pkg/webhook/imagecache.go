@@ -102,11 +102,6 @@ func ValidateImageCache(ar v1.AdmissionReview) *v1.AdmissionResponse {
 	glog.V(4).Infof("cacheSpec: %+v", cacheSpec)
 
 	for _, i := range cacheSpec {
-		if len(i.Images) == 0 {
-			glog.Error("No images specified within image list")
-			return toV1AdmissionResponse(fmt.Errorf("No images specified within image list"))
-		}
-
 		for m := range i.Images {
 			for p := 0; p < m; p++ {
 				if i.Images[p] == i.Images[m] {

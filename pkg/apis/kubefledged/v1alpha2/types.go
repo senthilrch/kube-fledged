@@ -38,7 +38,7 @@ type ImageCache struct {
 
 // CacheSpecImages specifies the Images to be cached
 type CacheSpecImages struct {
-	Images       []string          `json:"images"`
+	Images       []string          `json:"images,omitempty"`
 	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
 }
 
