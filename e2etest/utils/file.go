@@ -17,7 +17,7 @@ limitations under the License.
 package utils
 
 import (
-	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 )
@@ -26,7 +26,7 @@ import (
 func Sed(t *testing.T, old, new, filePath string) string {
 	t.Helper()
 
-	oldFileByteSlice, err := ioutil.ReadFile(filePath)
+	oldFileByteSlice, err := os.ReadFile(filePath)
 	if err != nil {
 		t.Fatalf("failed to read file %s", filePath)
 	}
