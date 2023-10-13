@@ -360,7 +360,7 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on the process for submitting pull requests.
 
-## All Thanks To Our Contributors 
+### Contributors 
 
 <a href="https://github.com/senthilrch/kube-fledged/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=senthilrch/kube-fledged" />
