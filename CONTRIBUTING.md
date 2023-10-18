@@ -11,4 +11,7 @@
 
 * Submit a pull request against 'develop' branch. Ensure ALL CI checks are passed.
 
-* The maintainer will review and approve your pull request
+* The maintainer will review and approve your pull request.
+* You may add suitable label if needed.
+
+
