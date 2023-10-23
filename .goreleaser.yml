@@ -1,25 +1,57 @@
-before:
-  hooks:
-    - go mod tidy
+hooks:
+  - name: "go mod tidy"
+    command: "go mod tidy"
+    comment: "Tidy Go modules"
+
+  - name: "lint"
+    command: "golint ./..."
+    comment: "Run code quality checks"
+
+  - name: "test"
+    command: "go test ./..."
+    comment: "Run tests"
+
+  - name: "build"
+    command: "go build"
+    comment: "Build the application"
+
 builds:
   - env:
       - CGO_ENABLED=0
     goos:
       - linux
+    goarch:
+      - amd64
+    comment: "Build for Linux amd64"
+
+  - env:
+      - CGO_ENABLED=0
+    goos:
       - darwin
+    goarch:
+      - amd64
+    comment: "Build for macOS amd64"
+
 archives:
   - replacements:
       darwin: Darwin
       linux: Linux
       386: i386
       amd64: x86_64
+      comment: "Archives replacements for different platforms"
+
 checksum:
   name_template: 'checksums.txt'
+  comment: "Name template for checksums"
+
 snapshot:
-  name_template: "{{ incpatch .Version }}-next"
+  name_template: "{{ .Version }}-{{ now | date '20060102T150405' }}-next"
+  comment: "Snapshot name template with version and timestamp"
+
 changelog:
   sort: asc
   filters:
     exclude:
       - '^docs:'
       - '^test:'
+  comment: "Changelog configuration"
