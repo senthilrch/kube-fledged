@@ -2,16 +2,16 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kubefledged-webhook-server
-  namespace: kube-fledged
+  namespace: new-namespace  # Change the namespace
   labels:
-    app: kubefledged
-    kubefledged: kubefledged-webhook-server
+    app: my-app  # Update labels as needed
+    my-label: my-value
 spec:
   ports:
-  - name: webhook-server
-    port: 3443
+  - name: http
+    port: 8080  # Change the port number
     protocol: TCP
-    targetPort: 443
+    targetPort: 80  # Change the targetPort
   selector:
     kubefledged: kubefledged-webhook-server
-  type: ClusterIP
+  type: LoadBalancer  # Change the service type to LoadBalancer
