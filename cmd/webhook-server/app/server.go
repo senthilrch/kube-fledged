@@ -20,7 +20,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	"github.com/golang/glog"
@@ -103,7 +103,7 @@ func delegateV1beta1AdmitToV1(f admitv1Func) admitv1beta1Func {
 func serve(w http.ResponseWriter, r *http.Request, admit admitHandler) {
 	var body []byte
 	if r.Body != nil {
-		if data, err := ioutil.ReadAll(r.Body); err == nil {
+		if data, err := io.ReadAll(r.Body); err == nil {
 			body = data
 		}
 	}
@@ -266,7 +266,7 @@ func StartWebhookServer(certFile string, keyFile string, port int) error {
 		Addr:      fmt.Sprintf(":%d", port),
 		TLSConfig: configTLS(config),
 	}
-	glog.Infof("Wehook server listening on :%d", port)
+	glog.Infof("Webhook server listening on :%d", port)
 	err := server.ListenAndServeTLS("", "")
 	if err != nil {
 		return err

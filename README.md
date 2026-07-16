@@ -362,6 +362,12 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on the process for submitting pull requests.
 
+### Contributors 
+
+<a href="https://github.com/senthilrch/kube-fledged/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=senthilrch/kube-fledged" />
+</a>
+
 ## Code of Conduct
 
 Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for details on our code of conduct, and how to report violations.
@@ -369,4 +375,4 @@ Please read [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for details on our code of 
 
 ## License
 
-This project is licensed under the Apache 2.0 License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the Apache 2.0 License - see the [LICENSE](LICENSE) file for details.
