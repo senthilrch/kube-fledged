@@ -18,7 +18,7 @@ spec:
     kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
     kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client
     busyboxImageRepository: senthilrch/busybox
-    busyboxImageVersion: "1.35.0"
+    busyboxImageVersion: "1.38.0"
     kubefledgedWebhookServerRepository: docker.io/senthilrch/kubefledged-webhook-server
     pullPolicy: Always
   command: 

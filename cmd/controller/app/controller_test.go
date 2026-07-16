@@ -850,7 +850,7 @@ func TestSyncHandler(t *testing.T) {
 		fakefledgedclientset := &kubefledgedclientsetfake.Clientset{}
 		for _, ar := range test.expectedActions {
 			if ar.reaction != "" {
-				apiError := apierrors.NewInternalError(fmt.Errorf(ar.reaction))
+				apiError := apierrors.NewInternalError(fmt.Errorf("%s", ar.reaction))
 				fakefledgedclientset.AddReactor(ar.action, "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, apiError
 				})
@@ -1158,7 +1158,7 @@ func TestProcessNextWorkItem(t *testing.T) {
 		fakefledgedclientset := &kubefledgedclientsetfake.Clientset{}
 		for _, ar := range test.expectedActions {
 			if ar.reaction != "" {
-				apiError := apierrors.NewInternalError(fmt.Errorf(ar.reaction))
+				apiError := apierrors.NewInternalError(fmt.Errorf("%s", ar.reaction))
 				fakefledgedclientset.AddReactor(ar.action, "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, apiError
 				})

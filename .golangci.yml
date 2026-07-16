@@ -1,0 +1,25 @@
+run:
+  timeout: 5m
+
+linters:
+  enable:
+    - govet
+    - staticcheck
+    - unused
+    - gosimple
+    - ineffassign
+    - typecheck
+  disable:
+    - errcheck
+
+issues:
+  exclude-dirs:
+    - vendor
+    - third_party
+    - pkg/client
+  exclude-generated: strict
+  exclude-rules:
+    # Suppress deprecation warnings for now; will address in a follow-up
+    - linters:
+        - staticcheck
+      text: "SA1019:"

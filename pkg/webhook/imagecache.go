@@ -27,15 +27,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-const (
-	customResourcePatch1 string = `[
-         { "op": "add", "path": "/data/mutation-stage-1", "value": "yes" }
-     ]`
-	customResourcePatch2 string = `[
-         { "op": "add", "path": "/data/mutation-stage-2", "value": "yes" }
-     ]`
-)
-
 const imageCachePurgeAnnotationKey = "kubefledged.io/purge-imagecache"
 const imageCacheRefreshAnnotationKey = "kubefledged.io/refresh-imagecache"
 

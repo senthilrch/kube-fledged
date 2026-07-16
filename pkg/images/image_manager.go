@@ -475,7 +475,6 @@ func (m *ImageManager) processNextWorkItem() bool {
 			}
 			glog.Infof("Job %s created (delete:- %s --> %s, runtime: %s)", job.Name, iwr.Image, iwr.Node.Labels["kubernetes.io/hostname"], iwr.ContainerRuntimeVersion)
 		} else {
-			pull = true
 			pull, err = checkIfImageNeedsToBePulled(m.imagePullPolicy, iwr.Image, iwr.Node)
 			if err != nil {
 				glog.Errorf("Error from checkIfImageNeedsToBePulled(): %+v", err)
