@@ -19,10 +19,10 @@ limitations under the License.
 package v1alpha2
 
 import (
-	v1alpha2 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha2"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/client-go/tools/cache"
+	kubefledgedv1alpha2 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha2"
+	labels "k8s.io/apimachinery/pkg/labels"
+	listers "k8s.io/client-go/listers"
+	cache "k8s.io/client-go/tools/cache"
 )
 
 // ImageCacheLister helps list ImageCaches.
@@ -30,7 +30,7 @@ import (
 type ImageCacheLister interface {
 	// List lists all ImageCaches in the indexer.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha2.ImageCache, err error)
+	List(selector labels.Selector) (ret []*kubefledgedv1alpha2.ImageCache, err error)
 	// ImageCaches returns an object that can list and get ImageCaches.
 	ImageCaches(namespace string) ImageCacheNamespaceLister
 	ImageCacheListerExpansion
@@ -38,25 +38,17 @@ type ImageCacheLister interface {
 
 // imageCacheLister implements the ImageCacheLister interface.
 type imageCacheLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*kubefledgedv1alpha2.ImageCache]
 }
 
 // NewImageCacheLister returns a new ImageCacheLister.
 func NewImageCacheLister(indexer cache.Indexer) ImageCacheLister {
-	return &imageCacheLister{indexer: indexer}
-}
-
-// List lists all ImageCaches in the indexer.
-func (s *imageCacheLister) List(selector labels.Selector) (ret []*v1alpha2.ImageCache, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha2.ImageCache))
-	})
-	return ret, err
+	return &imageCacheLister{listers.New[*kubefledgedv1alpha2.ImageCache](indexer, kubefledgedv1alpha2.Resource("imagecache"))}
 }
 
 // ImageCaches returns an object that can list and get ImageCaches.
 func (s *imageCacheLister) ImageCaches(namespace string) ImageCacheNamespaceLister {
-	return imageCacheNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return imageCacheNamespaceLister{listers.NewNamespaced[*kubefledgedv1alpha2.ImageCache](s.ResourceIndexer, namespace)}
 }
 
 // ImageCacheNamespaceLister helps list and get ImageCaches.
@@ -64,36 +56,15 @@ func (s *imageCacheLister) ImageCaches(namespace string) ImageCacheNamespaceList
 type ImageCacheNamespaceLister interface {
 	// List lists all ImageCaches in the indexer for a given namespace.
 	// Objects returned here must be treated as read-only.
-	List(selector labels.Selector) (ret []*v1alpha2.ImageCache, err error)
+	List(selector labels.Selector) (ret []*kubefledgedv1alpha2.ImageCache, err error)
 	// Get retrieves the ImageCache from the indexer for a given namespace and name.
 	// Objects returned here must be treated as read-only.
-	Get(name string) (*v1alpha2.ImageCache, error)
+	Get(name string) (*kubefledgedv1alpha2.ImageCache, error)
 	ImageCacheNamespaceListerExpansion
 }
 
 // imageCacheNamespaceLister implements the ImageCacheNamespaceLister
 // interface.
 type imageCacheNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all ImageCaches in the indexer for a given namespace.
-func (s imageCacheNamespaceLister) List(selector labels.Selector) (ret []*v1alpha2.ImageCache, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1alpha2.ImageCache))
-	})
-	return ret, err
-}
-
-// Get retrieves the ImageCache from the indexer for a given namespace and name.
-func (s imageCacheNamespaceLister) Get(name string) (*v1alpha2.ImageCache, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1alpha2.Resource("imagecache"), name)
-	}
-	return obj.(*v1alpha2.ImageCache), nil
+	listers.ResourceIndexer[*kubefledgedv1alpha2.ImageCache]
 }

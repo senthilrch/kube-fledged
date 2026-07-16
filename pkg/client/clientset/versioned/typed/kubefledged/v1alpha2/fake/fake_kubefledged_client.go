@@ -29,7 +29,7 @@ type FakeKubefledgedV1alpha2 struct {
 }
 
 func (c *FakeKubefledgedV1alpha2) ImageCaches(namespace string) v1alpha2.ImageCacheInterface {
-	return &FakeImageCaches{c, namespace}
+	return newFakeImageCaches(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate
