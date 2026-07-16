@@ -320,7 +320,6 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 ## Supported Platforms
 
 - linux/amd64
-- linux/arm
 - linux/arm64
 
 

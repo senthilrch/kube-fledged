@@ -26,7 +26,7 @@ jobs:
       operator_image_repo: docker.io/senthilrch/kubefledged-operator
       operator_target_platforms: linux/amd64,linux/arm64
       push_image: true
-      target_platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+      target_platforms: linux/amd64,linux/arm64/v8
       webhook_server_image_repo: docker.io/senthilrch/kubefledged-webhook-server
     secrets:
       dockerhub_user: ${{ secrets.DOCKERHUB_USER }}
