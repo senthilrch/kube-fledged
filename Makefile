@@ -23,7 +23,6 @@ else
 	CGO_ENABLED=0
 endif
 
-GOARM=7
 DOCKER_CLI_EXPERIMENTAL=enabled
 
 ifndef CONTROLLER_IMAGE_REPO
@@ -67,7 +66,7 @@ ifndef RELEASE_VERSION
 endif
 
 ifndef TARGET_PLATFORMS
-  TARGET_PLATFORMS=linux/amd64,linux/arm/v7,linux/arm64/v8
+  TARGET_PLATFORMS=linux/amd64,linux/arm64/v8
 endif
 
 ifndef OPERATOR_TARGET_PLATFORMS
