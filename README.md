@@ -59,7 +59,7 @@ kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and 
 - A functioning kubernetes cluster. It could be a simple development cluster like minikube or a large production cluster.
 - Cluster-admin privileges to the kubernetes cluster for deploying kube-fledged.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- For kube-fledged **development**, you need git, make, go, docker engine (>= 19.03), openssl, kubectl, helm, gpg and gnu-sed installed on a local linux or mac machine. kubectl configured properly to access the cluster.
+- For kube-fledged **development**, you need git, make, go, docker engine (>= 19.03), openssl, kubectl, helm and gnu-sed installed on a local linux or mac machine. kubectl configured properly to access the cluster.
 - For kube-fledged **deployment**, you need git, make, helm and kubectl installed on a local linux or mac machine. kubectl configured properly to access the cluster.
 
 ## Quick Install using YAML manifests
@@ -95,14 +95,12 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ kubectl create namespace ${KUBEFLEDGED_NAMESPACE}
   ```
 
-- Verify and install latest version of kube-fledged helm chart
+- Install latest version of kube-fledged helm chart
 
   ```
   $ helm repo add kubefledged-charts https://senthilrch.github.io/kubefledged-charts/
   $ helm repo update
-  $ gpg --keyserver keyserver.ubuntu.com --recv-keys 92D793FA3A6460ED (or) gpg --keyserver pgp.mit.edu --recv-keys 92D793FA3A6460ED
-  $ gpg --export >~/.gnupg/pubring.gpg
-  $ helm install --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
+  $ helm install kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
   ```
 
 ## Quick Install using Helm operator

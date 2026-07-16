@@ -15,14 +15,12 @@ Kube-fledged is a kubernetes operator for creating and managing a cache of conta
   $ kubectl create namespace ${KUBEFLEDGED_NAMESPACE}
   ```
 
-- Verify and install latest version of kube-fledged helm chart
+- Install latest version of kube-fledged helm chart
 
   ```
   $ helm repo add kubefledged-charts https://senthilrch.github.io/kubefledged-charts/
   $ helm repo update
-  $ gpg --keyserver keyserver.ubuntu.com --recv-keys 92D793FA3A6460ED (or) gpg --keyserver pgp.mit.edu --recv-keys 92D793FA3A6460ED
-  $ gpg --export >~/.gnupg/pubring.gpg
-  $ helm install --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
+  $ helm install kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
   ```
 
 ## Chart parameters
