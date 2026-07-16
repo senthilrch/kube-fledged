@@ -14,12 +14,12 @@ spec:
       labels:
         {{- include "kubefledged.selectorLabels" . | nindent 8 }}-controller
     spec:
-    {{- if .Values.controller.hostNetwork -}}
+    {{- if .Values.controller.hostNetwork }}
       hostNetwork: true
     {{- end }}
-    {{- if .Values.controller.priorityClassName -}}
+    {{- if .Values.controller.priorityClassName }}
       priorityClassName: {{ .Values.controller.priorityClassName }}
-    {{- end }}    
+    {{- end }}
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -50,7 +50,7 @@ spec:
           {{- end }}
           {{- if .Values.args.controllerCRISocketPath }}
             - "--cri-socket-path={{ .Values.args.controllerCRISocketPath }}"
-          {{- end }}          
+          {{- end }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
             - name: KUBEFLEDGED_NAMESPACE
