@@ -89,27 +89,19 @@ Create the name of the cluster role binding to use
 Create the name of the validating webhook configuration to use
 */}}
 {{- define "kubefledged.validatingWebhookName" -}}
-{{- if .Values.validatingWebhook.create -}}
-    {{ default (include "kubefledged.fullname" .) .Values.validatingWebhook.name }}
-{{- else -}}
-    {{ default "default" .Values.validatingWebhook.name }}
-{{- end -}}
+{{- printf "%s-webhook-configuration" (include "kubefledged.fullname" .) -}}
 {{- end -}}
 
 {{/*
 Create the name of the service for the webhook server to use
 */}}
 {{- define "kubefledged.webhookServiceName" -}}
-{{- if .Values.webhookService.create -}}
-    {{ default ( printf "%s-webhook-server" (include "kubefledged.fullname" .)) .Values.webhookService.name }}
-{{- else -}}
-    {{ default "default" .Values.webhookService.name }}
-{{- end -}}
+{{- printf "%s-webhook-server" (include "kubefledged.fullname" .) -}}
 {{- end -}}
 
 {{/*
 Create the name of the secret containing the webhook server's keypair
 */}}
-{{- define "kubefledged.secretName" -}}
-{{ default (include "kubefledged.fullname" .) .Values.secret.name }}
+{{- define "kubefledged.webhookServerCertSecretName" -}}
+{{- printf "%s-webhook-server-cert" (include "kubefledged.fullname" .) -}}
 {{- end -}}

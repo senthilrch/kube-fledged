@@ -19,15 +19,14 @@ limitations under the License.
 package v1alpha2
 
 import (
-	"context"
-	"time"
+	context "context"
 
-	v1alpha2 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha2"
+	kubefledgedv1alpha2 "github.com/senthilrch/kube-fledged/pkg/apis/kubefledged/v1alpha2"
 	scheme "github.com/senthilrch/kube-fledged/pkg/client/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // ImageCachesGetter has a method to return a ImageCacheInterface.
@@ -38,158 +37,34 @@ type ImageCachesGetter interface {
 
 // ImageCacheInterface has methods to work with ImageCache resources.
 type ImageCacheInterface interface {
-	Create(ctx context.Context, imageCache *v1alpha2.ImageCache, opts v1.CreateOptions) (*v1alpha2.ImageCache, error)
-	Update(ctx context.Context, imageCache *v1alpha2.ImageCache, opts v1.UpdateOptions) (*v1alpha2.ImageCache, error)
-	UpdateStatus(ctx context.Context, imageCache *v1alpha2.ImageCache, opts v1.UpdateOptions) (*v1alpha2.ImageCache, error)
+	Create(ctx context.Context, imageCache *kubefledgedv1alpha2.ImageCache, opts v1.CreateOptions) (*kubefledgedv1alpha2.ImageCache, error)
+	Update(ctx context.Context, imageCache *kubefledgedv1alpha2.ImageCache, opts v1.UpdateOptions) (*kubefledgedv1alpha2.ImageCache, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, imageCache *kubefledgedv1alpha2.ImageCache, opts v1.UpdateOptions) (*kubefledgedv1alpha2.ImageCache, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha2.ImageCache, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha2.ImageCacheList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*kubefledgedv1alpha2.ImageCache, error)
+	List(ctx context.Context, opts v1.ListOptions) (*kubefledgedv1alpha2.ImageCacheList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.ImageCache, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *kubefledgedv1alpha2.ImageCache, err error)
 	ImageCacheExpansion
 }
 
 // imageCaches implements ImageCacheInterface
 type imageCaches struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithList[*kubefledgedv1alpha2.ImageCache, *kubefledgedv1alpha2.ImageCacheList]
 }
 
 // newImageCaches returns a ImageCaches
 func newImageCaches(c *KubefledgedV1alpha2Client, namespace string) *imageCaches {
 	return &imageCaches{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithList[*kubefledgedv1alpha2.ImageCache, *kubefledgedv1alpha2.ImageCacheList](
+			"imagecaches",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *kubefledgedv1alpha2.ImageCache { return &kubefledgedv1alpha2.ImageCache{} },
+			func() *kubefledgedv1alpha2.ImageCacheList { return &kubefledgedv1alpha2.ImageCacheList{} },
+		),
 	}
-}
-
-// Get takes name of the imageCache, and returns the corresponding imageCache object, and an error if there is any.
-func (c *imageCaches) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha2.ImageCache, err error) {
-	result = &v1alpha2.ImageCache{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("imagecaches").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of ImageCaches that match those selectors.
-func (c *imageCaches) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha2.ImageCacheList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1alpha2.ImageCacheList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("imagecaches").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested imageCaches.
-func (c *imageCaches) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("imagecaches").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a imageCache and creates it.  Returns the server's representation of the imageCache, and an error, if there is any.
-func (c *imageCaches) Create(ctx context.Context, imageCache *v1alpha2.ImageCache, opts v1.CreateOptions) (result *v1alpha2.ImageCache, err error) {
-	result = &v1alpha2.ImageCache{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("imagecaches").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(imageCache).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a imageCache and updates it. Returns the server's representation of the imageCache, and an error, if there is any.
-func (c *imageCaches) Update(ctx context.Context, imageCache *v1alpha2.ImageCache, opts v1.UpdateOptions) (result *v1alpha2.ImageCache, err error) {
-	result = &v1alpha2.ImageCache{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("imagecaches").
-		Name(imageCache.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(imageCache).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *imageCaches) UpdateStatus(ctx context.Context, imageCache *v1alpha2.ImageCache, opts v1.UpdateOptions) (result *v1alpha2.ImageCache, err error) {
-	result = &v1alpha2.ImageCache{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("imagecaches").
-		Name(imageCache.Name).
-		SubResource("status").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(imageCache).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the imageCache and deletes it. Returns an error if one occurs.
-func (c *imageCaches) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("imagecaches").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *imageCaches) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("imagecaches").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched imageCache.
-func (c *imageCaches) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha2.ImageCache, err error) {
-	result = &v1alpha2.ImageCache{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("imagecaches").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }
