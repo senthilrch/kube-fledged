@@ -68,6 +68,7 @@ func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clie
 	jobPriorityClassName := "priority-class-kube-fledged"
 	canDelete := false
 	socketPath := ""
+	jobsMaxSurge := 0
 
 	/* 	startInformers := true
 	   	if startInformers {
@@ -81,7 +82,7 @@ func newTestController(kubeclientset kubernetes.Interface, fledgedclientset clie
 		fledgedclientset, fledgedNameSpace, nodeInformer, imagecacheInformer,
 		imageCacheRefreshFrequency, imagePullDeadlineDuration, criClientImage,
 		busyboxImage, imagePullPolicy, serviceAccountName, imageDeleteJobHostNetwork,
-		jobPriorityClassName, canDelete, socketPath)
+		jobPriorityClassName, canDelete, socketPath, jobsMaxSurge)
 	controller.nodesSynced = func() bool { return true }
 	controller.imageCachesSynced = func() bool { return true }
 	return controller, nodeInformer, imagecacheInformer
@@ -483,7 +484,7 @@ func TestSyncHandler(t *testing.T) {
 				ObjKey: "foo/bar/car",
 			},
 			expectErr:         true,
-			expectedErrString: "unexpected key format",
+			expectedErrString: "unexpected key format:",
 		},
 		/*{
 			name: "#2: Create - Invalid imagecache spec (no images specified)",
@@ -849,7 +850,7 @@ func TestSyncHandler(t *testing.T) {
 		fakefledgedclientset := &kubefledgedclientsetfake.Clientset{}
 		for _, ar := range test.expectedActions {
 			if ar.reaction != "" {
-				apiError := apierrors.NewInternalError(fmt.Errorf(ar.reaction))
+				apiError := apierrors.NewInternalError(fmt.Errorf("%s", ar.reaction))
 				fakefledgedclientset.AddReactor(ar.action, "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, apiError
 				})
@@ -1157,7 +1158,7 @@ func TestProcessNextWorkItem(t *testing.T) {
 		fakefledgedclientset := &kubefledgedclientsetfake.Clientset{}
 		for _, ar := range test.expectedActions {
 			if ar.reaction != "" {
-				apiError := apierrors.NewInternalError(fmt.Errorf(ar.reaction))
+				apiError := apierrors.NewInternalError(fmt.Errorf("%s", ar.reaction))
 				fakefledgedclientset.AddReactor(ar.action, "imagecaches", func(action core.Action) (handled bool, ret runtime.Object, err error) {
 					return true, nil, apiError
 				})

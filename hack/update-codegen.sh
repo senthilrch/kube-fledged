@@ -18,22 +18,24 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+SCRIPT_ROOT=$(dirname "${BASH_SOURCE}")/..
+
 export GOPATH=${HOME}/go
-go get -d k8s.io/code-generator@v0.25.3
+go mod download k8s.io/code-generator@v0.36.2
 
-SCRIPT_ROOT=$(dirname ${BASH_SOURCE})/..
-CODEGEN_PKG=${CODEGEN_PKG:-$(cd ${SCRIPT_ROOT}; ls -d -1 $GOPATH/pkg/mod/k8s.io/code-generator@v0.25.3 2>/dev/null || echo ../code-generator)}
+CODEGEN_PKG=$(cd "${SCRIPT_ROOT}"; ls -d -1 ${GOPATH}/pkg/mod/k8s.io/code-generator@v0.36.2 2>/dev/null || echo ../code-generator)
 
-# generate the code with:
-# --output-base    because this script should also be able to run inside the vendor dir of
-#                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
-#                  instead of the $GOPATH directly. For normal projects this can be dropped.
-chmod u+x ${CODEGEN_PKG}/generate-groups.sh
-${CODEGEN_PKG}/generate-groups.sh "deepcopy,client,informer,lister" \
-  github.com/senthilrch/kube-fledged/pkg/client github.com/senthilrch/kube-fledged/pkg/apis \
-  kubefledged:v1alpha2 \
-  --output-base "$(dirname ${BASH_SOURCE})/../../../.." \
-  --go-header-file ${SCRIPT_ROOT}/hack/boilerplate/boilerplate.generatego.txt
+source "${CODEGEN_PKG}/kube_codegen.sh"
 
-# To use your own boilerplate text use:
-#   --go-header-file ${SCRIPT_ROOT}/hack/custom-boilerplate.go.txt
+# Generate deepcopy functions
+kube::codegen::gen_helpers \
+  --boilerplate "${SCRIPT_ROOT}/hack/boilerplate/boilerplate.generatego.txt" \
+  "${SCRIPT_ROOT}/pkg/apis"
+
+# Generate clientset, listers, informers
+kube::codegen::gen_client \
+  --with-watch \
+  --output-dir "${SCRIPT_ROOT}/pkg/client" \
+  --output-pkg "github.com/senthilrch/kube-fledged/pkg/client" \
+  --boilerplate "${SCRIPT_ROOT}/hack/boilerplate/boilerplate.generatego.txt" \
+  "${SCRIPT_ROOT}/pkg/apis"

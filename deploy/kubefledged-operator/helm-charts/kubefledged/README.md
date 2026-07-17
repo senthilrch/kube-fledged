@@ -15,14 +15,12 @@ Kube-fledged is a kubernetes operator for creating and managing a cache of conta
   $ kubectl create namespace ${KUBEFLEDGED_NAMESPACE}
   ```
 
-- Verify and install latest version of kube-fledged helm chart
+- Install latest version of kube-fledged helm chart
 
   ```
   $ helm repo add kubefledged-charts https://senthilrch.github.io/kubefledged-charts/
   $ helm repo update
-  $ gpg --keyserver keyserver.ubuntu.com --recv-keys 92D793FA3A6460ED (or) gpg --keyserver pgp.mit.edu --recv-keys 92D793FA3A6460ED
-  $ gpg --export >~/.gnupg/pubring.gpg
-  $ helm install --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
+  $ helm install kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
   ```
 
 ## Chart parameters
@@ -48,6 +46,7 @@ Kube-fledged is a kubernetes operator for creating and managing a cache of conta
 | args.controllerImagePullPolicy | IfNotPresent | Image pull policy for pulling images into and refreshing the cache. Possible values are 'IfNotPresent' and 'Always'. Default value is 'IfNotPresent'. Image with no or ":latest" tag are always pulled |
 | args.controllerJobPriorityClassName | "" | priorityClassName of jobs created by kubefledged-controller. If not specified, priorityClassName won't be set |
 | args.controllerJobRetentionPolicy | "delete" | Determines if the jobs created by kubefledged-controller would be deleted or retained (for debugging) after it finishes. Possible values are 'delete' and 'retain'. default value is 'delete'. |
+| args.controllerJobsMaxSurge |  | Maximum no. of active jobs allowed. default: max surge checks disabled |
 | args.controllerServiceAccountName | "" | serviceAccountName used in Jobs created for pulling or deleting images. Optional flag. If not specified the default service account of the namespace is used |
 | args.controllerLogLevel | INFO | Log level of kubefledged-controller |
 | args.webhookServerCertFile | /var/run/secrets/webhook-server/tls.crt | Path of server certificate of kubefledged-webhook-server |

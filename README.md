@@ -94,14 +94,12 @@ These instructions install _kube-fledged_ to a separate namespace called "kube-f
   $ kubectl create namespace ${KUBEFLEDGED_NAMESPACE}
   ```
 
-- Verify and install latest version of kube-fledged helm chart
+- Install latest version of kube-fledged helm chart
 
   ```
   $ helm repo add kubefledged-charts https://senthilrch.github.io/kubefledged-charts/
   $ helm repo update
-  $ gpg --keyserver keyserver.ubuntu.com --recv-keys 92D793FA3A6460ED (or) gpg --keyserver pgp.mit.edu --recv-keys 92D793FA3A6460ED
-  $ gpg --export >~/.gnupg/pubring.gpg
-  $ helm install --verify kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
+  $ helm install kube-fledged kubefledged-charts/kube-fledged -n ${KUBEFLEDGED_NAMESPACE} --wait
   ```
 
 ## Quick Install using Helm operator
@@ -306,6 +304,8 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 
 `--job-retention-policy:` Determines if the jobs created by kubefledged-controller would be deleted or retained (for debugging) after it finishes. Possible values are 'delete' and 'retain'. default value is 'delete'.
 
+`--jobs-max-surge:` Maximum no. of active jobs allowed. default: max surge checks disabled.
+
 `--service-account-name:` serviceAccountName used in Jobs created for pulling or deleting images. Optional flag. If not specified the default service account of the namespace is used
 
 `--stderrthreshold:` Log level. set the value of this flag to INFO
@@ -319,7 +319,6 @@ For more detailed description, go through _kube-fledged's_ [design proposal](doc
 ## Supported Platforms
 
 - linux/amd64
-- linux/arm
 - linux/arm64
 
 

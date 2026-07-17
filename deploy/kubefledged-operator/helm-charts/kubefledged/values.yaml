@@ -8,14 +8,13 @@ controller:
   hostNetwork: false
   priorityClassName: ""
 webhookServer:
-  enable: true
   hostNetwork: false
   priorityClassName: ""
 image:
   kubefledgedControllerRepository: docker.io/senthilrch/kubefledged-controller
   kubefledgedCRIClientRepository: docker.io/senthilrch/kubefledged-cri-client
-  busyboxImageRepository: senthilrch/busybox
-  busyboxImageVersion: "1.35.0"
+  busyboxImageRepository: docker.io/senthilrch/busybox
+  busyboxImageVersion: "1.38.0"
   kubefledgedWebhookServerRepository: docker.io/senthilrch/kubefledged-webhook-server
   pullPolicy: Always
 command: 
@@ -31,11 +30,11 @@ args:
   controllerJobPriorityClassName: ""
   controllerJobRetentionPolicy: "delete"
   controllerCRISocketPath: ""
+  controllerJobsMaxSurge: 0
   webhookServerLogLevel: INFO
   webhookServerCertFile: /var/run/secrets/webhook-server/tls.crt
   webhookServerKeyFile: /var/run/secrets/webhook-server/tls.key
   webhookServerPort: 443
-validatingWebhookCABundle:
 imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""

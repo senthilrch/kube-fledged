@@ -266,7 +266,7 @@ func StartWebhookServer(certFile string, keyFile string, port int) error {
 		Addr:      fmt.Sprintf(":%d", port),
 		TLSConfig: configTLS(config),
 	}
-	glog.Infof("Wehook server listening on :%d", port)
+	glog.Infof("Webhook server listening on :%d", port)
 	err := server.ListenAndServeTLS("", "")
 	if err != nil {
 		return err

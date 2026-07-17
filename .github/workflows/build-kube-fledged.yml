@@ -84,46 +84,48 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ inputs.golang_version }}
 
     - name: Install dependencies
       run: |
-        go install golang.org/x/lint/golint@latest
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
 
     - name: Run verify scripts
       run: |
         hack/verify-codegen.sh
         hack/verify-boilerplate.sh
         hack/verify-gofmt.sh
-        hack/verify-golint.sh
         hack/verify-govet.sh
+
+    - name: Run golangci-lint
+      run: golangci-lint run ./...
 
     - name: Run unit tests
       run: hack/run-unit-tests.sh
     
     - name: Set up QEMU
-      uses: docker/setup-qemu-action@v1
+      uses: docker/setup-qemu-action@v3
       
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v1
+      uses: docker/setup-buildx-action@v3
     
     - name: Login to DockerHub
       env:
         DOCKERHUB_USER: ${{ secrets.dockerhub_user }}
         DOCKERHUB_PSWD: ${{ secrets.dockerhub_pswd }}
       if: "${{ env.DOCKERHUB_USER != '' && env.DOCKERHUB_PSWD != '' }}"
-      uses: docker/login-action@v1 
+      uses: docker/login-action@v3
       with:
         username: ${{ secrets.dockerhub_user }}
         password: ${{ secrets.dockerhub_pswd }}
     
     - name: Build kubefledged-controller image
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ${{ inputs.dockerfile_controller }}
@@ -135,7 +137,7 @@ jobs:
         tags: ${{ inputs.controller_image_repo }}:${{ inputs.release_version }},${{ inputs.controller_image_repo }}:latest
 
     - name: Build kubefledged-webhook-server image
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ${{ inputs.dockerfile_webhook_server }}
@@ -147,7 +149,7 @@ jobs:
         tags: ${{ inputs.webhook_server_image_repo }}:${{ inputs.release_version }},${{ inputs.webhook_server_image_repo }}:latest
 
     - name: Build kubefledged-cri-client image
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v6
       with:
         context: .
         file: ${{ inputs.dockerfile_cri_client }}
@@ -160,7 +162,7 @@ jobs:
         tags: ${{ inputs.crictl_image_repo }}:${{ inputs.release_version }},${{ inputs.crictl_image_repo }}:latest
 
     - name: Build kubefledged-operator image
-      uses: docker/build-push-action@v2
+      uses: docker/build-push-action@v6
       with:
         context: ./deploy/kubefledged-operator
         file: ${{ inputs.dockerfile_operator }}

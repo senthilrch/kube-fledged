@@ -11,12 +11,12 @@ jobs:
     if: github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'master'
     uses: ./.github/workflows/build-kube-fledged.yml
     with:
-      alpine_version: 3.16.2
-      crictl_version: v1.25.0
-      docker_version: 20.10.20
-      golang_version: 1.19.2
-      operatorsdk_version: v1.24.1
-      release_version: v0.11.0-alpha
+      alpine_version: 3.24.1
+      crictl_version: v1.36.0
+      docker_version: 29.6.2
+      golang_version: 1.26.5
+      operatorsdk_version: v1.42.3
+      release_version: v0.11.0
       controller_image_repo: docker.io/senthilrch/kubefledged-controller
       crictl_image_repo: docker.io/senthilrch/kubefledged-cri-client
       dockerfile_controller: build/Dockerfile.controller
@@ -26,7 +26,7 @@ jobs:
       operator_image_repo: docker.io/senthilrch/kubefledged-operator
       operator_target_platforms: linux/amd64,linux/arm64
       push_image: true
-      target_platforms: linux/amd64,linux/arm/v7,linux/arm64/v8
+      target_platforms: linux/amd64,linux/arm64/v8
       webhook_server_image_repo: docker.io/senthilrch/kubefledged-webhook-server
     secrets:
       dockerhub_user: ${{ secrets.DOCKERHUB_USER }}
@@ -35,12 +35,12 @@ jobs:
     if: github.event_name == 'push' && github.ref_type == 'branch' && github.ref_name == 'develop'
     uses: ./.github/workflows/build-kube-fledged.yml
     with:
-      alpine_version: 3.16.2
-      crictl_version: v1.25.0
-      docker_version: 20.10.20
-      golang_version: 1.19.2
-      operatorsdk_version: v1.24.1
-      release_version: v0.11.0-alpha
+      alpine_version: 3.24.1
+      crictl_version: v1.36.0
+      docker_version: 29.6.2
+      golang_version: 1.26.5
+      operatorsdk_version: v1.42.3
+      release_version: v0.11.0
       controller_image_repo: docker.io/senthilrch/kubefledged-controller
       crictl_image_repo: docker.io/senthilrch/kubefledged-cri-client
       dockerfile_controller: build/Dockerfile.controller
@@ -59,12 +59,12 @@ jobs:
     if: github.event_name == 'pull_request'
     uses: ./.github/workflows/build-kube-fledged.yml
     with:
-      alpine_version: 3.16.2
-      crictl_version: v1.25.0
-      docker_version: 20.10.20
-      golang_version: 1.19.2
-      operatorsdk_version: v1.24.1
-      release_version: v0.11.0-alpha
+      alpine_version: 3.24.1
+      crictl_version: v1.36.0
+      docker_version: 29.6.2
+      golang_version: 1.26.5
+      operatorsdk_version: v1.42.3
+      release_version: v0.11.0
       controller_image_repo: docker.io/senthilrch/kubefledged-controller
       crictl_image_repo: docker.io/senthilrch/kubefledged-cri-client
       dockerfile_controller: build/Dockerfile.controller
