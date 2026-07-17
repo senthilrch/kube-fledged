@@ -59,8 +59,7 @@ kube-fledged provides CRUD APIs to manage the lifecycle of the image cache, and 
 - A functioning kubernetes cluster. It could be a simple development cluster like minikube or a large production cluster.
 - Cluster-admin privileges to the kubernetes cluster for deploying kube-fledged.
 - All master and worker nodes having the ["kubernetes.io/hostname"](https://kubernetes.io/docs/reference/kubernetes-api/labels-annotations-taints/#kubernetes-io-hostname) label.
-- For kube-fledged **development**, you need git, make, go, docker engine (>= 19.03), openssl, kubectl, helm and gnu-sed installed on a local linux or mac machine. kubectl configured properly to access the cluster.
-- For kube-fledged **deployment**, you need git, make, helm and kubectl installed on a local linux or mac machine. kubectl configured properly to access the cluster.
+- For kube-fledged **development**, you need git, make, go, docker engine (>= 19.03), openssl, kubectl, helm, gpg and gnu-sed installed on a local linux or mac machine. kubectl configured properly to access the cluster.
 
 ## Quick Install using YAML manifests
 
