@@ -100,9 +100,13 @@ func newImagePullJob(imagecache *fledgedv1alpha2.ImageCache, image string, node 
 					},
 					Containers: []corev1.Container{
 						{
-							Name:    "imagepuller",
-							Image:   image,
-							Command: []string{"/tmp/bin/echo", "Image pulled successfully!"},
+							Name:  "imagepuller",
+							Image: image,
+							Command: []string{
+								"/bin/sh",
+								"-c",
+								"/tmp/bin/echo 'Image pulled successfully!' || true",
+							},
 							VolumeMounts: []corev1.VolumeMount{
 								{
 									Name:      "tmp-bin",
